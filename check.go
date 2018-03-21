@@ -3,6 +3,7 @@ package jwt
 import (
 	"crypto"
 	"crypto/hmac"
+	"crypto/rsa"
 	_ "crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -80,8 +81,68 @@ func HMACCheck(jwt string, secret []byte) (*Claims, error) {
 		return nil, ErrSigMiss
 	}
 
-	// parse claims
-	bytes, err = decode(body[i+1:])
+	return parseClaims(body[i+1:])
+}
+
+// RSAAlgs is the hash algorithm registration.
+// When adding additional entries you also need to
+// import the respective packages to link the hash
+// function into the binary [crypto.Hash.Available].
+var RSAAlgs = map[string]crypto.Hash{
+	"RS256": crypto.SHA256,
+}
+
+// RSACheck returns the claims set if, and only if, the signature checks out.
+// Note that this excludes unsecured JWTs [ErrUnsecured].
+func RSACheck(jwt string, key *rsa.PublicKey) (*Claims, error) {
+	// parse signature
+	i := strings.LastIndexByte(jwt, '.')
+	if i < 0 {
+		return nil, errPart
+	}
+	sig, err := decode(jwt[i+1:])
+	if err != nil {
+		return nil, err
+	}
+
+	body := jwt[:i]
+
+	// parse header
+	i = strings.IndexByte(body, '.')
+	if i < 0 {
+		return nil, errPart
+	}
+	bytes, err := decode(body[:i])
+	if err != nil {
+		return nil, err
+	}
+	var h header
+	if err := json.Unmarshal(bytes, &h); err != nil {
+		return nil, err
+	}
+
+	// verify signature
+	if h.Alg == "none" {
+		return nil, ErrUnsecured
+	}
+	alg, ok := RSAAlgs[h.Alg]
+	if !ok {
+		return nil, fmt.Errorf("alg %q not supported", h.Alg)
+	}
+	if !alg.Available() {
+		return nil, errLink
+	}
+	hash := alg.New()
+	hash.Write([]byte(body))
+	if err := rsa.VerifyPKCS1v15(key, alg, hash.Sum(nil), sig); err != nil {
+		return nil, ErrSigMiss
+	}
+
+	return parseClaims(body[i+1:])
+}
+
+func parseClaims(base64 string) (*Claims, error) {
+	bytes, err := decode(base64)
 	if err != nil {
 		return nil, err
 	}

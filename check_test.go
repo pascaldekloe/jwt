@@ -2,6 +2,9 @@ package jwt
 
 import (
 	"bytes"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"testing"
 )
 
@@ -21,6 +24,49 @@ var goldenHMACs = []struct {
 func TestHMACCheck(t *testing.T) {
 	for i, gold := range goldenHMACs {
 		claims, err := HMACCheck(gold.serial, gold.secret)
+		if err != nil {
+			t.Errorf("%d: check error: %s", i, err)
+			continue
+		}
+		if !bytes.Equal([]byte(claims.Raw), []byte(gold.claims)) {
+			t.Errorf("%d: got claims JSON %q, want %q", i, claims.Raw, gold.claims)
+			continue
+		}
+	}
+}
+
+var goldenRSAs = []struct {
+	key    string
+	serial string
+	claims string
+}{
+	0: {
+		// SHA-256 test from github.com/dgrijalva/jwt-go
+		key: `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4f5wg5l2hKsTeNem/V41
+fGnJm6gOdrj8ym3rFkEU/wT8RDtnSgFEZOQpHEgQ7JL38xUfU0Y3g6aYw9QT0hJ7
+mCpz9Er5qLaMXJwZxzHzAahlfA0icqabvJOMvQtzD6uQv6wPEyZtDTWiQi9AXwBp
+HssPnpYGIn20ZZuNlX2BrClciHhCPUIIZOQn/MmqTD31jSyjoQoV7MhhMTATKJx2
+XrHhR+1DcKJzQBSTAGnpYVaqpsARap+nwRipr3nUTuxyGohBTSmjJ2usSeQXHI3b
+ODIRe1AuTyHceAbewn8b462yEWKARdpd9AjQW5SIVPfdsz5B6GlYQ5LdYKtznTuy
+7wIDAQAB
+-----END PUBLIC KEY-----`,
+		serial: "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJmb28iOiJiYXIifQ.FhkiHkoESI_cG3NPigFrxEk9Z60_oXrOT2vGm9Pn6RDgYNovYORQmmA0zs1AoAOf09ly2Nx2YAg6ABqAYga1AcMFkJljwxTT5fYphTuqpWdy4BELeSYJx5Ty2gmr8e7RonuUztrdD5WfPqLKMm1Ozp_T6zALpRmwTIW0QPnaBXaQD90FplAg46Iy1UlDKr-Eupy0i5SLch5Q-p2ZpaL_5fnTIUDlxC3pWhJTyx_71qDI-mAA_5lE_VdroOeflG56sSmDxopPEG3bFlSu1eowyBfxtu0_CuVd-M42RU75Zc4Gsj6uV77MBtbMrf4_7M_NUTSgoIF3fRqxrj0NzihIBg",
+		claims: `{"foo":"bar"}`,
+	},
+}
+
+func TestRSACheck(t *testing.T) {
+	for i, gold := range goldenRSAs {
+		block, _ := pem.Decode([]byte(gold.key))
+		if block == nil {
+			t.Fatal("invalid PEM public key")
+		}
+		key, err := x509.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+		claims, err := RSACheck(gold.serial, key.(*rsa.PublicKey))
 		if err != nil {
 			t.Errorf("%d: check error: %s", i, err)
 			continue
