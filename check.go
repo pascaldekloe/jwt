@@ -1,6 +1,3 @@
-// Package jwt implements JWT verification.
-// See "JSON Web Token (JWT)" RFC 7519
-// and "JSON Web Signature (JWS)" RFC 7515.
 package jwt
 
 import (
