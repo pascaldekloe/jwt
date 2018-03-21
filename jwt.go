@@ -10,21 +10,39 @@ import (
 
 // Claims is claims set payload representation.
 type Claims struct {
+	Registered
+
 	// Raw has the JSON payload. This field is read-only.
 	Raw json.RawMessage
 
 	// Set is the claims set mapped by name.
 	Set map[string]interface{}
+}
 
-	// Registered are the IANA registered "JSON Web Token Claims".
-	Registered struct {
-		// Expires is the upper limit (exclusive)
-		// of the applicability period.
-		Expires *NumericTime `json:"exp"`
-		// NotBefore is the lower limit (inclusive)
-		// of the applicability period.
-		NotBefore *NumericTime `json:"nbf"`
-	}
+// Registered are the IANA registered "JSON Web Token Claims".
+type Registered struct {
+	// Issuer claim identifies the principal that issued the JWT.
+	Issuer string `json:"iss,omitempty"`
+
+	// Subject claim identifies the principal that is the subject of the JWT.
+	Subject string `json:"sub,omitempty"`
+
+	// Audience claim identifies the recipients that the JWT is intended for.
+	Audience string `json:"aud,omitempty"`
+
+	// Expires claim identifies the expiration time on or after which the JWT
+	// must not be accepted for processing.
+	Expires *NumericTime `json:"exp,omitempty"`
+
+	// NotBefore claim identifies the time before which the JWT must not be
+	// accepted for processing.
+	NotBefore *NumericTime `json:"nbf,omitempty"`
+
+	// Issued identifies the time at which the JWT was issued.
+	Issued *NumericTime `json:"iat,omitempty"`
+
+	// ID claim provides a unique identifier for the JWT.
+	ID string `json:"jti,omitempty"`
 }
 
 // Valid returns whether the claims sets may be accepted

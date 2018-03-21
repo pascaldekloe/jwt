@@ -5,6 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/rsa"
 	_ "crypto/sha256"
+	_ "crypto/sha512"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -33,6 +34,8 @@ var (
 // function into the binary [crypto.Hash.Available].
 var HMACAlgs = map[string]crypto.Hash{
 	"HS256": crypto.SHA256,
+	"HS384": crypto.SHA384,
+	"HS512": crypto.SHA512,
 }
 
 // HMACCheck returns the claims set if, and only if, the signature checks out.
@@ -90,6 +93,8 @@ func HMACCheck(jwt string, secret []byte) (*Claims, error) {
 // function into the binary [crypto.Hash.Available].
 var RSAAlgs = map[string]crypto.Hash{
 	"RS256": crypto.SHA256,
+	"RS384": crypto.SHA384,
+	"RS512": crypto.SHA512,
 }
 
 // RSACheck returns the claims set if, and only if, the signature checks out.

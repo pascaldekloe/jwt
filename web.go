@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"crypto/rsa"
 	"errors"
 	"net/http"
 	"strings"
@@ -28,4 +29,17 @@ func HMACCheckHeader(r *http.Request, secret []byte) (*Claims, error) {
 		return nil, errAuthSchema
 	}
 	return HMACCheck(auth[7:], secret)
+}
+
+// RSACheckHeader applies RSACheck on a HTTP requests.
+// Specifically it looks for the Bearer schema in the Authorization header.
+func RSACheckHeader(r *http.Request, key *rsa.PublicKey) (*Claims, error) {
+	auth := r.Header.Get("Authorization")
+	if auth == "" {
+		return nil, errAuthHeader
+	}
+	if !strings.HasPrefix("Bearer ", auth) {
+		return nil, errAuthSchema
+	}
+	return RSACheck(auth[7:], key)
 }
