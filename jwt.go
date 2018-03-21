@@ -74,9 +74,17 @@ func NewNumericTime(t time.Time) *NumericTime {
 }
 
 // Time returns the Go mapping with the zero value for nil.
-func (t *NumericTime) Time() time.Time {
-	if t == nil {
+func (n *NumericTime) Time() time.Time {
+	if n == nil {
 		return time.Time{}
 	}
-	return time.Unix(0, int64(float64(*t)*float64(time.Second)))
+	return time.Unix(0, int64(float64(*n)*float64(time.Second))).UTC()
+}
+
+// String returs the ISO representation.
+func (n *NumericTime) String() string {
+	if n == nil {
+		return ""
+	}
+	return n.Time().Format("2006-01-02T15:04:05.999999999Z")
 }
