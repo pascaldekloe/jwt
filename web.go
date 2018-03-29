@@ -25,7 +25,7 @@ func HMACCheckHeader(r *http.Request, secret []byte) (*Claims, error) {
 	if auth == "" {
 		return nil, errAuthHeader
 	}
-	if !strings.HasPrefix("Bearer ", auth) {
+	if !strings.HasPrefix(auth, "Bearer ") {
 		return nil, errAuthSchema
 	}
 	return HMACCheck(auth[7:], secret)
@@ -38,7 +38,7 @@ func RSACheckHeader(r *http.Request, key *rsa.PublicKey) (*Claims, error) {
 	if auth == "" {
 		return nil, errAuthHeader
 	}
-	if !strings.HasPrefix("Bearer ", auth) {
+	if !strings.HasPrefix(auth, "Bearer ") {
 		return nil, errAuthSchema
 	}
 	return RSACheck(auth[7:], key)
