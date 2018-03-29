@@ -62,8 +62,7 @@ func (c *Claims) Valid(t time.Time) bool {
 	return true
 }
 
-// String returns the claim when present and if the representation
-// is a a JSON string.
+// String returns the claim when present and if the representation is a JSON string.
 func (c *Claims) String(name string) (value string, ok bool) {
 	v, ok := c.Set[name]
 	if !ok {
@@ -74,6 +73,19 @@ func (c *Claims) String(name string) (value string, ok bool) {
 		return "", false
 	}
 	return s, true
+}
+
+// Number returns the claim when present and if the representation is a JSON number.
+func (c *Claims) Number(name string) (value float64, ok bool) {
+	v, ok := c.Set[name]
+	if !ok {
+		return 0, false
+	}
+	f, ok := v.(float64)
+	if !ok {
+		return 0, false
+	}
+	return f, true
 }
 
 // NumericTime is a JSON numeric value representing the number
