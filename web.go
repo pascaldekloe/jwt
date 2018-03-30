@@ -14,8 +14,8 @@ const MIMEType = "application/jwt"
 const OAuthURN = "urn:ietf:params:oauth:token-type:jwt"
 
 var (
-	errAuthHeader = errors.New("want Authorization header")
-	errAuthSchema = errors.New("want Bearer schema")
+	errAuthHeader = errors.New("jwt: want Authorization header")
+	errAuthSchema = errors.New("jwt: want Bearer schema")
 )
 
 // HMACCheckHeader applies HMACCheck on a HTTP requests.

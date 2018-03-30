@@ -8,6 +8,16 @@ import (
 	"time"
 )
 
+// Algorithm Identification Tokens
+const (
+	HS256 = "HS256" // HMAC SHA-256
+	HS384 = "HS384" // HMAC SHA-384
+	HS512 = "HS512" // HMAC SHA-512
+	RS256 = "RS256" // RSASSA-PKCS1-v1_5 with SHA-256
+	RS384 = "RS384" // RSASSA-PKCS1-v1_5 with SHA-348
+	RS512 = "RS512" // RSASSA-PKCS1-v1_5 with SHA-512
+)
+
 // Claims is claims set payload representation.
 type Claims struct {
 	Registered

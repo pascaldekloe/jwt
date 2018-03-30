@@ -18,24 +18,24 @@ type header struct {
 }
 
 // ErrSigMiss means the signature check failed.
-var ErrSigMiss = errors.New("signature mismatch")
+var ErrSigMiss = errors.New("jwt: signature mismatch")
 
-// ErrUnsecured means the JWT has no signature.
-var ErrUnsecured = errors.New("unsecured JWT")
+// ErrUnsecured signals the "none" algorithm.
+var ErrUnsecured = errors.New("jwt: unsecured—no signature")
 
 var (
-	errPart = errors.New("missing base64 part")
-	errLink = errors.New("hash function not linked into binary")
+	errPart = errors.New("jwt: missing base64 part")
+	errLink = errors.New("jwt: hash function not linked into binary")
 )
 
-// HMACAlgs is the hash algorithm registration.
+// HMACAlgs is the HMAC hash algorithm registration.
 // When adding additional entries you also need to
 // import the respective packages to link the hash
 // function into the binary [crypto.Hash.Available].
 var HMACAlgs = map[string]crypto.Hash{
-	"HS256": crypto.SHA256,
-	"HS384": crypto.SHA384,
-	"HS512": crypto.SHA512,
+	HS256: crypto.SHA256,
+	HS384: crypto.SHA384,
+	HS512: crypto.SHA512,
 }
 
 // HMACCheck returns the claims set if, and only if, the signature checks out.
@@ -64,7 +64,7 @@ func HMACCheck(jwt string, secret []byte) (*Claims, error) {
 	}
 	var h header
 	if err := json.Unmarshal(bytes, &h); err != nil {
-		return nil, err
+		return nil, errors.New("jwt: malformed " + err.Error())
 	}
 
 	// verify signature
@@ -73,7 +73,7 @@ func HMACCheck(jwt string, secret []byte) (*Claims, error) {
 	}
 	alg, ok := HMACAlgs[h.Alg]
 	if !ok {
-		return nil, fmt.Errorf("alg %q not supported", h.Alg)
+		return nil, fmt.Errorf("jwt: unknown HMAC algorithm %q", h.Alg)
 	}
 	if !alg.Available() {
 		return nil, errLink
@@ -87,14 +87,14 @@ func HMACCheck(jwt string, secret []byte) (*Claims, error) {
 	return parseClaims(body[i+1:])
 }
 
-// RSAAlgs is the hash algorithm registration.
+// RSAAlgs is the RSA hash algorithm registration.
 // When adding additional entries you also need to
 // import the respective packages to link the hash
 // function into the binary [crypto.Hash.Available].
 var RSAAlgs = map[string]crypto.Hash{
-	"RS256": crypto.SHA256,
-	"RS384": crypto.SHA384,
-	"RS512": crypto.SHA512,
+	RS256: crypto.SHA256,
+	RS384: crypto.SHA384,
+	RS512: crypto.SHA512,
 }
 
 // RSACheck returns the claims set if, and only if, the signature checks out.
@@ -123,7 +123,7 @@ func RSACheck(jwt string, key *rsa.PublicKey) (*Claims, error) {
 	}
 	var h header
 	if err := json.Unmarshal(bytes, &h); err != nil {
-		return nil, err
+		return nil, errors.New("jwt: malformed " + err.Error())
 	}
 
 	// verify signature
@@ -132,7 +132,7 @@ func RSACheck(jwt string, key *rsa.PublicKey) (*Claims, error) {
 	}
 	alg, ok := RSAAlgs[h.Alg]
 	if !ok {
-		return nil, fmt.Errorf("alg %q not supported", h.Alg)
+		return nil, fmt.Errorf("jwt: unknown RSA algorithm %q", h.Alg)
 	}
 	if !alg.Available() {
 		return nil, errLink
@@ -156,10 +156,10 @@ func parseClaims(base64 string) (*Claims, error) {
 		Set: make(map[string]interface{}),
 	}
 	if err = json.Unmarshal(bytes, &c.Registered); err != nil {
-		return nil, err
+		return nil, errors.New("jwt: malformed " + err.Error())
 	}
 	if err = json.Unmarshal(bytes, &c.Set); err != nil {
-		return nil, err
+		return nil, errors.New("jwt: malformed " + err.Error())
 	}
 	return c, nil
 }
@@ -188,7 +188,7 @@ func decode(s string) ([]byte, error) {
 	buf := make([]byte, base64.StdEncoding.DecodedLen(len(bytes)))
 	n, err := base64.StdEncoding.Decode(buf, bytes)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("jwt: malformed " + err.Error())
 	}
 	return buf[:n], nil
 }
