@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/hmac"
 	"crypto/rsa"
@@ -10,12 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 )
-
-type header struct {
-	Alg string `json:"alg"`
-}
 
 // ErrSigMiss means the signature check failed.
 var ErrSigMiss = errors.New("jwt: signature mismatch")
@@ -40,51 +36,30 @@ var HMACAlgs = map[string]crypto.Hash{
 
 // HMACCheck returns the claims set if, and only if, the signature checks out.
 // Note that this excludes unsecured JWTs [ErrUnsecured].
-func HMACCheck(jwt string, secret []byte) (*Claims, error) {
-	// parse signature
-	i := strings.LastIndexByte(jwt, '.')
-	if i < 0 {
-		return nil, errPart
-	}
-	sig, err := decode(jwt[i+1:])
+func HMACCheck(jwt, secret []byte) (*Claims, error) {
+	firstDot, lastDot, buf, err := scan(jwt)
 	if err != nil {
-		return nil, err
+		return nil, nil
 	}
 
-	body := jwt[:i]
-
-	// parse header
-	i = strings.IndexByte(body, '.')
-	if i < 0 {
-		return nil, errPart
-	}
-	bytes, err := decode(body[:i])
+	// create signature
+	hash, err := selectHash(HMACAlgs, jwt[:firstDot], buf)
 	if err != nil {
-		return nil, err
+		return nil, nil
 	}
-	var h header
-	if err := json.Unmarshal(bytes, &h); err != nil {
-		return nil, errors.New("jwt: malformed " + err.Error())
-	}
+	mac := hmac.New(hash.New, secret)
+	mac.Write(jwt[:lastDot])
 
 	// verify signature
-	if h.Alg == "none" {
-		return nil, ErrUnsecured
+	n, err := base64.RawURLEncoding.Decode(buf, jwt[lastDot+1:])
+	if err != nil {
+		return nil, errors.New("jwt: malformed signature " + err.Error())
 	}
-	alg, ok := HMACAlgs[h.Alg]
-	if !ok {
-		return nil, fmt.Errorf("jwt: unknown HMAC algorithm %q", h.Alg)
-	}
-	if !alg.Available() {
-		return nil, errLink
-	}
-	mac := hmac.New(alg.New, secret)
-	mac.Write([]byte(body))
-	if !hmac.Equal(sig, mac.Sum(nil)) {
+	if !hmac.Equal(buf[:n], mac.Sum(buf[n:n])) {
 		return nil, ErrSigMiss
 	}
 
-	return parseClaims(body[i+1:])
+	return parseClaims(jwt[firstDot+1:lastDot], buf)
 }
 
 // RSAAlgs is the RSA hash algorithm registration.
@@ -99,96 +74,106 @@ var RSAAlgs = map[string]crypto.Hash{
 
 // RSACheck returns the claims set if, and only if, the signature checks out.
 // Note that this excludes unsecured JWTs [ErrUnsecured].
-func RSACheck(jwt string, key *rsa.PublicKey) (*Claims, error) {
-	// parse signature
-	i := strings.LastIndexByte(jwt, '.')
-	if i < 0 {
-		return nil, errPart
-	}
-	sig, err := decode(jwt[i+1:])
+func RSACheck(jwt []byte, key *rsa.PublicKey) (*Claims, error) {
+	firstDot, lastDot, buf, err := scan(jwt)
 	if err != nil {
-		return nil, err
+		return nil, nil
 	}
 
-	body := jwt[:i]
-
-	// parse header
-	i = strings.IndexByte(body, '.')
-	if i < 0 {
-		return nil, errPart
-	}
-	bytes, err := decode(body[:i])
+	// create signature
+	hash, err := selectHash(RSAAlgs, jwt[:firstDot], buf)
 	if err != nil {
-		return nil, err
+		return nil, nil
 	}
-	var h header
-	if err := json.Unmarshal(bytes, &h); err != nil {
-		return nil, errors.New("jwt: malformed " + err.Error())
-	}
+	h := hash.New()
+	h.Write(jwt[:lastDot])
 
 	// verify signature
-	if h.Alg == "none" {
-		return nil, ErrUnsecured
+	n, err := base64.RawURLEncoding.Decode(buf, jwt[lastDot+1:])
+	if err != nil {
+		return nil, errors.New("jwt: malformed signature " + err.Error())
 	}
-	alg, ok := RSAAlgs[h.Alg]
-	if !ok {
-		return nil, fmt.Errorf("jwt: unknown RSA algorithm %q", h.Alg)
-	}
-	if !alg.Available() {
-		return nil, errLink
-	}
-	hash := alg.New()
-	hash.Write([]byte(body))
-	if err := rsa.VerifyPKCS1v15(key, alg, hash.Sum(nil), sig); err != nil {
+	if err := rsa.VerifyPKCS1v15(key, hash, h.Sum(buf[n:n]), buf[:n]); err != nil {
 		return nil, ErrSigMiss
 	}
 
-	return parseClaims(body[i+1:])
+	return parseClaims(jwt[firstDot+1:lastDot], buf)
 }
 
-func parseClaims(base64 string) (*Claims, error) {
-	bytes, err := decode(base64)
-	if err != nil {
-		return nil, err
+// Scan detects the 3 base64 chunks and allocates matching buffer.
+func scan(jwt []byte) (firstDot, lastDot int, buf []byte, err error) {
+	firstDot = bytes.IndexByte(jwt, '.')
+	lastDot = bytes.LastIndexByte(jwt, '.')
+	if lastDot <= firstDot {
+		// zero or one dot
+		return 0, 0, nil, errPart
 	}
+
+	// buffer must fit largest base64 chunk
+	// start with signature
+	max := len(jwt) - lastDot
+	// compare with payload
+	if l := lastDot - firstDot; l > max {
+		max = l
+	}
+	// compare with header
+	if firstDot > max {
+		max = firstDot
+	}
+	buf = make([]byte, base64.RawURLEncoding.DecodedLen(max))
+	return
+}
+
+// SelectHash reads the "alg" field from the header enc.
+func selectHash(algs map[string]crypto.Hash, enc, buf []byte) (crypto.Hash, error) {
+	// parse header
+	var header struct {
+		Alg string `json:"alg"`
+	}
+	n, err := base64.RawURLEncoding.Decode(buf, enc)
+	if err != nil {
+		return 0, errors.New("jwt: malformed header " + err.Error())
+	}
+	if err := json.Unmarshal(buf[:n], &header); err != nil {
+		return 0, errors.New("jwt: malformed header " + err.Error())
+	}
+
+	// why would anyone do this?
+	if header.Alg == "none" {
+		return 0, ErrUnsecured
+	}
+
+	// availability check
+	hash, ok := algs[header.Alg]
+	if !ok {
+		return 0, fmt.Errorf("jwt: unknown algorithm %q", header.Alg)
+	}
+	if !hash.Available() {
+		return 0, errLink
+	}
+
+	return hash, nil
+}
+
+// ParseClaims unmarshals the payload from the payload enc.
+func parseClaims(enc, buf []byte) (*Claims, error) {
+	// decode payload
+	n, err := base64.RawURLEncoding.Decode(buf, enc)
+	if err != nil {
+		return nil, errors.New("jwt: malformed payload " + err.Error())
+	}
+	buf = buf[:n]
+
+	// apply to claims as raw, struct and map
 	c := &Claims{
-		Raw: json.RawMessage(bytes),
+		Raw: json.RawMessage(buf),
 		Set: make(map[string]interface{}),
 	}
-	if err = json.Unmarshal(bytes, &c.Registered); err != nil {
-		return nil, errors.New("jwt: malformed " + err.Error())
+	if err = json.Unmarshal(buf, &c.Registered); err != nil {
+		return nil, errors.New("jwt: malformed payload " + err.Error())
 	}
-	if err = json.Unmarshal(bytes, &c.Set); err != nil {
-		return nil, errors.New("jwt: malformed " + err.Error())
+	if err = json.Unmarshal(buf, &c.Set); err != nil {
+		return nil, errors.New("jwt: malformed payload " + err.Error())
 	}
 	return c, nil
-}
-
-// decode base64url without padding conform RFC 7515, appendix C.
-func decode(s string) ([]byte, error) {
-	bytes := make([]byte, len(s), len(s)+2)
-	copy(bytes, s)
-	for i, b := range bytes {
-		switch b {
-		case '-':
-			bytes[i] = '+' // 62nd char of encoding
-		case '_':
-			bytes[i] = '/' // 63rd char of encoding
-		}
-	}
-
-	// add padding
-	switch len(bytes) % 4 {
-	case 2:
-		bytes = append(bytes, '=', '=')
-	case 3:
-		bytes = append(bytes, '=')
-	}
-
-	buf := make([]byte, base64.StdEncoding.DecodedLen(len(bytes)))
-	n, err := base64.StdEncoding.Decode(buf, bytes)
-	if err != nil {
-		return nil, errors.New("jwt: malformed " + err.Error())
-	}
-	return buf[:n], nil
 }
