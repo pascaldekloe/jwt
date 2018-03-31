@@ -1,4 +1,4 @@
-// Package jwt implements JWT verification.
+// Package jwt implements JWT security.
 // See "JSON Web Token (JWT)" RFC 7519
 // and "JSON Web Signature (JWS)" RFC 7515.
 package jwt
@@ -81,6 +81,48 @@ type Claims struct {
 
 	// Set is the claims set mapped by name.
 	Set map[string]interface{}
+}
+
+// Sync updates the Raw field and when the Set field is not nil then
+// all non-zero Registered values are copied into the map accordingly.
+func (c *Claims) Sync() error {
+	if c.Set == nil {
+		bytes, err := json.Marshal(&c.Registered)
+		if err != nil {
+			return err
+		}
+		c.Raw = json.RawMessage(bytes)
+		return nil
+	}
+
+	if c.Issuer != "" {
+		c.Set["iss"] = c.Issuer
+	}
+	if c.Subject != "" {
+		c.Set["sub"] = c.Subject
+	}
+	if c.Audience != "" {
+		c.Set["aud"] = c.Audience
+	}
+	if c.Expires != nil {
+		c.Set["exp"] = c.Expires
+	}
+	if c.NotBefore != nil {
+		c.Set["nbf"] = c.NotBefore
+	}
+	if c.Issued != nil {
+		c.Set["iat"] = c.Issued
+	}
+	if c.ID != "" {
+		c.Set["jti"] = c.ID
+	}
+
+	bytes, err := json.Marshal(c.Set)
+	if err != nil {
+		return err
+	}
+	c.Raw = json.RawMessage(bytes)
+	return nil
 }
 
 // Valid returns whether the claims sets may be accepted
