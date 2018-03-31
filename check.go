@@ -7,7 +7,6 @@ import (
 	"crypto/rsa"
 	_ "crypto/sha256"
 	_ "crypto/sha512"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,20 +18,7 @@ var ErrSigMiss = errors.New("jwt: signature mismatch")
 // ErrUnsecured signals the "none" algorithm.
 var ErrUnsecured = errors.New("jwt: unsecured—no signature")
 
-var (
-	errPart = errors.New("jwt: missing base64 part")
-	errLink = errors.New("jwt: hash function not linked into binary")
-)
-
-// HMACAlgs is the HMAC hash algorithm registration.
-// When adding additional entries you also need to
-// import the respective packages to link the hash
-// function into the binary [crypto.Hash.Available].
-var HMACAlgs = map[string]crypto.Hash{
-	HS256: crypto.SHA256,
-	HS384: crypto.SHA384,
-	HS512: crypto.SHA512,
-}
+var errPart = errors.New("jwt: missing base64 part")
 
 // HMACCheck returns the claims set if, and only if, the signature checks out.
 // Note that this excludes unsecured JWTs [ErrUnsecured].
@@ -51,7 +37,7 @@ func HMACCheck(jwt, secret []byte) (*Claims, error) {
 	mac.Write(jwt[:lastDot])
 
 	// verify signature
-	n, err := base64.RawURLEncoding.Decode(buf, jwt[lastDot+1:])
+	n, err := encoding.Decode(buf, jwt[lastDot+1:])
 	if err != nil {
 		return nil, errors.New("jwt: malformed signature " + err.Error())
 	}
@@ -60,16 +46,6 @@ func HMACCheck(jwt, secret []byte) (*Claims, error) {
 	}
 
 	return parseClaims(jwt[firstDot+1:lastDot], buf)
-}
-
-// RSAAlgs is the RSA hash algorithm registration.
-// When adding additional entries you also need to
-// import the respective packages to link the hash
-// function into the binary [crypto.Hash.Available].
-var RSAAlgs = map[string]crypto.Hash{
-	RS256: crypto.SHA256,
-	RS384: crypto.SHA384,
-	RS512: crypto.SHA512,
 }
 
 // RSACheck returns the claims set if, and only if, the signature checks out.
@@ -89,7 +65,7 @@ func RSACheck(jwt []byte, key *rsa.PublicKey) (*Claims, error) {
 	h.Write(jwt[:lastDot])
 
 	// verify signature
-	n, err := base64.RawURLEncoding.Decode(buf, jwt[lastDot+1:])
+	n, err := encoding.Decode(buf, jwt[lastDot+1:])
 	if err != nil {
 		return nil, errors.New("jwt: malformed signature " + err.Error())
 	}
@@ -120,7 +96,7 @@ func scan(jwt []byte) (firstDot, lastDot int, buf []byte, err error) {
 	if firstDot > max {
 		max = firstDot
 	}
-	buf = make([]byte, base64.RawURLEncoding.DecodedLen(max))
+	buf = make([]byte, encoding.DecodedLen(max))
 	return
 }
 
@@ -130,7 +106,7 @@ func selectHash(algs map[string]crypto.Hash, enc, buf []byte) (crypto.Hash, erro
 	var header struct {
 		Alg string `json:"alg"`
 	}
-	n, err := base64.RawURLEncoding.Decode(buf, enc)
+	n, err := encoding.Decode(buf, enc)
 	if err != nil {
 		return 0, errors.New("jwt: malformed header " + err.Error())
 	}
@@ -149,7 +125,7 @@ func selectHash(algs map[string]crypto.Hash, enc, buf []byte) (crypto.Hash, erro
 		return 0, fmt.Errorf("jwt: unknown algorithm %q", header.Alg)
 	}
 	if !hash.Available() {
-		return 0, errLink
+		return 0, errHashLink
 	}
 
 	return hash, nil
@@ -158,7 +134,7 @@ func selectHash(algs map[string]crypto.Hash, enc, buf []byte) (crypto.Hash, erro
 // ParseClaims unmarshals the payload from the payload enc.
 func parseClaims(enc, buf []byte) (*Claims, error) {
 	// decode payload
-	n, err := base64.RawURLEncoding.Decode(buf, enc)
+	n, err := encoding.Decode(buf, enc)
 	if err != nil {
 		return nil, errors.New("jwt: malformed payload " + err.Error())
 	}

@@ -4,7 +4,10 @@
 package jwt
 
 import (
+	"crypto"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"time"
 )
 
@@ -18,16 +21,30 @@ const (
 	RS512 = "RS512" // RSASSA-PKCS1-v1_5 with SHA-512
 )
 
-// Claims is claims set payload representation.
-type Claims struct {
-	Registered
-
-	// Raw has the JSON payload. This field is read-only.
-	Raw json.RawMessage
-
-	// Set is the claims set mapped by name.
-	Set map[string]interface{}
+// HMACAlgs is the HMAC hash algorithm registration.
+// When adding additional entries you also need to
+// import the respective packages to link the hash
+// function into the binary [crypto.Hash.Available].
+var HMACAlgs = map[string]crypto.Hash{
+	HS256: crypto.SHA256,
+	HS384: crypto.SHA384,
+	HS512: crypto.SHA512,
 }
+
+// RSAAlgs is the RSA hash algorithm registration.
+// When adding additional entries you also need to
+// import the respective packages to link the hash
+// function into the binary [crypto.Hash.Available].
+var RSAAlgs = map[string]crypto.Hash{
+	RS256: crypto.SHA256,
+	RS384: crypto.SHA384,
+	RS512: crypto.SHA512,
+}
+
+// See crypto.Hash.Available.
+var errHashLink = errors.New("jwt: hash function not linked into binary")
+
+var encoding = base64.RawURLEncoding
 
 // Registered are the IANA registered "JSON Web Token Claims".
 type Registered struct {
@@ -53,6 +70,17 @@ type Registered struct {
 
 	// ID claim provides a unique identifier for the JWT.
 	ID string `json:"jti,omitempty"`
+}
+
+// Claims is claims set payload representation.
+type Claims struct {
+	Registered
+
+	// Raw has the JSON payload. This field is read-only.
+	Raw json.RawMessage
+
+	// Set is the claims set mapped by name.
+	Set map[string]interface{}
 }
 
 // Valid returns whether the claims sets may be accepted

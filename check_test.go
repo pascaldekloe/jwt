@@ -3,9 +3,7 @@ package jwt
 import (
 	"bytes"
 	"crypto/rsa"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"testing"
 	"time"
 
@@ -48,11 +46,11 @@ func TestHMACCheck(t *testing.T) {
 }
 
 func BenchmarkHMACCheck(b *testing.B) {
-	gold := goldenHMACs[0]
-	token := []byte(gold.token)
+	secret := goldenHMACs[0].secret
+	token := []byte(goldenHMACs[0].token)
 
 	for i := 0; i < b.N; i++ {
-		_, err := HMACCheck(token, gold.secret)
+		_, err := HMACCheck(token, secret)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -60,30 +58,20 @@ func BenchmarkHMACCheck(b *testing.B) {
 }
 
 var goldenRSAs = []struct {
-	key    string
+	key    *rsa.PublicKey
 	token  string
 	claims string
 }{
 	0: {
-		// SHA-256 test from github.com/dgrijalva/jwt-go
-		key: `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4f5wg5l2hKsTeNem/V41
-fGnJm6gOdrj8ym3rFkEU/wT8RDtnSgFEZOQpHEgQ7JL38xUfU0Y3g6aYw9QT0hJ7
-mCpz9Er5qLaMXJwZxzHzAahlfA0icqabvJOMvQtzD6uQv6wPEyZtDTWiQi9AXwBp
-HssPnpYGIn20ZZuNlX2BrClciHhCPUIIZOQn/MmqTD31jSyjoQoV7MhhMTATKJx2
-XrHhR+1DcKJzQBSTAGnpYVaqpsARap+nwRipr3nUTuxyGohBTSmjJ2usSeQXHI3b
-ODIRe1AuTyHceAbewn8b462yEWKARdpd9AjQW5SIVPfdsz5B6GlYQ5LdYKtznTuy
-7wIDAQAB
------END PUBLIC KEY-----`,
-		token:  "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJmb28iOiJiYXIifQ.FhkiHkoESI_cG3NPigFrxEk9Z60_oXrOT2vGm9Pn6RDgYNovYORQmmA0zs1AoAOf09ly2Nx2YAg6ABqAYga1AcMFkJljwxTT5fYphTuqpWdy4BELeSYJx5Ty2gmr8e7RonuUztrdD5WfPqLKMm1Ozp_T6zALpRmwTIW0QPnaBXaQD90FplAg46Iy1UlDKr-Eupy0i5SLch5Q-p2ZpaL_5fnTIUDlxC3pWhJTyx_71qDI-mAA_5lE_VdroOeflG56sSmDxopPEG3bFlSu1eowyBfxtu0_CuVd-M42RU75Zc4Gsj6uV77MBtbMrf4_7M_NUTSgoIF3fRqxrj0NzihIBg",
-		claims: `{"foo":"bar"}`,
+		key:    &testKeyRSA.PublicKey,
+		token:  "eyJhbGciOiJSUzI1NiJ9.eyJjb2RlIjoiMDA3In0.q7I3GX8MUwd_Rrs_NiknGp3org30cBDT4JpvQfHx8TAPZNMeQokWb3iZD-Lu0TkQbZiFWdsRrrYVJO-nI15cvkRiSRtzKD0ilaC-i3VmM6cXu2AGSRhhFR4wAaZ5ZNYicooIVf1D1DLP48UZvT-n1ysuMKRRYrnyypcG8xg4o56UEFHrLL1zvuolIsG_sZN0pnVYUEDxLfXJboPSXDYOpyHSJu36Np6s4d8IsUyr3xX-Tu6-Lktu6_5k7NIVtY8yRHThe8x0UL316E_w1Av4nlECTezUS_vSF42w3rQESPXPwaZEFTxm0ciIRn0Wm0GdLHPaKSyZscgGn64eeai57Q",
+		claims: `{"code":"007"}`,
 	},
 }
 
 func TestRSACheck(t *testing.T) {
 	for i, gold := range goldenRSAs {
-		key := mustRSAPublicKey(t, gold.key)
-		claims, err := RSACheck([]byte(gold.token), key)
+		claims, err := RSACheck([]byte(gold.token), gold.key)
 		if err != nil {
 			t.Errorf("%d: check error: %s", i, err)
 			continue
@@ -96,28 +84,13 @@ func TestRSACheck(t *testing.T) {
 }
 
 func BenchmarkRSACheck(b *testing.B) {
-	gold := goldenRSAs[0]
-	rsaKey := mustRSAPublicKey(b, gold.key)
-	token := []byte(gold.token)
+	key := goldenRSAs[0].key
+	token := []byte(goldenRSAs[0].token)
 
 	for i := 0; i < b.N; i++ {
-		_, err := RSACheck(token, rsaKey)
+		_, err := RSACheck(token, key)
 		if err != nil {
 			b.Fatal(err)
 		}
 	}
-}
-
-func mustRSAPublicKey(tb testing.TB, enc string) *rsa.PublicKey {
-	block, _ := pem.Decode([]byte(enc))
-	if block == nil {
-		tb.Fatal("invalid PEM public key")
-	}
-
-	key, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		tb.Fatal(err)
-	}
-
-	return key.(*rsa.PublicKey)
 }
