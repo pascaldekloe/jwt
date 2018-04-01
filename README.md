@@ -1,4 +1,6 @@
 [![GoDoc](https://godoc.org/github.com/pascaldekloe/jwt?status.svg)](https://godoc.org/github.com/pascaldekloe/jwt)
+[![Build Status](https://travis-ci.org/pascaldekloe/jwt.svg?branch=master)](https://travis-ci.org/pascaldekloe/jwt)
+[![JWT.io](http://jwt.io/img/badge.svg)](https://jwt.io/)
 
 Lighteight JSON Web Token (JWT) library for the Go programming language.
 
