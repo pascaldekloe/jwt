@@ -45,25 +45,13 @@ func TestHMACCheck(t *testing.T) {
 	}
 }
 
-func BenchmarkHMACCheck(b *testing.B) {
-	secret := goldenHMACs[0].secret
-	token := []byte(goldenHMACs[0].token)
-
-	for i := 0; i < b.N; i++ {
-		_, err := HMACCheck(token, secret)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
 var goldenRSAs = []struct {
 	key    *rsa.PublicKey
 	token  string
 	claims string
 }{
 	0: {
-		key:    &testKeyRSA.PublicKey,
+		key:    &testKeyRSA2048.PublicKey,
 		token:  "eyJhbGciOiJSUzI1NiJ9.eyJjb2RlIjoiMDA3In0.q7I3GX8MUwd_Rrs_NiknGp3org30cBDT4JpvQfHx8TAPZNMeQokWb3iZD-Lu0TkQbZiFWdsRrrYVJO-nI15cvkRiSRtzKD0ilaC-i3VmM6cXu2AGSRhhFR4wAaZ5ZNYicooIVf1D1DLP48UZvT-n1ysuMKRRYrnyypcG8xg4o56UEFHrLL1zvuolIsG_sZN0pnVYUEDxLfXJboPSXDYOpyHSJu36Np6s4d8IsUyr3xX-Tu6-Lktu6_5k7NIVtY8yRHThe8x0UL316E_w1Av4nlECTezUS_vSF42w3rQESPXPwaZEFTxm0ciIRn0Wm0GdLHPaKSyZscgGn64eeai57Q",
 		claims: `{"code":"007"}`,
 	},
@@ -79,18 +67,6 @@ func TestRSACheck(t *testing.T) {
 		if !bytes.Equal([]byte(claims.Raw), []byte(gold.claims)) {
 			t.Errorf("%d: got claims JSON %q, want %q", i, claims.Raw, gold.claims)
 			continue
-		}
-	}
-}
-
-func BenchmarkRSACheck(b *testing.B) {
-	key := goldenRSAs[0].key
-	token := []byte(goldenRSAs[0].token)
-
-	for i := 0; i < b.N; i++ {
-		_, err := RSACheck(token, key)
-		if err != nil {
-			b.Fatal(err)
 		}
 	}
 }
