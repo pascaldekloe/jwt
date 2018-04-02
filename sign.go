@@ -6,7 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"errors"
-	"fmt"
+	"strconv"
 )
 
 // HMACSign calls Sync and returns a new token serial.
@@ -90,7 +90,7 @@ var fixedHeaders = map[string]string{
 func headerWithHash(alg string, algs map[string]crypto.Hash) (string, crypto.Hash, error) {
 	hash, ok := algs[alg]
 	if !ok {
-		return "", 0, fmt.Errorf("jwt: unknown algorithm %q", alg)
+		return "", 0, ErrAlgUnk
 	}
 	if !hash.Available() {
 		return "", 0, errHashLink
@@ -98,7 +98,11 @@ func headerWithHash(alg string, algs map[string]crypto.Hash) (string, crypto.Has
 
 	header, ok := fixedHeaders[alg]
 	if !ok {
-		header = fmt.Sprintf(`{"alg":%q}`, alg)
+		buf := make([]byte, 10+len(alg))
+		copy(buf, `{"alg":`)
+		strconv.AppendQuote(buf[:7], alg)
+		buf[len(buf)-1] = '}'
+		header = encoding.EncodeToString(buf)
 	}
 
 	return header, hash, nil

@@ -2,8 +2,11 @@ package jwt
 
 import (
 	"bytes"
+	"crypto"
+	_ "crypto/md5"
 	"crypto/rsa"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -68,5 +71,101 @@ func TestRSACheck(t *testing.T) {
 			t.Errorf("%d: got claims JSON %q, want %q", i, claims.Raw, gold.claims)
 			continue
 		}
+	}
+}
+
+func TestCheckMiss(t *testing.T) {
+	_, err := HMACCheck([]byte(goldenHMACs[0].token), nil)
+	if err != ErrSigMiss {
+		t.Errorf("HMAC check got error %v, want %v", err, ErrSigMiss)
+	}
+	_, err = RSACheck([]byte(goldenRSAs[0].token), &testKeyRSA4096.PublicKey)
+	if err != ErrSigMiss {
+		t.Errorf("RSA check got error %v, want %v", err, ErrSigMiss)
+	}
+}
+
+func TestCheckAlgWrong(t *testing.T) {
+	_, err := HMACCheck([]byte(goldenRSAs[0].token), nil)
+	if err != ErrAlgUnk {
+		t.Errorf("RSA alg for HMAC got error %v, want %v", err, ErrAlgUnk)
+	}
+	_, err = RSACheck([]byte(goldenHMACs[0].token), &testKeyRSA1024.PublicKey)
+	if err != ErrAlgUnk {
+		t.Errorf("HMAC alg for RSA got error %v, want %v", err, ErrAlgUnk)
+	}
+}
+
+func TestCheckAlgExtend(t *testing.T) {
+	alg := "HMD5"
+	if _, ok := HMACAlgs[alg]; ok {
+		t.Fatalf("non-standard alg %q present", alg)
+	}
+	HMACAlgs[alg] = crypto.MD5
+	defer delete(HMACAlgs, alg)
+
+	_, err := HMACCheck([]byte("eyJhbGciOiJITUQ1In0.e30.5Dh5oHLwx9AWkvHR1qHtIw"), nil)
+	if err != nil {
+		t.Errorf("extend sign error %v, want %v", err, ErrAlgUnk)
+	}
+}
+
+func TestCheckHashNotLinked(t *testing.T) {
+	alg := "HB2b256"
+	if _, ok := HMACAlgs[alg]; ok {
+		t.Fatalf("non-standard alg %q present", alg)
+	}
+	HMACAlgs[alg] = crypto.BLAKE2b_256
+	defer delete(HMACAlgs, alg)
+
+	_, err := HMACCheck([]byte("eyJhbGciOiJIQjJiMjU2In0.e30.e30"), nil)
+	if err != errHashLink {
+		t.Errorf("got error %v, want %v", err, errHashLink)
+	}
+}
+
+func TestCheckIncomplete(t *testing.T) {
+	// header only
+	_, err := RSACheck([]byte("eyJhbGciOiJub25lIn0"), &testKeyRSA1024.PublicKey)
+	if err != errPart {
+		t.Errorf("one base64 chunk got error %v, want %v", err, errPart)
+	}
+
+	// header + body; missing signature
+	_, err = HMACCheck([]byte("eyJhbGciOiJub25lIn0.e30"), nil)
+	if err != errPart {
+		t.Errorf("two base64 chunks got error %v, want %v", err, errPart)
+	}
+
+	// reject no signature
+	_, err = HMACCheck([]byte("eyJhbGciOiJub25lIn0.e30."), nil)
+	if err != ErrUnsecured {
+		t.Errorf("two base64 chunks got error %v, want %v", err, ErrUnsecured)
+	}
+}
+
+func TestCheckBrokenBase64(t *testing.T) {
+	want := "jwt: malformed header: "
+	_, err := HMACCheck([]byte("*yJhbGciOiJIUzI1NiJ9.e30.4E_Bsx-pJi3kOW9wVXN8CgbATwP09D9V5gxh9-9zSZ0"), nil)
+	if err == nil || !strings.HasPrefix(err.Error(), want) {
+		t.Errorf("corrupt base64 in header got error %v, want %s…", err, want)
+	}
+
+	want = "jwt: malformed signature: "
+	_, err = HMACCheck([]byte("eyJhbGciOiJIUzI1NiJ9.e30.*"), nil)
+	if err == nil || !strings.HasPrefix(err.Error(), want) {
+		t.Errorf("corrupt base64 in HMAC signature got error %v, want %s…", err, want)
+	}
+	_, err = RSACheck([]byte("eyJhbGciOiJSUzI1NiJ9.e30.*"), nil)
+	if err == nil || !strings.HasPrefix(err.Error(), want) {
+		t.Errorf("corrupt base64 in RSA signature got error %v, want %s…", err, want)
+	}
+}
+
+func TestCheckBrokenJSON(t *testing.T) {
+	want := "jwt: malformed header: "
+	_, err := HMACCheck([]byte("YnJva2Vu.e30.e30"), nil)
+	if err == nil || !strings.HasPrefix(err.Error(), want) {
+		t.Errorf("corrupt base64 in header got error %v, want %s…", err, want)
 	}
 }

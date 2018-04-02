@@ -133,6 +133,41 @@ func TestNumericTimeMapping(t *testing.T) {
 	}
 }
 
+func TestSyncOverride(t *testing.T) {
+	replace := byte(42)
+
+	c := Claims{
+		// registered struct fields take precedence
+		Registered: Registered{
+			Issuer:    "a",
+			Subject:   "b",
+			Audience:  "c",
+			Expires:   NewNumericTime(time.Now()),
+			NotBefore: NewNumericTime(time.Now()),
+			Issued:    NewNumericTime(time.Now()),
+			ID:        "c",
+		},
+		Set: map[string]interface{}{
+			"iss": replace,
+			"sub": replace,
+			"aud": replace,
+			"exp": replace,
+			"nbf": replace,
+			"iat": replace,
+			"jti": replace,
+		},
+	}
+
+	if err := c.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	for name, value := range c.Set {
+		if value == replace {
+			t.Errorf("%q was not replaced", name)
+		}
+	}
+}
+
 func TestClaimsValid(t *testing.T) {
 	c := new(Claims)
 	if !c.Valid(time.Time{}) {
@@ -163,6 +198,39 @@ func TestClaimsValid(t *testing.T) {
 	}
 	if c.Valid(c.Registered.Expires.Time().Add(time.Second)) {
 		t.Error("validated claims after time limit end")
+	}
+}
+
+func TestTypedLookups(t *testing.T) {
+	c := &Claims{
+		Set: map[string]interface{}{
+			"s": "a",
+			"n": 99.8,
+		},
+	}
+
+	if got, ok := c.String("s"); !ok {
+		t.Error("string lookup miss")
+	} else if got != "a" {
+		t.Errorf("got %q, want \"a\"", got)
+	}
+	if _, ok := c.String("n"); ok {
+		t.Error("got number as string")
+	}
+	if _, ok := c.String("x"); ok {
+		t.Error("got nonexisting string")
+	}
+
+	if got, ok := c.Number("n"); !ok {
+		t.Error("number lookup miss")
+	} else if got != 99.8 {
+		t.Errorf("got %f, want 99.8", got)
+	}
+	if _, ok := c.Number("s"); ok {
+		t.Error("got string as number")
+	}
+	if _, ok := c.Number("x"); ok {
+		t.Error("got nonexisting number")
 	}
 }
 

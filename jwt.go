@@ -41,6 +41,9 @@ var RSAAlgs = map[string]crypto.Hash{
 	RS512: crypto.SHA512,
 }
 
+// ErrAlgUnk signals an unsupported "alg" token (for the respective method).
+var ErrAlgUnk = errors.New("jwt: algorithm unknown")
+
 // See crypto.Hash.Available.
 var errHashLink = errors.New("jwt: hash function not linked into binary")
 

@@ -9,7 +9,6 @@ import (
 	_ "crypto/sha512"
 	"encoding/json"
 	"errors"
-	"fmt"
 )
 
 // ErrSigMiss means the signature check failed.
@@ -25,13 +24,13 @@ var errPart = errors.New("jwt: missing base64 part")
 func HMACCheck(jwt, secret []byte) (*Claims, error) {
 	firstDot, lastDot, buf, err := scan(jwt)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 
 	// create signature
 	hash, err := selectHash(HMACAlgs, jwt[:firstDot], buf)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	mac := hmac.New(hash.New, secret)
 	mac.Write(jwt[:lastDot])
@@ -39,7 +38,7 @@ func HMACCheck(jwt, secret []byte) (*Claims, error) {
 	// verify signature
 	n, err := encoding.Decode(buf, jwt[lastDot+1:])
 	if err != nil {
-		return nil, errors.New("jwt: malformed signature " + err.Error())
+		return nil, errors.New("jwt: malformed signature: " + err.Error())
 	}
 	if !hmac.Equal(buf[:n], mac.Sum(buf[n:n])) {
 		return nil, ErrSigMiss
@@ -53,13 +52,13 @@ func HMACCheck(jwt, secret []byte) (*Claims, error) {
 func RSACheck(jwt []byte, key *rsa.PublicKey) (*Claims, error) {
 	firstDot, lastDot, buf, err := scan(jwt)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 
 	// create signature
 	hash, err := selectHash(RSAAlgs, jwt[:firstDot], buf)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	h := hash.New()
 	h.Write(jwt[:lastDot])
@@ -67,7 +66,7 @@ func RSACheck(jwt []byte, key *rsa.PublicKey) (*Claims, error) {
 	// verify signature
 	n, err := encoding.Decode(buf, jwt[lastDot+1:])
 	if err != nil {
-		return nil, errors.New("jwt: malformed signature " + err.Error())
+		return nil, errors.New("jwt: malformed signature: " + err.Error())
 	}
 	if err := rsa.VerifyPKCS1v15(key, hash, h.Sum(buf[n:n]), buf[:n]); err != nil {
 		return nil, ErrSigMiss
@@ -108,10 +107,10 @@ func selectHash(algs map[string]crypto.Hash, enc, buf []byte) (crypto.Hash, erro
 	}
 	n, err := encoding.Decode(buf, enc)
 	if err != nil {
-		return 0, errors.New("jwt: malformed header " + err.Error())
+		return 0, errors.New("jwt: malformed header: " + err.Error())
 	}
 	if err := json.Unmarshal(buf[:n], &header); err != nil {
-		return 0, errors.New("jwt: malformed header " + err.Error())
+		return 0, errors.New("jwt: malformed header: " + err.Error())
 	}
 
 	// why would anyone do this?
@@ -122,7 +121,7 @@ func selectHash(algs map[string]crypto.Hash, enc, buf []byte) (crypto.Hash, erro
 	// availability check
 	hash, ok := algs[header.Alg]
 	if !ok {
-		return 0, fmt.Errorf("jwt: unknown algorithm %q", header.Alg)
+		return 0, ErrAlgUnk
 	}
 	if !hash.Available() {
 		return 0, errHashLink
@@ -136,7 +135,7 @@ func parseClaims(enc, buf []byte) (*Claims, error) {
 	// decode payload
 	n, err := encoding.Decode(buf, enc)
 	if err != nil {
-		return nil, errors.New("jwt: malformed payload " + err.Error())
+		return nil, errors.New("jwt: malformed payload: " + err.Error())
 	}
 	buf = buf[:n]
 
@@ -146,10 +145,10 @@ func parseClaims(enc, buf []byte) (*Claims, error) {
 		Set: make(map[string]interface{}),
 	}
 	if err = json.Unmarshal(buf, &c.Registered); err != nil {
-		return nil, errors.New("jwt: malformed payload " + err.Error())
+		return nil, errors.New("jwt: malformed payload: " + err.Error())
 	}
 	if err = json.Unmarshal(buf, &c.Set); err != nil {
-		return nil, errors.New("jwt: malformed payload " + err.Error())
+		return nil, errors.New("jwt: malformed payload: " + err.Error())
 	}
 	return c, nil
 }
