@@ -1,8 +1,5 @@
 [![GoDoc](https://godoc.org/github.com/pascaldekloe/jwt?status.svg)](https://godoc.org/github.com/pascaldekloe/jwt)
 [![Build Status](https://travis-ci.org/pascaldekloe/jwt.svg?branch=master)](https://travis-ci.org/pascaldekloe/jwt)
-[![Coverage Status](https://coveralls.io/repos/github/pascaldekloe/jwt/badge.svg?branch=master)](https://coveralls.io/github/pascaldekloe/jwt)
-
-[![JWT.io](http://jwt.io/img/badge.svg)](https://jwt.io/)
 
 Lighteight JSON Web Token (JWT) library for the Go programming language.
 
@@ -32,3 +29,5 @@ ok  	github.com/pascaldekloe/jwt	20.938s
 
 This is free and unencumbered software released into the
 [public domain](http://creativecommons.org/publicdomain/zero/1.0).
+
+[![JWT.io](http://jwt.io/img/badge.svg)](https://jwt.io/)
