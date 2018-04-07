@@ -151,6 +151,12 @@ func TestCheckBrokenBase64(t *testing.T) {
 		t.Errorf("corrupt base64 in header got error %v, want %s…", err, want)
 	}
 
+	want = "jwt: malformed payload: "
+	_, err = HMACCheck([]byte("eyJhbGciOiJIUzI1NiJ9.#.hjZNKOxutvgwMhfCSZ4KXcIjuqi8lTA96fmo_6jwtZM"), nil)
+	if err == nil || !strings.HasPrefix(err.Error(), want) {
+		t.Errorf("corrupt base64 in payload got error %v, want %s…", err, want)
+	}
+
 	want = "jwt: malformed signature: "
 	_, err = HMACCheck([]byte("eyJhbGciOiJIUzI1NiJ9.e30.*"), nil)
 	if err == nil || !strings.HasPrefix(err.Error(), want) {
@@ -164,8 +170,14 @@ func TestCheckBrokenBase64(t *testing.T) {
 
 func TestCheckBrokenJSON(t *testing.T) {
 	want := "jwt: malformed header: "
-	_, err := HMACCheck([]byte("YnJva2Vu.e30.e30"), nil)
+	_, err := HMACCheck([]byte("YnJva2Vu.e30."), nil)
 	if err == nil || !strings.HasPrefix(err.Error(), want) {
-		t.Errorf("corrupt base64 in header got error %v, want %s…", err, want)
+		t.Errorf("corrupt JSON in header got error %v, want %s…", err, want)
+	}
+
+	want = "jwt: malformed payload: "
+	_, err = HMACCheck([]byte("eyJhbGciOiJIUzI1NiJ9.YnJva2Vu.5YbD-zSDmv7JQMNGAyVHIFF-2-_eBbqsV5XOZOoaO2c"), nil)
+	if err == nil || !strings.HasPrefix(err.Error(), want) {
+		t.Errorf("corrupt JSON in payload got error %v, want %s…", err, want)
 	}
 }
