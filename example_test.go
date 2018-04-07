@@ -14,14 +14,25 @@ import (
 // JWTSecret is the HMAC key.
 var JWTSecret = []byte("guest")
 
-func ExampleHMACCheckHeader() {
-	// request with JWT Bearer
-	req := httptest.NewRequest("GET", "/", nil)
-	req.Header.Set("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJsYWthbmUiLCJmbiI6IkxhbmEgQW50aG9ueSBLYW5lIn0.c9qLforxweefXAm7Q8W13N7E6XKT0tNd8rzoablDkx0")
+func Example() {
+	claims := &jwt.Claims{
+		Registered: jwt.Registered{
+			Subject: "lakane",
+		},
+		// non-standard extension:
+		Set: map[string]interface{}{
+			"fn": "Lana Anthony Kane",
+		},
+	}
 
-	// execute and print
+	req := httptest.NewRequest("GET", "/", nil)
+	if err := claims.HMACSignHeader(req, jwt.HS512, JWTSecret); err != nil {
+		panic(err)
+	}
+
 	rec := httptest.NewRecorder()
 	securedHandler(rec, req)
+
 	fmt.Println("HTTP", rec.Result().Status)
 	io.Copy(os.Stdout, rec.Result().Body)
 	// output: HTTP 200 OK

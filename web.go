@@ -43,3 +43,25 @@ func RSACheckHeader(r *http.Request, key *rsa.PublicKey) (*Claims, error) {
 	}
 	return RSACheck([]byte(auth[7:]), key)
 }
+
+// HMACSignHeader applies HMACSign on a HTTP request.
+// Specifically it sets a bearer token in the Authorization header.
+func (c *Claims) HMACSignHeader(r *http.Request, alg string, secret []byte) error {
+	token, err := c.HMACSign(alg, secret)
+	if err != nil {
+		return err
+	}
+	r.Header.Set("Authorization", "Bearer "+string(token))
+	return nil
+}
+
+// RSASignHeader applies RSASign on a HTTP request.
+// Specifically it sets a bearer token in the Authorization header.
+func (c *Claims) RSASignHeader(r *http.Request, alg string, key *rsa.PrivateKey) error {
+	token, err := c.RSASign(alg, key)
+	if err != nil {
+		return err
+	}
+	r.Header.Set("Authorization", "Bearer "+string(token))
+	return nil
+}
