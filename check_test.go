@@ -106,7 +106,7 @@ func TestCheckAlgExtend(t *testing.T) {
 
 	_, err := HMACCheck([]byte("eyJhbGciOiJITUQ1In0.e30.5Dh5oHLwx9AWkvHR1qHtIw"), nil)
 	if err != nil {
-		t.Errorf("extend sign error %v, want %v", err, ErrAlgUnk)
+		t.Error("extend check error:", err)
 	}
 }
 

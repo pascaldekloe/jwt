@@ -9,8 +9,8 @@ import (
 	"strconv"
 )
 
-// HMACSign calls Sync and returns a new token serial.
-func (c *Claims) HMACSign(alg string, secret []byte) (jwt []byte, err error) {
+// HMACSign calls Sync and returns a new JWT.
+func (c *Claims) HMACSign(alg string, secret []byte) (token []byte, err error) {
 	if err := c.Sync(); err != nil {
 		return nil, err
 	}
@@ -22,27 +22,27 @@ func (c *Claims) HMACSign(alg string, secret []byte) (jwt []byte, err error) {
 	mac := hmac.New(hash.New, secret)
 
 	encSigLen := encoding.EncodedLen(mac.Size())
-	jwt = make([]byte, len(header)+encoding.EncodedLen(len(c.Raw))+encSigLen+2)
+	token = make([]byte, len(header)+encoding.EncodedLen(len(c.Raw))+encSigLen+2)
 
 	// append header + body
-	offset := copy(jwt, header)
-	jwt[offset] = '.'
+	offset := copy(token, header)
+	token[offset] = '.'
 	offset++
-	encoding.Encode(jwt[offset:], c.Raw)
-	offset = len(jwt) - encSigLen - 1
+	encoding.Encode(token[offset:], c.Raw)
+	offset = len(token) - encSigLen - 1
 
-	mac.Write(jwt[:offset])
+	mac.Write(token[:offset])
 
 	// append signature
-	jwt[offset] = '.'
+	token[offset] = '.'
 	offset++
-	encoding.Encode(jwt[offset:], mac.Sum(nil))
+	encoding.Encode(token[offset:], mac.Sum(nil))
 
-	return jwt, nil
+	return token, nil
 }
 
-// RSASign calls Sync and returns a new token serial.
-func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (jwt []byte, err error) {
+// RSASign calls Sync and returns a new JWT.
+func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err error) {
 	if err := c.Sync(); err != nil {
 		return nil, err
 	}
@@ -53,28 +53,28 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (jwt []byte, err error
 	}
 
 	encSigLen := encoding.EncodedLen((key.N.BitLen() + 7) / 8)
-	jwt = make([]byte, len(header)+encoding.EncodedLen(len(c.Raw))+encSigLen+2)
+	token = make([]byte, len(header)+encoding.EncodedLen(len(c.Raw))+encSigLen+2)
 
 	// append header + body
-	offset := copy(jwt, header)
-	jwt[offset] = '.'
+	offset := copy(token, header)
+	token[offset] = '.'
 	offset++
-	encoding.Encode(jwt[offset:], c.Raw)
-	offset = len(jwt) - encSigLen - 1
+	encoding.Encode(token[offset:], c.Raw)
+	offset = len(token) - encSigLen - 1
 
 	h := hash.New()
-	h.Write(jwt[:offset])
+	h.Write(token[:offset])
 	sig, err := rsa.SignPKCS1v15(rand.Reader, key, hash, h.Sum(nil))
 	if err != nil {
 		return nil, errors.New("jwt: " + err.Error())
 	}
 
 	// append signature
-	jwt[offset] = '.'
+	token[offset] = '.'
 	offset++
-	encoding.Encode(jwt[offset:], sig)
+	encoding.Encode(token[offset:], sig)
 
-	return jwt, nil
+	return token, nil
 }
 
 var fixedHeaders = map[string]string{

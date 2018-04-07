@@ -58,12 +58,9 @@ func TestSignAlgExtend(t *testing.T) {
 	HMACAlgs[alg] = crypto.MD5
 	defer delete(HMACAlgs, alg)
 
-	s, err := new(Claims).HMACSign(alg, nil)
+	_, err := new(Claims).HMACSign(alg, nil)
 	if err != nil {
-		t.Errorf("extend sign error %v, want %v", err, ErrAlgUnk)
-	}
-	if _, err := HMACCheck(s, nil); err != nil {
-		t.Error("parse of produced token error:", err)
+		t.Fatal("extend sign error:", err)
 	}
 }
 

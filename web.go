@@ -18,8 +18,8 @@ var (
 	errAuthSchema = errors.New("jwt: want Bearer schema")
 )
 
-// HMACCheckHeader applies HMACCheck on a HTTP requests.
-// Specifically it looks for the Bearer schema in the Authorization header.
+// HMACCheckHeader applies HMACCheck on a HTTP request.
+// Specifically it looks for a bearer token in the Authorization header.
 func HMACCheckHeader(r *http.Request, secret []byte) (*Claims, error) {
 	auth := r.Header.Get("Authorization")
 	if auth == "" {
@@ -31,8 +31,8 @@ func HMACCheckHeader(r *http.Request, secret []byte) (*Claims, error) {
 	return HMACCheck([]byte(auth[7:]), secret)
 }
 
-// RSACheckHeader applies RSACheck on a HTTP requests.
-// Specifically it looks for the Bearer schema in the Authorization header.
+// RSACheckHeader applies RSACheck on a HTTP request.
+// Specifically it looks for a bearer token in the Authorization header.
 func RSACheckHeader(r *http.Request, key *rsa.PublicKey) (*Claims, error) {
 	auth := r.Header.Get("Authorization")
 	if auth == "" {

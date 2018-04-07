@@ -51,27 +51,27 @@ var encoding = base64.RawURLEncoding
 
 // Registered are the IANA registered "JSON Web Token Claims".
 type Registered struct {
-	// Issuer claim identifies the principal that issued the JWT.
+	// Issuer identifies the principal that issued the JWT.
 	Issuer string `json:"iss,omitempty"`
 
-	// Subject claim identifies the principal that is the subject of the JWT.
+	// Subject identifies the principal that is the subject of the JWT.
 	Subject string `json:"sub,omitempty"`
 
-	// Audience claim identifies the recipients that the JWT is intended for.
+	// Audience identifies the recipients that the JWT is intended for.
 	Audience string `json:"aud,omitempty"`
 
-	// Expires claim identifies the expiration time on or after which the JWT
+	// Expires identifies the expiration time on or after which the JWT
 	// must not be accepted for processing.
 	Expires *NumericTime `json:"exp,omitempty"`
 
-	// NotBefore claim identifies the time before which the JWT must not be
+	// NotBefore identifies the time before which the JWT must not be
 	// accepted for processing.
 	NotBefore *NumericTime `json:"nbf,omitempty"`
 
 	// Issued identifies the time at which the JWT was issued.
 	Issued *NumericTime `json:"iat,omitempty"`
 
-	// ID claim provides a unique identifier for the JWT.
+	// ID provides a unique identifier for the JWT.
 	ID string `json:"jti,omitempty"`
 }
 

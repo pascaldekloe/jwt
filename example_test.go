@@ -24,7 +24,6 @@ func ExampleHMACCheckHeader() {
 	securedHandler(rec, req)
 	fmt.Println("HTTP", rec.Result().Status)
 	io.Copy(os.Stdout, rec.Result().Body)
-
 	// output: HTTP 200 OK
 	// Hello Lana Anthony Kane!
 	// You are authorized as lakane.
