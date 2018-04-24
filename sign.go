@@ -5,7 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
-	"strconv"
+	"sync"
 )
 
 // HMACSign calls Sync and returns a new JWT.
@@ -76,7 +76,8 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err err
 	return token, nil
 }
 
-var fixedHeaders = map[string]string{
+var headerCacheMutex sync.RWMutex
+var headerCache = map[string]string{
 	HS256: encoding.EncodeToString([]byte(`{"alg":"HS256"}`)),
 	HS384: encoding.EncodeToString([]byte(`{"alg":"HS384"}`)),
 	HS512: encoding.EncodeToString([]byte(`{"alg":"HS512"}`)),
@@ -95,13 +96,20 @@ func headerWithHash(alg string, algs map[string]crypto.Hash) (string, crypto.Has
 		return "", 0, errHashLink
 	}
 
-	header, ok := fixedHeaders[alg]
+	headerCacheMutex.RLock()
+	header, ok := headerCache[alg]
+	headerCacheMutex.RUnlock()
+
 	if !ok {
-		buf := make([]byte, 10+len(alg))
-		copy(buf, `{"alg":`)
-		strconv.AppendQuote(buf[:7], alg)
-		buf[len(buf)-1] = '}'
+		buf := make([]byte, 7, 10+len(alg))
+		copy(buf, `{"alg":"`)
+		buf = append(buf, alg...)
+		buf = append(buf, '"', '}')
 		header = encoding.EncodeToString(buf)
+
+		headerCacheMutex.Lock()
+		headerCache[alg] = header
+		headerCacheMutex.Unlock()
 	}
 
 	return header, hash, nil
