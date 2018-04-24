@@ -5,8 +5,8 @@ import (
 	"crypto"
 	"crypto/hmac"
 	"crypto/rsa"
-	_ "crypto/sha256"
-	_ "crypto/sha512"
+	_ "crypto/sha256" // link
+	_ "crypto/sha512" // link
 	"encoding/json"
 	"errors"
 )

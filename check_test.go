@@ -3,7 +3,7 @@ package jwt
 import (
 	"bytes"
 	"crypto"
-	_ "crypto/md5"
+	_ "crypto/md5" // link
 	"crypto/rsa"
 	"encoding/json"
 	"strings"
