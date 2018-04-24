@@ -3,6 +3,7 @@ package jwt
 import (
 	"crypto"
 	_ "crypto/md5"
+	"crypto/rsa"
 	"encoding/json"
 	"math"
 	"testing"
@@ -94,5 +95,23 @@ func TestSignBrokenClaims(t *testing.T) {
 	_, err = c.RSASign(RS256, testKeyRSA1024)
 	if _, ok := err.(*json.UnsupportedValueError); !ok {
 		t.Errorf("RSA got error %#v, want json.UnsupportedValueError", err)
+	}
+}
+
+func TestRSASignKeyTooSmall(t *testing.T) {
+	// can't sign 512 bits with a 512-bit RSA key
+	key := mustParseRSAKey(`-----BEGIN RSA PRIVATE KEY-----
+MIIBPAIBAAJBAIRyPiLmS7ta5bS6eEqUb1IZhxYJ/sB+Hq/uV3xIEcu075uE0mr9
+xSUHcztAcHwEYE/JF0Zc5HS++ALadTK2qZUCAwEAAQJARsqdRaAcOG70Oi4034AJ
+JDO6zV/YR2Dh3B0jq60FvgAVLYKDJ7klDpeqmLB64q2IXfnoVtJDjXSTpA6qyNvG
+/QIhAOWfFSLq07Ock4gjGy7qeT3Tpa/uYmRuqk90jEfn2/oDAiEAk6lYDZ1DdXmY
+4cnQu3Q8A/ZHW52uFR76mLi8FihzRocCIQCWGgT+G1WibvM+JfzKEXqKAQWpWQK2
+tmTcpcph4t44swIhAIzdu8PZKHbUlvWnqzp5S5vYAgEzrtQ1Zon1inF1C2vXAiEA
+uRVZaJLTfpQ+n88IcdG4WPKnRZqxGnrq3DjtIvFrBlM=
+-----END RSA PRIVATE KEY-----`)
+
+	_, err := new(Claims).RSASign(RS512, key)
+	if err != rsa.ErrMessageTooLong {
+		t.Errorf("got error %q, want %q", err, rsa.ErrMessageTooLong)
 	}
 }

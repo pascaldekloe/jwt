@@ -5,7 +5,6 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
-	"errors"
 	"strconv"
 )
 
@@ -66,7 +65,7 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err err
 	h.Write(token[:offset])
 	sig, err := rsa.SignPKCS1v15(rand.Reader, key, hash, h.Sum(nil))
 	if err != nil {
-		return nil, errors.New("jwt: " + err.Error())
+		return nil, err
 	}
 
 	// append signature
