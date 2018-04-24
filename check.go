@@ -146,7 +146,7 @@ func parseClaims(enc, buf []byte) (*Claims, error) {
 		return nil, errors.New("jwt: malformed payload: " + err.Error())
 	}
 
-	// map registerd claims on type match
+	// map registered claims on type match
 	if s, ok := c.Set["iss"].(string); ok {
 		c.Issuer = s
 	}
