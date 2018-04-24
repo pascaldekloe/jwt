@@ -82,45 +82,45 @@ type Claims struct {
 	// Raw has the JSON payload. This field is read-only.
 	Raw json.RawMessage
 
-	// Set is the claims set mapped by name.
+	// Set has the claims set mapped by name.
+	// Registered field values take precedence.
 	Set map[string]interface{}
 }
 
 // Sync updates the Raw field and when the Set field is not nil then
 // all non-zero Registered values are copied into the map accordingly.
 func (c *Claims) Sync() error {
+	var payload interface{}
+
 	if c.Set == nil {
-		bytes, err := json.Marshal(&c.Registered)
-		if err != nil {
-			return err
+		payload = &c.Registered
+	} else {
+		payload = c.Set
+
+		if c.Issuer != "" {
+			c.Set["iss"] = c.Issuer
 		}
-		c.Raw = json.RawMessage(bytes)
-		return nil
+		if c.Subject != "" {
+			c.Set["sub"] = c.Subject
+		}
+		if c.Audience != "" {
+			c.Set["aud"] = c.Audience
+		}
+		if c.Expires != nil {
+			c.Set["exp"] = c.Expires
+		}
+		if c.NotBefore != nil {
+			c.Set["nbf"] = c.NotBefore
+		}
+		if c.Issued != nil {
+			c.Set["iat"] = c.Issued
+		}
+		if c.ID != "" {
+			c.Set["jti"] = c.ID
+		}
 	}
 
-	if c.Issuer != "" {
-		c.Set["iss"] = c.Issuer
-	}
-	if c.Subject != "" {
-		c.Set["sub"] = c.Subject
-	}
-	if c.Audience != "" {
-		c.Set["aud"] = c.Audience
-	}
-	if c.Expires != nil {
-		c.Set["exp"] = c.Expires
-	}
-	if c.NotBefore != nil {
-		c.Set["nbf"] = c.NotBefore
-	}
-	if c.Issued != nil {
-		c.Set["iat"] = c.Issued
-	}
-	if c.ID != "" {
-		c.Set["jti"] = c.ID
-	}
-
-	bytes, err := json.Marshal(c.Set)
+	bytes, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
@@ -128,47 +128,73 @@ func (c *Claims) Sync() error {
 	return nil
 }
 
-// Valid returns whether the claims sets may be accepted
+// Valid returns whether the claims set may be accepted
 // for processing at the given moment in time.
 func (c *Claims) Valid(t time.Time) bool {
+	exp, expOK := c.Number("exp")
+	nbf, nbfOK := c.Number("nbf")
+
 	n := NewNumericTime(t)
 	if n == nil {
 		// if there are time limits then can't be sure.
-		return c.Registered.NotBefore == nil && c.Registered.Expires == nil
+		return !expOK && !nbfOK
 	}
-	if c.Registered.Expires != nil && *c.Registered.Expires <= *n {
-		return false
-	}
-	if c.Registered.NotBefore != nil && *c.Registered.NotBefore > *n {
-		return false
-	}
-	return true
+
+	f := float64(*n)
+	return (!expOK || exp > f) && (!nbfOK || nbf <= f)
 }
 
 // String returns the claim when present and if the representation is a JSON string.
 func (c *Claims) String(name string) (value string, ok bool) {
-	v, ok := c.Set[name]
-	if !ok {
-		return "", false
+	// try Registered first
+	switch name {
+	case "iss":
+		value = c.Issuer
+	case "sub":
+		value = c.Subject
+	case "aud":
+		value = c.Audience
+	case "jti":
+		value = c.ID
 	}
-	s, ok := v.(string)
-	if !ok {
-		return "", false
+	if value != "" {
+		return value, true
 	}
-	return s, true
+
+	// fallback
+	if v, ok := c.Set[name]; ok {
+		value, ok = v.(string)
+		return value, ok
+	}
+
+	return "", false
 }
 
 // Number returns the claim when present and if the representation is a JSON number.
 func (c *Claims) Number(name string) (value float64, ok bool) {
-	v, ok := c.Set[name]
-	if !ok {
-		return 0, false
+	// try Registered first
+	switch name {
+	case "exp":
+		if c.Expires != nil {
+			return float64(*c.Expires), true
+		}
+	case "nbf":
+		if c.NotBefore != nil {
+			return float64(*c.NotBefore), true
+		}
+	case "iat":
+		if c.Issued != nil {
+			return float64(*c.Issued), true
+		}
 	}
-	f, ok := v.(float64)
-	if !ok {
-		return 0, false
+
+	// fallback
+	if v, ok := c.Set[name]; ok {
+		value, ok = v.(float64)
+		return value, ok
 	}
-	return f, true
+
+	return 0, false
 }
 
 // NumericTime is a JSON numeric value representing the number

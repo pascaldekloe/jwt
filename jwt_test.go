@@ -6,6 +6,8 @@ import (
 	"encoding/pem"
 	"testing"
 	"time"
+
+	"github.com/pascaldekloe/goe/verify"
 )
 
 var testKeyRSA1024 = mustParseRSAKey(`-----BEGIN RSA PRIVATE KEY-----
@@ -133,39 +135,58 @@ func TestNumericTimeMapping(t *testing.T) {
 	}
 }
 
-func TestSyncOverride(t *testing.T) {
-	replace := byte(42)
-
+func TestOverride(t *testing.T) {
+	offset := time.Now()
 	c := Claims{
 		// registered struct fields take precedence
 		Registered: Registered{
 			Issuer:    "a",
 			Subject:   "b",
 			Audience:  "c",
-			Expires:   NewNumericTime(time.Now()),
-			NotBefore: NewNumericTime(time.Now()),
-			Issued:    NewNumericTime(time.Now()),
-			ID:        "c",
+			Expires:   NewNumericTime(offset.Add(time.Second)),
+			NotBefore: NewNumericTime(offset),
+			Issued:    NewNumericTime(offset.Add(-time.Second)),
+			ID:        "d",
 		},
+		// redundant mapping to be ignored
 		Set: map[string]interface{}{
-			"iss": replace,
-			"sub": replace,
-			"aud": replace,
-			"exp": replace,
-			"nbf": replace,
-			"iat": replace,
-			"jti": replace,
+			"iss": "z",
+			"sub": "z",
+			"aud": "z",
+			"exp": NewNumericTime(offset.Add(time.Hour)),
+			"nbf": NewNumericTime(offset.Add(time.Hour)),
+			"iat": NewNumericTime(offset.Add(time.Hour)),
+			"jti": "z",
 		},
 	}
 
+	want := map[string]interface{}{
+		"iss": c.Issuer,
+		"sub": c.Subject,
+		"aud": c.Audience,
+		"exp": c.Expires,
+		"nbf": c.NotBefore,
+		"iat": c.Issued,
+		"jti": c.ID,
+	}
+
+	// should pick the struct values
+	got := make(map[string]interface{})
+	for name := range want {
+		if s, ok := c.String(name); ok {
+			got[name] = s
+		} else if n, ok := c.Number(name); ok {
+			t := NumericTime(n)
+			got[name] = &t
+		}
+	}
+	verify.Values(t, "typed lookups", got, want)
+
+	// should replace all Set entries
 	if err := c.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	for name, value := range c.Set {
-		if value == replace {
-			t.Errorf("%q was not replaced", name)
-		}
-	}
+	verify.Values(t, "synced set", want, c.Set)
 }
 
 func TestClaimsValid(t *testing.T) {
