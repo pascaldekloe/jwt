@@ -139,16 +139,38 @@ func parseClaims(enc, buf []byte) (*Claims, error) {
 	}
 	buf = buf[:n]
 
-	// apply to claims as raw, struct and map
-	c := &Claims{
-		Raw: json.RawMessage(buf),
-		Set: make(map[string]interface{}),
-	}
-	if err = json.Unmarshal(buf, &c.Registered); err != nil {
-		return nil, errors.New("jwt: malformed payload: " + err.Error())
-	}
+	c := &Claims{Raw: json.RawMessage(buf)}
+
+	c.Set = make(map[string]interface{})
 	if err = json.Unmarshal(buf, &c.Set); err != nil {
 		return nil, errors.New("jwt: malformed payload: " + err.Error())
 	}
+
+	// map registerd claims on type match
+	if s, ok := c.Set["iss"].(string); ok {
+		c.Issuer = s
+	}
+	if s, ok := c.Set["sub"].(string); ok {
+		c.Subject = s
+	}
+	if s, ok := c.Set["aud"].(string); ok {
+		c.Audience = s
+	}
+	if f, ok := c.Set["exp"].(float64); ok {
+		t := NumericTime(f)
+		c.Expires = &t
+	}
+	if f, ok := c.Set["nbf"].(float64); ok {
+		t := NumericTime(f)
+		c.NotBefore = &t
+	}
+	if f, ok := c.Set["iat"].(float64); ok {
+		t := NumericTime(f)
+		c.Issued = &t
+	}
+	if s, ok := c.Set["jti"].(string); ok {
+		c.ID = s
+	}
+
 	return c, nil
 }

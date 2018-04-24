@@ -35,6 +35,31 @@ var goldenHMACs = []struct {
 			},
 		},
 	},
+	1: {
+		secret: []byte("secret"),
+		token:  "eyJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJwcG9vdmV5Iiwic3ViIjoic21hcmNoZXIiLCJhdWQiOiJjb3JlIiwiZXhwIjoyLCJuYmYiOjEsImlhdCI6MCwianRpIjoibm90aGluZyJ9.NUVxGDBgIh3-tFl2XVpufzSH4lDEVM-dGbKxxkL1UlJNbDycQ5PpwkIxBkvzBFL0w_g6Fb3CVRhdjMpdz_pc2A",
+		claims: &Claims{
+			Raw: json.RawMessage([]byte(`{"iss":"ppoovey","sub":"smarcher","aud":"core","exp":2,"nbf":1,"iat":0,"jti":"nothing"}`)),
+			Set: map[string]interface{}{
+				"iss": "ppoovey",
+				"sub": "smarcher",
+				"aud": "core",
+				"exp": 2.0,
+				"nbf": 1.0,
+				"iat": 0.0,
+				"jti": "nothing",
+			},
+			Registered: Registered{
+				Issuer:    "ppoovey",
+				Subject:   "smarcher",
+				Audience:  "core",
+				Expires:   NewNumericTime(time.Unix(2, 0)),
+				NotBefore: NewNumericTime(time.Unix(1, 0)),
+				Issued:    NewNumericTime(time.Unix(0, 0)),
+				ID:        "nothing",
+			},
+		},
+	},
 }
 
 func TestHMACCheck(t *testing.T) {
