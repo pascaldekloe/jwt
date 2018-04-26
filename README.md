@@ -4,12 +4,57 @@
 
 JSON Web Token (JWT) library for the Go programming language.
 
-* Lightweight implementation
+* Lightweight implementation [less than 500 lines]
+* Full unit test coverage
 * No third party dependencies
 * No support for (ECDSA) encryption
 
 This is free and unencumbered software released into the
-[public domain](http://creativecommons.org/publicdomain/zero/1.0).
+[public domain](https://creativecommons.org/publicdomain/zero/1.0).
+
+
+## Get Started
+
+```go
+	// configuration demo
+	http.DefaultServeMux.Handle("/api/v1", &jwt.Handler{
+		Target: MyAPI, // the protected service multiplexer
+		RSAKey: JWTPublicKey,
+
+		HeaderBinding: map[string]string{
+			"sub": "X-Verified-User", // registered [standard] claim
+			"fn":  "X-Verified-Name", // private [custom] claim
+		},
+
+		Func: func(w http.ResponseWriter, req *http.Request, claims *jwt.Claims) (pass bool) {
+			log.Printf("got a valid JWT %q for %q", claims.ID, claims.Audience)
+
+			// map role enumeration
+			s, ok := claims.String("roles")
+			if !ok {
+				http.Error(w, "jwt: want roles claim as a string", http.StatusForbidden)
+				return false
+			}
+			req.Header["X-Verified-Roles"] = strings.Fields(s)
+
+			return true
+		},
+	})
+```
+
+When all applicable JWT claims are mapped to HTTP request headers, then the
+service logic can be free of verification code and it simplifies unit testing.
+
+```go
+// Greeting is a standard HTTP handler fuction.
+func Greeting(w http.ResponseWriter, req *http.Request) {
+	fmt.Fprintf(w, "Hello %s!\nYou are authorized as %s.\n",
+		req.Header.Get("X-Verified-Name"), req.Header.Get("X-Verified-User"))
+}
+```
+
+Optionally one can use the claims object directly as shown in the
+[direct example](https://godoc.org/github.com/pascaldekloe/jwt#example_Handler_direct).
 
 
 ### Performance on a Mac Pro (late 2013)
@@ -29,4 +74,4 @@ BenchmarkRSACheck/2048-bit-12      	   20000	     73952 ns/op
 BenchmarkRSACheck/4096-bit-12      	   10000	    204450 ns/op
 ```
 
-[![JWT.io](http://jwt.io/img/badge.svg)](https://jwt.io/)
+[![JWT.io](https://jwt.io/img/badge.svg)](https://jwt.io/)
