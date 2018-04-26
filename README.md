@@ -54,7 +54,7 @@ func Greeting(w http.ResponseWriter, req *http.Request) {
 ```
 
 Optionally one can use the claims object directly as shown in the
-[direct example](https://godoc.org/github.com/pascaldekloe/jwt#example_Handler_direct).
+[direct example](https://godoc.org/github.com/pascaldekloe/jwt#example-Handler--Direct).
 
 
 ### Performance on a Mac Pro (late 2013)
