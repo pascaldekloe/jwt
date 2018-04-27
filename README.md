@@ -2,7 +2,7 @@
 [![Build Status](https://travis-ci.org/pascaldekloe/jwt.svg?branch=master)](https://travis-ci.org/pascaldekloe/jwt)
 [![Build Report](https://cover.run/go/github.com/pascaldekloe/jwt.svg)](https://cover.run/go/github.com/pascaldekloe/jwt)
 
-JSON Web Token (JWT) library for the Go programming language.
+A JSON Web Token (JWT) library for the Go programming language.
 
 * Lightweight implementation [less than 500 lines]
 * Full unit test coverage
@@ -15,35 +15,40 @@ This is free and unencumbered software released into the
 
 ## Get Started
 
+The package comes with *check* and *sign* functions to verify and issue claims.
+For server side security an `http.Handler` based setup can be used as follows.
+
 ```go
-	// configuration demo
-	http.DefaultServeMux.Handle("/api/v1", &jwt.Handler{
-		Target: MyAPI, // the protected service multiplexer
-		RSAKey: JWTPublicKey,
+// configuration demo
+http.DefaultServeMux.Handle("/api/v1", &jwt.Handler{
+	Target: MyAPI, // the protected service multiplexer
+	RSAKey: JWTPublicKey,
 
-		HeaderBinding: map[string]string{
-			"sub": "X-Verified-User", // registered [standard] claim
-			"fn":  "X-Verified-Name", // private [custom] claim
-		},
+	// map some claims to HTTP headers
+	HeaderBinding: map[string]string{
+		"sub": "X-Verified-User", // registered [standard] claim
+		"fn":  "X-Verified-Name", // private [custom] claim
+	},
 
-		Func: func(w http.ResponseWriter, req *http.Request, claims *jwt.Claims) (pass bool) {
-			log.Printf("got a valid JWT %q for %q", claims.ID, claims.Audience)
+	// customise further with RBAC
+	Func: func(w http.ResponseWriter, req *http.Request, claims *jwt.Claims) (pass bool) {
+		log.Printf("got a valid JWT %q for %q", claims.ID, claims.Audience)
 
-			// map role enumeration
-			s, ok := claims.String("roles")
-			if !ok {
-				http.Error(w, "jwt: want roles claim as a string", http.StatusForbidden)
-				return false
-			}
-			req.Header["X-Verified-Roles"] = strings.Fields(s)
+		// map role enumeration
+		s, ok := claims.String("roles")
+		if !ok {
+			http.Error(w, "jwt: want roles claim as a string", http.StatusForbidden)
+			return false
+		}
+		req.Header["X-Verified-Roles"] = strings.Fields(s)
 
-			return true
-		},
-	})
+		return true
+	},
+})
 ```
 
 When all applicable JWT claims are mapped to HTTP request headers, then the
-service logic can be free of verification code and it simplifies unit testing.
+service logic can stay free of verification code plus easier unit testing.
 
 ```go
 // Greeting is a standard HTTP handler fuction.
@@ -53,8 +58,8 @@ func Greeting(w http.ResponseWriter, req *http.Request) {
 }
 ```
 
-Optionally one can use the claims object directly as shown in the
-[direct example](https://godoc.org/github.com/pascaldekloe/jwt#example-Handler--Direct).
+Optionally one can use the claims object in the service handlers as shown in the
+[“direct” example](https://godoc.org/github.com/pascaldekloe/jwt#example-Handler--Direct).
 
 
 ### Performance on a Mac Pro (late 2013)
