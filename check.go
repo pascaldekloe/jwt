@@ -21,6 +21,7 @@ var errPart = errors.New("jwt: missing base64 part")
 
 // HMACCheck returns the claims set if, and only if, the signature checks out.
 // Note that this excludes unsecured JWTs [ErrUnsecured].
+// When the algorithm is not in HMACAlgs then the error is ErrAlgUnk.
 func HMACCheck(jwt, secret []byte) (*Claims, error) {
 	firstDot, lastDot, buf, err := scan(jwt)
 	if err != nil {
@@ -49,6 +50,7 @@ func HMACCheck(jwt, secret []byte) (*Claims, error) {
 
 // RSACheck returns the claims set if, and only if, the signature checks out.
 // Note that this excludes unsecured JWTs [ErrUnsecured].
+// When the algorithm is not in RSAAlgs then the error is ErrAlgUnk.
 func RSACheck(jwt []byte, key *rsa.PublicKey) (*Claims, error) {
 	firstDot, lastDot, buf, err := scan(jwt)
 	if err != nil {

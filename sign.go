@@ -9,6 +9,7 @@ import (
 )
 
 // HMACSign calls Sync and returns a new JWT.
+// When the algorithm is not in HMACAlgs then the error is ErrAlgUnk.
 func (c *Claims) HMACSign(alg string, secret []byte) (token []byte, err error) {
 	if err := c.Sync(); err != nil {
 		return nil, err
@@ -41,6 +42,7 @@ func (c *Claims) HMACSign(alg string, secret []byte) (token []byte, err error) {
 }
 
 // RSASign calls Sync and returns a new JWT.
+// When the algorithm is not in RSAAlgs then the error is ErrAlgUnk.
 func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err error) {
 	if err := c.Sync(); err != nil {
 		return nil, err
