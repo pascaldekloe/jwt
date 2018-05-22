@@ -1,6 +1,5 @@
-// Package jwt implements JWT security.
+// Package jwt implements "JSON Web Token (JWT)" RFC 7519.
 // Signatures only; no unsecured nor encrypted tokens.
-// See "JSON Web Token (JWT)" RFC 7519.
 package jwt
 
 import (

@@ -1,13 +1,14 @@
 [![API Documentation](https://godoc.org/github.com/pascaldekloe/jwt?status.svg)](https://godoc.org/github.com/pascaldekloe/jwt)
 [![Build Status](https://travis-ci.org/pascaldekloe/jwt.svg?branch=master)](https://travis-ci.org/pascaldekloe/jwt)
-[![Build Report](https://cover.run/go/github.com/pascaldekloe/jwt.svg)](https://cover.run/go/github.com/pascaldekloe/jwt)
+[![Test Coverage](https://cover.run/go/github.com/pascaldekloe/jwt.svg?style=flat&tag=golang-1.10)](https://cover.run/go?tag=golang-1.10&repo=github.com%2Fpascaldekloe%2Fjwt)
 
 A JSON Web Token (JWT) library for the Go programming language.
 
-* Lightweight implementation [less than 500 lines]
-* Full unit test coverage
-* No third party dependencies
-* No support for (ECDSA) encryption
+The API enforces secure use by design. Unsigned tokens are
+[rejected](https://godoc.org/github.com/pascaldekloe/jwt#ErrUnsecured)
+and there is no support for (ECDSA) encryption—use wire encryption instead.
+With less than 500 lines of code and no third party dependencies, the
+implementation maintains full unit test coverage.
 
 This is free and unencumbered software released into the
 [public domain](https://creativecommons.org/publicdomain/zero/1.0).
@@ -15,8 +16,17 @@ This is free and unencumbered software released into the
 
 ## Get Started
 
-The package comes with *check* and *sign* functions to verify and issue claims.
-For server side security an `http.Handler` based setup can be used as follows.
+The package comes with functions to verify [
+[HMACCheck](https://godoc.org/github.com/pascaldekloe/jwt#HMACCheck),
+[RSACheck](https://godoc.org/github.com/pascaldekloe/jwt#RSACheck)
+] and issue [
+[HMACSign](https://godoc.org/github.com/pascaldekloe/jwt#Claims.HMACSign),
+[RSASign](https://godoc.org/github.com/pascaldekloe/jwt#Claims.RSASign)
+] claims.
+
+For server side security an `http.Handler` based setup can be used as well.
+The following example enforces the subject, formatted name and roles to be
+present as a valid JWT in all requests towards the `MyAPI` handler.
 
 ```go
 // configuration demo
