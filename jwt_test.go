@@ -164,9 +164,9 @@ func TestOverride(t *testing.T) {
 		"iss": c.Issuer,
 		"sub": c.Subject,
 		"aud": c.Audience,
-		"exp": c.Expires,
-		"nbf": c.NotBefore,
-		"iat": c.Issued,
+		"exp": *c.Expires,
+		"nbf": *c.NotBefore,
+		"iat": *c.Issued,
 		"jti": c.ID,
 	}
 
@@ -176,8 +176,7 @@ func TestOverride(t *testing.T) {
 		if s, ok := c.String(name); ok {
 			got[name] = s
 		} else if n, ok := c.Number(name); ok {
-			t := NumericTime(n)
-			got[name] = &t
+			got[name] = NumericTime(n)
 		}
 	}
 	verify.Values(t, "typed lookups", got, want)

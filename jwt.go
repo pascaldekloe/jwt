@@ -106,13 +106,13 @@ func (c *Claims) Sync() error {
 			c.Set["aud"] = c.Audience
 		}
 		if c.Expires != nil {
-			c.Set["exp"] = c.Expires
+			c.Set["exp"] = *c.Expires
 		}
 		if c.NotBefore != nil {
-			c.Set["nbf"] = c.NotBefore
+			c.Set["nbf"] = *c.NotBefore
 		}
 		if c.Issued != nil {
-			c.Set["iat"] = c.Issued
+			c.Set["iat"] = *c.Issued
 		}
 		if c.ID != "" {
 			c.Set["jti"] = c.ID
@@ -161,9 +161,9 @@ func (c *Claims) String(name string) (value string, ok bool) {
 	}
 
 	// fallback
-	if v, ok := c.Set[name]; ok {
-		value, ok = v.(string)
-		return value, ok
+	value, ok = c.Set[name].(string)
+	if ok {
+		return
 	}
 
 	return "", false
@@ -188,9 +188,9 @@ func (c *Claims) Number(name string) (value float64, ok bool) {
 	}
 
 	// fallback
-	if v, ok := c.Set[name]; ok {
-		value, ok = v.(float64)
-		return value, ok
+	value, ok = c.Set[name].(float64)
+	if ok {
+		return
 	}
 
 	return 0, false
