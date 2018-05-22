@@ -74,15 +74,16 @@ type Registered struct {
 	ID string `json:"jti,omitempty"`
 }
 
-// Claims is claims set payload representation.
+// Claims is JWT payload representation.
 type Claims struct {
+	// Registered field values take precedence.
 	Registered
 
 	// Raw has the JSON payload. This field is read-only.
 	Raw json.RawMessage
 
-	// Set has the claims set mapped by name.
-	// Registered field values take precedence.
+	// Set has the claims set mapped by name for non-standard usecases.
+	// Use Registered fields when possible.
 	Set map[string]interface{}
 }
 

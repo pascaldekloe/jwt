@@ -5,8 +5,8 @@ import (
 	"crypto"
 	"crypto/hmac"
 	"crypto/rsa"
-	_ "crypto/sha256" // link
-	_ "crypto/sha512" // link
+	_ "crypto/sha256" // link binary
+	_ "crypto/sha512" // link binary
 	"encoding/json"
 	"errors"
 )
@@ -19,9 +19,10 @@ var ErrUnsecured = errors.New("jwt: unsecured—no signature")
 
 var errPart = errors.New("jwt: missing base64 part")
 
-// HMACCheck returns the claims set if, and only if, the signature checks out.
-// Note that this excludes unsecured JWTs [ErrUnsecured].
+// HMACCheck parses a JWT and returns the claims set if, and only if, the
+// signature checks out. Note that this excludes unsecured JWTs [ErrUnsecured].
 // When the algorithm is not in HMACAlgs then the error is ErrAlgUnk.
+// See Valid to complete the verification.
 func HMACCheck(jwt, secret []byte) (*Claims, error) {
 	firstDot, lastDot, buf, err := scan(jwt)
 	if err != nil {
@@ -48,9 +49,10 @@ func HMACCheck(jwt, secret []byte) (*Claims, error) {
 	return parseClaims(jwt[firstDot+1:lastDot], buf)
 }
 
-// RSACheck returns the claims set if, and only if, the signature checks out.
-// Note that this excludes unsecured JWTs [ErrUnsecured].
+// RSACheck parses a JWT and returns the claims set if, and only if, the
+// signature checks out. Note that this excludes unsecured JWTs [ErrUnsecured].
 // When the algorithm is not in RSAAlgs then the error is ErrAlgUnk.
+// See Valid to complete the verification.
 func RSACheck(jwt []byte, key *rsa.PublicKey) (*Claims, error) {
 	firstDot, lastDot, buf, err := scan(jwt)
 	if err != nil {
@@ -101,7 +103,7 @@ func scan(jwt []byte) (firstDot, lastDot int, buf []byte, err error) {
 	return
 }
 
-// SelectHash reads the "alg" field from the header enc.
+// SelectHash reads the "alg" header field from enc.
 func selectHash(algs map[string]crypto.Hash, enc, buf []byte) (crypto.Hash, error) {
 	// parse header
 	var header struct {
@@ -132,7 +134,8 @@ func selectHash(algs map[string]crypto.Hash, enc, buf []byte) (crypto.Hash, erro
 	return hash, nil
 }
 
-// ParseClaims unmarshals the payload from the payload enc.
+// ParseClaims unmarshals the payload from enc.
+// Buf remains in use (by the Raw field)!
 func parseClaims(enc, buf []byte) (*Claims, error) {
 	// decode payload
 	n, err := encoding.Decode(buf, enc)
