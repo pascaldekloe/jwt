@@ -16,13 +16,13 @@ This is free and unencumbered software released into the
 
 ## Get Started
 
-The package comes with functions to verify [
-[HMACCheck](https://godoc.org/github.com/pascaldekloe/jwt#HMACCheck),
-[RSACheck](https://godoc.org/github.com/pascaldekloe/jwt#RSACheck)
-] and issue [
-[HMACSign](https://godoc.org/github.com/pascaldekloe/jwt#Claims.HMACSign),
-[RSASign](https://godoc.org/github.com/pascaldekloe/jwt#Claims.RSASign)
-] claims.
+The package comes with functions to verify 
+[[HMACCheck](https://godoc.org/github.com/pascaldekloe/jwt#HMACCheck),
+[RSACheck](https://godoc.org/github.com/pascaldekloe/jwt#RSACheck)] 
+and issue 
+[[HMACSign](https://godoc.org/github.com/pascaldekloe/jwt#Claims.HMACSign),
+[RSASign](https://godoc.org/github.com/pascaldekloe/jwt#Claims.RSASign)]
+claims.
 
 For server side security an `http.Handler` based setup can be used as well.
 The following example enforces the subject, formatted name and roles to be
