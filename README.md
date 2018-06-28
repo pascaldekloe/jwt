@@ -75,18 +75,18 @@ Optionally one can use the claims object in the service handlers as shown in the
 ### Performance on a Mac Pro (late 2013)
 
 ```
-BenchmarkHMACSign/HS256-12         	  500000	      3497 ns/op
-BenchmarkHMACSign/HS384-12         	  300000	      4090 ns/op
-BenchmarkHMACSign/HS512-12         	  300000	      4192 ns/op
-BenchmarkHMACCheck/HS256-12        	  200000	      7088 ns/op
-BenchmarkHMACCheck/HS384-12        	  200000	      7807 ns/op
-BenchmarkHMACCheck/HS512-12        	  200000	      7939 ns/op
-BenchmarkRSASign/1024-bit-12       	    3000	    569604 ns/op
-BenchmarkRSASign/2048-bit-12       	     500	   2569394 ns/op
-BenchmarkRSASign/4096-bit-12       	     100	  14744651 ns/op
-BenchmarkRSACheck/1024-bit-12      	   50000	     33513 ns/op
-BenchmarkRSACheck/2048-bit-12      	   20000	     73952 ns/op
-BenchmarkRSACheck/4096-bit-12      	   10000	    204450 ns/op
+BenchmarkHMACSign/HS256-12         	  500000	      3398 ns/op
+BenchmarkHMACSign/HS384-12         	  500000	      3940 ns/op
+BenchmarkHMACSign/HS512-12         	  300000	      4032 ns/op
+BenchmarkHMACCheck/HS256-12        	  200000	      6853 ns/op
+BenchmarkHMACCheck/HS384-12        	  200000	      7495 ns/op
+BenchmarkHMACCheck/HS512-12        	  200000	      7603 ns/op
+BenchmarkRSASign/1024-bit-12       	    3000	    422137 ns/op
+BenchmarkRSASign/2048-bit-12       	    1000	   2094975 ns/op
+BenchmarkRSASign/4096-bit-12       	     100	  12902447 ns/op
+BenchmarkRSACheck/1024-bit-12      	   50000	     34042 ns/op
+BenchmarkRSACheck/2048-bit-12      	   20000	     73650 ns/op
+BenchmarkRSACheck/4096-bit-12      	   10000	    203782 ns/op
 ```
 
 [![JWT.io](https://jwt.io/img/badge.svg)](https://jwt.io/)
