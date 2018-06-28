@@ -2,6 +2,8 @@ package jwt
 
 import (
 	"crypto/rsa"
+	"fmt"
+	"sort"
 	"testing"
 	"time"
 )
@@ -17,7 +19,14 @@ func BenchmarkHMACSign(b *testing.B) {
 	// 512-bit key
 	secret := make([]byte, 64)
 
-	for alg := range HMACAlgs {
+	// all supported algorithms in ascending order
+	var algs []string
+	for s := range HMACAlgs {
+		algs = append(algs, s)
+	}
+	sort.Strings(algs)
+
+	for _, alg := range algs {
 		b.Run(alg, func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_, err := benchClaims.HMACSign(alg, secret)
@@ -33,18 +42,27 @@ func BenchmarkHMACCheck(b *testing.B) {
 	// 512-bit key
 	secret := make([]byte, 64)
 
-	variants := make(map[string][]byte, len(HMACAlgs))
-	for alg := range HMACAlgs {
+	// all supported algorithms in ascending order
+	var algs []string
+	for s := range HMACAlgs {
+		algs = append(algs, s)
+	}
+	sort.Strings(algs)
+
+	// serial for each algorithm
+	tokens := make([][]byte, len(algs))
+	for i, alg := range algs {
 		token, err := benchClaims.HMACSign(alg, secret)
 		if err != nil {
 			b.Fatal(err)
 		}
-		variants[alg] = token
+		tokens[i] = token
 	}
 
 	b.ResetTimer()
 
-	for alg, token := range variants {
+	for i, alg := range algs {
+		token := tokens[i]
 		b.Run(alg, func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_, err := HMACCheck(token, secret)
@@ -57,14 +75,10 @@ func BenchmarkHMACCheck(b *testing.B) {
 }
 
 func BenchmarkRSASign(b *testing.B) {
-	variants := map[string]*rsa.PrivateKey{
-		"1024-bit": testKeyRSA1024,
-		"2048-bit": testKeyRSA2048,
-		"4096-bit": testKeyRSA4096,
-	}
-
-	for name, key := range variants {
-		b.Run(name, func(b *testing.B) {
+	keys := []*rsa.PrivateKey{testKeyRSA1024, testKeyRSA2048, testKeyRSA4096}
+	for _, key := range keys {
+		size := ((key.N.BitLen() + 7) / 8) * 8
+		b.Run(fmt.Sprintf("%d-bit", size), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_, err := benchClaims.RSASign(RS384, key)
 				if err != nil {
@@ -76,25 +90,22 @@ func BenchmarkRSASign(b *testing.B) {
 }
 
 func BenchmarkRSACheck(b *testing.B) {
-	variants := map[string]*rsa.PrivateKey{
-		"1024-bit": testKeyRSA1024,
-		"2048-bit": testKeyRSA2048,
-		"4096-bit": testKeyRSA4096,
-	}
-	tokens := make(map[string][]byte, len(variants))
-	for name, key := range variants {
+	keys := []*rsa.PrivateKey{testKeyRSA1024, testKeyRSA2048, testKeyRSA4096}
+	tokens := make([][]byte, len(keys))
+	for i, key := range keys {
 		token, err := benchClaims.RSASign(RS384, key)
 		if err != nil {
 			b.Fatal(err)
 		}
-		tokens[name] = token
+		tokens[i] = token
 	}
 
 	b.ResetTimer()
 
-	for name, key := range variants {
-		b.Run(name, func(b *testing.B) {
-			token := tokens[name]
+	for i, key := range keys {
+		token := tokens[i]
+		size := ((key.N.BitLen() + 7) / 8) * 8
+		b.Run(fmt.Sprintf("%d-bit", size), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_, err := RSACheck(token, &key.PublicKey)
 				if err != nil {
