@@ -5,7 +5,6 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
-	"sync"
 )
 
 // HMACSign calls Sync and returns a new JWT.
@@ -53,6 +52,7 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err err
 		return nil, err
 	}
 
+	// replace with key.Size as of Go 1.11 (cl103876)
 	encSigLen := encoding.EncodedLen((key.N.BitLen() + 7) / 8)
 	token = make([]byte, len(header)+encoding.EncodedLen(len(c.Raw))+encSigLen+2)
 
@@ -63,6 +63,7 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err err
 	encoding.Encode(token[offset:], c.Raw)
 	offset = len(token) - encSigLen - 1
 
+	// sign
 	h := hash.New()
 	h.Write(token[:offset])
 	sig, err := rsa.SignPKCS1v15(rand.Reader, key, hash, h.Sum(nil))
@@ -78,16 +79,6 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err err
 	return token, nil
 }
 
-var headerCacheMutex sync.RWMutex
-var headerCache = map[string]string{
-	HS256: encoding.EncodeToString([]byte(`{"alg":"HS256"}`)),
-	HS384: encoding.EncodeToString([]byte(`{"alg":"HS384"}`)),
-	HS512: encoding.EncodeToString([]byte(`{"alg":"HS512"}`)),
-	RS256: encoding.EncodeToString([]byte(`{"alg":"RS256"}`)),
-	RS384: encoding.EncodeToString([]byte(`{"alg":"RS384"}`)),
-	RS512: encoding.EncodeToString([]byte(`{"alg":"RS512"}`)),
-}
-
 // HeaderWithHash returns the base64 encoded header including hash algorithm.
 func headerWithHash(alg string, algs map[string]crypto.Hash) (string, crypto.Hash, error) {
 	hash, ok := algs[alg]
@@ -98,20 +89,22 @@ func headerWithHash(alg string, algs map[string]crypto.Hash) (string, crypto.Has
 		return "", 0, errHashLink
 	}
 
-	headerCacheMutex.RLock()
-	header, ok := headerCache[alg]
-	headerCacheMutex.RUnlock()
-
-	if !ok {
-		buf := make([]byte, 7, 10+len(alg))
-		copy(buf, `{"alg":"`)
-		buf = append(buf, alg...)
-		buf = append(buf, '"', '}')
-		header = encoding.EncodeToString(buf)
-
-		headerCacheMutex.Lock()
-		headerCache[alg] = header
-		headerCacheMutex.Unlock()
+	var header string
+	switch alg {
+	case HS256:
+		header = "eyJhbGciOiJIUzI1NiJ9"
+	case HS384:
+		header = "eyJhbGciOiJIUzM4NCJ9"
+	case HS512:
+		header = "eyJhbGciOiJIUzUxMiJ9"
+	case RS256:
+		header = "eyJhbGciOiJSUzI1NiJ9"
+	case RS384:
+		header = "eyJhbGciOiJSUzM4NCJ9"
+	case RS512:
+		header = "eyJhbGciOiJSUzUxMiJ9"
+	default:
+		header = encoding.EncodeToString([]byte(`{"alg":"` + alg + `"}`))
 	}
 
 	return header, hash, nil

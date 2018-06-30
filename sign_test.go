@@ -115,3 +115,40 @@ uRVZaJLTfpQ+n88IcdG4WPKnRZqxGnrq3DjtIvFrBlM=
 		t.Errorf("got error %q, want %q", err, rsa.ErrMessageTooLong)
 	}
 }
+
+func TestSignHeaders(t *testing.T) {
+	/// test all standard algorithms
+	algs := make(map[string]crypto.Hash)
+	for alg, hash := range HMACAlgs {
+		algs[alg] = hash
+	}
+	for alg, hash := range RSAAlgs {
+		algs[alg] = hash
+	}
+
+	for alg, wantHash := range algs {
+		header, hash, err := headerWithHash(alg, algs)
+		if err != nil {
+			t.Errorf("error for %q: %s", alg, err)
+			continue
+		}
+
+		if hash != wantHash {
+			t.Errorf("wrong hash for %q", alg)
+		}
+
+		headerJSON, err := encoding.DecodeString(header)
+		if err != nil {
+			t.Errorf("malformed header for %q: %s", alg, err)
+			continue
+		}
+		m := make(map[string]interface{})
+		if err := json.Unmarshal(headerJSON, &m); err != nil {
+			t.Errorf("malformed header for %q: %s", alg, err)
+			continue
+		}
+		if s, ok := m["alg"].(string); !ok || s != alg {
+			t.Errorf("got alg %q for %q", s, alg)
+		}
+	}
+}
