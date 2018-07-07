@@ -15,17 +15,17 @@ const MIMEType = "application/jwt"
 // OAuthURN is the IANA registered OAuth URI.
 const OAuthURN = "urn:ietf:params:oauth:token-type:jwt"
 
-var (
-	errAuthHeader = errors.New("jwt: want Authorization header")
-	errAuthSchema = errors.New("jwt: want Bearer schema")
-)
+// ErrNoHeader signals an HTTP request without Authorization.
+var ErrNoHeader = errors.New("jwt: no Authorization header")
+
+var errAuthSchema = errors.New("jwt: want Bearer schema")
 
 // HMACCheckHeader applies HMACCheck on a HTTP request.
 // Specifically it looks for a bearer token in the Authorization header.
 func HMACCheckHeader(r *http.Request, secret []byte) (*Claims, error) {
 	auth := r.Header.Get("Authorization")
 	if auth == "" {
-		return nil, errAuthHeader
+		return nil, ErrNoHeader
 	}
 	if !strings.HasPrefix(auth, "Bearer ") {
 		return nil, errAuthSchema
@@ -38,7 +38,7 @@ func HMACCheckHeader(r *http.Request, secret []byte) (*Claims, error) {
 func RSACheckHeader(r *http.Request, key *rsa.PublicKey) (*Claims, error) {
 	auth := r.Header.Get("Authorization")
 	if auth == "" {
-		return nil, errAuthHeader
+		return nil, ErrNoHeader
 	}
 	if !strings.HasPrefix(auth, "Bearer ") {
 		return nil, errAuthSchema

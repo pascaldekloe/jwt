@@ -18,12 +18,12 @@ func TestCheckHeaderPresent(t *testing.T) {
 	}
 
 	_, err = HMACCheckHeader(req, nil)
-	if err != errAuthHeader {
-		t.Errorf("HMAC check got %v, want %v", err, errAuthHeader)
+	if err != ErrNoHeader {
+		t.Errorf("HMAC check got %v, want %v", err, ErrNoHeader)
 	}
 	_, err = RSACheckHeader(req, &testKeyRSA1024.PublicKey)
-	if err != errAuthHeader {
-		t.Errorf("RSA check got %v, want %v", err, errAuthHeader)
+	if err != ErrNoHeader {
+		t.Errorf("RSA check got %v, want %v", err, ErrNoHeader)
 	}
 }
 
@@ -112,10 +112,10 @@ func testUnauthorized(t *testing.T, claims *Claims) (body, header string) {
 func TestHandleNoHeader(t *testing.T) {
 	body, header := testUnauthorized(t, nil)
 
-	if want := "jwt: want Authorization header\n"; body != want {
+	if want := "jwt: no Authorization header\n"; body != want {
 		t.Errorf("got body %q, want %q", body, want)
 	}
-	if want := `Bearer error="invalid_token", error_description="jwt: want Authorization header"`; header != want {
+	if want := `Bearer error="invalid_token", error_description="jwt: no Authorization header"`; header != want {
 		t.Errorf("got WWW-Authenticate %q, want %q", header, want)
 	}
 }
