@@ -101,7 +101,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else {
 		claims, err = HMACCheckHeader(r, h.Secret)
 	}
-	if err != nil {
+	switch err {
+	case nil:
+		break
+
+	case ErrNoHeader:
+		w.Header().Set("WWW-Authenticate", "Bearer")
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+
+	default:
 		w.Header().Set("WWW-Authenticate", `Bearer error="invalid_token", error_description=`+strconv.Quote(err.Error()))
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return

@@ -115,7 +115,7 @@ func TestHandleNoHeader(t *testing.T) {
 	if want := "jwt: no Authorization header\n"; body != want {
 		t.Errorf("got body %q, want %q", body, want)
 	}
-	if want := `Bearer error="invalid_token", error_description="jwt: no Authorization header"`; header != want {
+	if want := "Bearer"; header != want {
 		t.Errorf("got WWW-Authenticate %q, want %q", header, want)
 	}
 }
@@ -142,5 +142,43 @@ func TestHandleBindingMiss(t *testing.T) {
 	}
 	if want := `Bearer error="invalid_token", error_description="jwt: want string for claim iss"`; header != want {
 		t.Errorf("got WWW-Authenticate %q, want %q", header, want)
+	}
+}
+
+func TestHandleSchemaMiss(t *testing.T) {
+	srv := httptest.NewServer(&Handler{
+		Target: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+			t.Error("handler called")
+		}),
+	})
+	defer srv.Close()
+
+	req, err := http.NewRequest("GET", srv.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Basic QWxhZGRpbjpPcGVuU2VzYW1l")
+
+	resp, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if want := "401 Unauthorized"; resp.Status != want {
+		t.Errorf("got status %q, want %q", resp.Status, want)
+	}
+	if got, want := resp.Header.Get("WWW-Authenticate"), `Bearer error="invalid_token", error_description="jwt: want Bearer schema"`; got != want {
+		t.Errorf("got WWW-Authenticate %q, want %q", got, want)
+	}
+
+	if got := resp.Header.Get("Content-Type"); !strings.HasPrefix(got, "text/") {
+		t.Errorf("got content type %q; want text", got)
+	}
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := string(bytes), "jwt: want Bearer schema\n"; got != want {
+		t.Errorf("got body %q, want %q", got, want)
 	}
 }
