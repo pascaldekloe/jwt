@@ -16,7 +16,7 @@ const MIMEType = "application/jwt"
 const OAuthURN = "urn:ietf:params:oauth:token-type:jwt"
 
 // ErrNoHeader signals an HTTP request without Authorization.
-var ErrNoHeader = errors.New("jwt: no Authorization header")
+var ErrNoHeader = errors.New("jwt: no HTTP Authorization")
 
 var errAuthSchema = errors.New("jwt: want Bearer schema")
 
