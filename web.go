@@ -111,7 +111,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 
 	default:
-		w.Header().Set("WWW-Authenticate", `Bearer error="invalid_token", error_description=`+strconv.Quote(err.Error()))
+		w.Header().Set("WWW-Authenticate", `Bearer error="invalid_token", error_description=`+strconv.QuoteToASCII(err.Error()))
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
@@ -133,7 +133,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s, ok := claims.String(claimName)
 		if !ok {
 			msg := "jwt: want string for claim " + claimName
-			w.Header().Set("WWW-Authenticate", `Bearer error="invalid_token", error_description=`+strconv.Quote(msg))
+			w.Header().Set("WWW-Authenticate", `Bearer error="invalid_token", error_description=`+strconv.QuoteToASCII(msg))
 			http.Error(w, msg, http.StatusUnauthorized)
 			return
 		}
