@@ -5,6 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
+	"hash"
 )
 
 // HMACSign calls Sync and returns a new JWT.
@@ -14,29 +15,16 @@ func (c *Claims) HMACSign(alg string, secret []byte) (token []byte, err error) {
 		return nil, err
 	}
 
-	header, hash, err := headerWithHash(alg, HMACAlgs)
+	encHeader, hash, err := useAlg(alg, HMACAlgs)
 	if err != nil {
 		return nil, err
 	}
 	mac := hmac.New(hash.New, secret)
-
-	encSigLen := encoding.EncodedLen(mac.Size())
-	token = make([]byte, len(header)+encoding.EncodedLen(len(c.Raw))+encSigLen+2)
-
-	// append header + body
-	offset := copy(token, header)
-	token[offset] = '.'
-	offset++
-	encoding.Encode(token[offset:], c.Raw)
-	offset = len(token) - encSigLen - 1
-
-	mac.Write(token[:offset])
+	encSigLen := encoding.EncodedLen(hash.Size())
+	token = c.newUnsignedToken(encHeader, encSigLen, mac)
 
 	// append signature
-	token[offset] = '.'
-	offset++
-	encoding.Encode(token[offset:], mac.Sum(nil))
-
+	encoding.Encode(token[len(token)-encSigLen:], mac.Sum(nil))
 	return token, nil
 }
 
@@ -47,65 +35,65 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err err
 		return nil, err
 	}
 
-	header, hash, err := headerWithHash(alg, RSAAlgs)
+	encHeader, hash, err := useAlg(alg, RSAAlgs)
 	if err != nil {
 		return nil, err
 	}
-
-	// replace with key.Size as of Go 1.11 (cl103876)
-	encSigLen := encoding.EncodedLen((key.N.BitLen() + 7) / 8)
-	token = make([]byte, len(header)+encoding.EncodedLen(len(c.Raw))+encSigLen+2)
-
-	// append header + body
-	offset := copy(token, header)
-	token[offset] = '.'
-	offset++
-	encoding.Encode(token[offset:], c.Raw)
-	offset = len(token) - encSigLen - 1
-
-	// sign
 	h := hash.New()
-	h.Write(token[:offset])
+	// TODO: use key.Size() as of Go 1.11 (cl103876)
+	encSigLen := encoding.EncodedLen((key.N.BitLen() + 7) / 8)
+	token = c.newUnsignedToken(encHeader, encSigLen, h)
+
+	// append signature
 	sig, err := rsa.SignPKCS1v15(rand.Reader, key, hash, h.Sum(nil))
 	if err != nil {
 		return nil, err
 	}
-
-	// append signature
-	token[offset] = '.'
-	offset++
-	encoding.Encode(token[offset:], sig)
-
+	encoding.Encode(token[len(token)-encSigLen:], sig)
 	return token, nil
 }
 
-// HeaderWithHash returns the base64 encoded header including hash algorithm.
-func headerWithHash(alg string, algs map[string]crypto.Hash) (string, crypto.Hash, error) {
-	hash, ok := algs[alg]
+func (c *Claims) newUnsignedToken(encHeader string, encSigLen int, h hash.Hash) []byte {
+	encClaimsLen := encoding.EncodedLen(len(c.Raw))
+	token := make([]byte, len(encHeader)+encClaimsLen+encSigLen+2)
+
+	i := copy(token, encHeader)
+	token[i] = '.'
+	i++
+	encoding.Encode(token[i:], c.Raw)
+	i += encClaimsLen
+	token[i] = '.'
+
+	h.Write(token[:i])
+
+	return token
+}
+
+func useAlg(alg string, algs map[string]crypto.Hash) (encHeader string, h crypto.Hash, err error) {
+	h, ok := algs[alg]
 	if !ok {
 		return "", 0, ErrAlgUnk
 	}
-	if !hash.Available() {
+	if !h.Available() {
 		return "", 0, errHashLink
 	}
 
-	var header string
 	switch alg {
 	case HS256:
-		header = "eyJhbGciOiJIUzI1NiJ9"
+		encHeader = "eyJhbGciOiJIUzI1NiJ9"
 	case HS384:
-		header = "eyJhbGciOiJIUzM4NCJ9"
+		encHeader = "eyJhbGciOiJIUzM4NCJ9"
 	case HS512:
-		header = "eyJhbGciOiJIUzUxMiJ9"
+		encHeader = "eyJhbGciOiJIUzUxMiJ9"
 	case RS256:
-		header = "eyJhbGciOiJSUzI1NiJ9"
+		encHeader = "eyJhbGciOiJSUzI1NiJ9"
 	case RS384:
-		header = "eyJhbGciOiJSUzM4NCJ9"
+		encHeader = "eyJhbGciOiJSUzM4NCJ9"
 	case RS512:
-		header = "eyJhbGciOiJSUzUxMiJ9"
+		encHeader = "eyJhbGciOiJSUzUxMiJ9"
 	default:
-		header = encoding.EncodeToString([]byte(`{"alg":"` + alg + `"}`))
+		encHeader = encoding.EncodeToString([]byte(`{"alg":"` + alg + `"}`))
 	}
 
-	return header, hash, nil
+	return encHeader, h, nil
 }

@@ -116,7 +116,7 @@ uRVZaJLTfpQ+n88IcdG4WPKnRZqxGnrq3DjtIvFrBlM=
 	}
 }
 
-func TestSignHeaders(t *testing.T) {
+func TestUseAlg(t *testing.T) {
 	/// test all standard algorithms
 	algs := make(map[string]crypto.Hash)
 	for alg, hash := range HMACAlgs {
@@ -127,7 +127,7 @@ func TestSignHeaders(t *testing.T) {
 	}
 
 	for alg, wantHash := range algs {
-		header, hash, err := headerWithHash(alg, algs)
+		header, hash, err := useAlg(alg, algs)
 		if err != nil {
 			t.Errorf("error for %q: %s", alg, err)
 			continue
@@ -148,7 +148,7 @@ func TestSignHeaders(t *testing.T) {
 			continue
 		}
 		if s, ok := m["alg"].(string); !ok || s != alg {
-			t.Errorf("got alg %q for %q", s, alg)
+			t.Errorf("got alg %#v for %q", m["alg"], alg)
 		}
 	}
 }
