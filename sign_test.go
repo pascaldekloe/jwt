@@ -2,12 +2,35 @@ package jwt
 
 import (
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	_ "crypto/md5" // link
+	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
 	"math"
+	"math/big"
 	"testing"
 )
+
+func TestECDSASign(t *testing.T) {
+	const key, value = "N", ";;Q.;;"
+
+	var c Claims
+	c.Set = map[string]interface{}{key: value}
+	token, err := c.ECDSASign("ES384", testKeyEC384)
+	if err != nil {
+		t.Fatal("sign error:", err)
+	}
+
+	got, err := ECDSACheck(token, &testKeyEC384.PublicKey)
+	if err != nil {
+		t.Fatal("check error:", err)
+	}
+	if s := got.Set[key]; s != value {
+		t.Errorf("got value %q for %q, want %q", s, key, value)
+	}
+}
 
 func TestHMACSign(t *testing.T) {
 	var c Claims
@@ -41,7 +64,11 @@ func TestRSASign(t *testing.T) {
 }
 
 func TestSignAlgWrong(t *testing.T) {
-	_, err := new(Claims).HMACSign(RS512, nil)
+	_, err := new(Claims).ECDSASign(RS512, testKeyEC256)
+	if err != ErrAlgUnk {
+		t.Errorf("RSA alg for ECDSA got error %v, want %v", err, ErrAlgUnk)
+	}
+	_, err = new(Claims).HMACSign(RS512, nil)
 	if err != ErrAlgUnk {
 		t.Errorf("RSA alg for HMAC got error %v, want %v", err, ErrAlgUnk)
 	}
@@ -85,7 +112,11 @@ func TestSignBrokenClaims(t *testing.T) {
 
 	c := new(Claims)
 	c.Issued = &n
-	_, err := c.HMACSign(HS256, nil)
+	_, err := c.ECDSASign(ES256, testKeyEC256)
+	if _, ok := err.(*json.UnsupportedValueError); !ok {
+		t.Errorf("HMAC got error %#v, want json.UnsupportedValueError", err)
+	}
+	_, err = c.HMACSign(HS256, nil)
 	if _, ok := err.(*json.UnsupportedValueError); !ok {
 		t.Errorf("HMAC got error %#v, want json.UnsupportedValueError", err)
 	}
@@ -95,6 +126,18 @@ func TestSignBrokenClaims(t *testing.T) {
 	_, err = c.RSASign(RS256, testKeyRSA1024)
 	if _, ok := err.(*json.UnsupportedValueError); !ok {
 		t.Errorf("RSA got error %#v, want json.UnsupportedValueError", err)
+	}
+}
+
+func TestECDSAKeyBroken(t *testing.T) {
+	key, err := ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key.Params().N = new(big.Int)
+	_, err = new(Claims).ECDSASign(ES512, key)
+	if err == nil || err.Error() != "zero parameter" {
+		t.Errorf("got error %q, want zero parameter", err)
 	}
 }
 
@@ -119,6 +162,9 @@ uRVZaJLTfpQ+n88IcdG4WPKnRZqxGnrq3DjtIvFrBlM=
 func TestUseAlg(t *testing.T) {
 	/// test all standard algorithms
 	algs := make(map[string]crypto.Hash)
+	for alg, hash := range ECDSAAlgs {
+		algs[alg] = hash
+	}
 	for alg, hash := range HMACAlgs {
 		algs[alg] = hash
 	}

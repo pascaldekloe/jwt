@@ -2,11 +2,48 @@ package jwt
 
 import (
 	"crypto"
+	"crypto/ecdsa"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
 	"hash"
 )
+
+// ECDSASign calls Sync and returns a new JWT.
+// When the algorithm is not in ECDSAAlgs then the error is ErrAlgUnk.
+// The caller must use the correct key for the respective algorithm (P-256 for
+// ES256, P-384 for ES384 and P-521 for ES512) or risk malformed token production.
+func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey) (token []byte, err error) {
+	if err := c.Sync(); err != nil {
+		return nil, err
+	}
+
+	// signature contains pair (r, s) as per RFC 7518 section 3.4
+	sig := make([]byte, 2*((key.Curve.Params().BitSize+7)/8))
+	encSigLen := encoding.EncodedLen(len(sig))
+
+	encHeader, hash, err := useAlg(alg, ECDSAAlgs)
+	if err != nil {
+		return nil, err
+	}
+	digest := hash.New()
+	token = c.newUnsignedToken(encHeader, encSigLen, digest)
+
+	// create signature
+	r, s, err := ecdsa.Sign(rand.Reader, key, digest.Sum(nil))
+	if err != nil {
+		return nil, err
+	}
+
+	// algin right with big-endian order
+	rBytes, sBytes := r.Bytes(), s.Bytes()
+	copy(sig[(len(sig)/2)-len(rBytes):], rBytes)
+	copy(sig[len(sig)-len(sBytes):], sBytes)
+
+	// append signature
+	encoding.Encode(token[len(token)-encSigLen:], sig)
+	return token, nil
+}
 
 // HMACSign calls Sync and returns a new JWT.
 // When the algorithm is not in HMACAlgs then the error is ErrAlgUnk.
@@ -19,12 +56,12 @@ func (c *Claims) HMACSign(alg string, secret []byte) (token []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
-	mac := hmac.New(hash.New, secret)
-	encSigLen := encoding.EncodedLen(hash.Size())
-	token = c.newUnsignedToken(encHeader, encSigLen, mac)
+	digest := hmac.New(hash.New, secret)
+	encSigLen := encoding.EncodedLen(digest.Size())
+	token = c.newUnsignedToken(encHeader, encSigLen, digest)
 
 	// append signature
-	encoding.Encode(token[len(token)-encSigLen:], mac.Sum(nil))
+	encoding.Encode(token[len(token)-encSigLen:], digest.Sum(nil))
 	return token, nil
 }
 
@@ -39,13 +76,13 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err err
 	if err != nil {
 		return nil, err
 	}
-	h := hash.New()
+	digest := hash.New()
 	// TODO: use key.Size() as of Go 1.11 (cl103876)
 	encSigLen := encoding.EncodedLen((key.N.BitLen() + 7) / 8)
-	token = c.newUnsignedToken(encHeader, encSigLen, h)
+	token = c.newUnsignedToken(encHeader, encSigLen, digest)
 
 	// append signature
-	sig, err := rsa.SignPKCS1v15(rand.Reader, key, hash, h.Sum(nil))
+	sig, err := rsa.SignPKCS1v15(rand.Reader, key, hash, digest.Sum(nil))
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +90,7 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err err
 	return token, nil
 }
 
-func (c *Claims) newUnsignedToken(encHeader string, encSigLen int, h hash.Hash) []byte {
+func (c *Claims) newUnsignedToken(encHeader string, encSigLen int, digest hash.Hash) []byte {
 	encClaimsLen := encoding.EncodedLen(len(c.Raw))
 	token := make([]byte, len(encHeader)+encClaimsLen+encSigLen+2)
 
@@ -64,21 +101,27 @@ func (c *Claims) newUnsignedToken(encHeader string, encSigLen int, h hash.Hash) 
 	i += encClaimsLen
 	token[i] = '.'
 
-	h.Write(token[:i])
+	digest.Write(token[:i])
 
 	return token
 }
 
-func useAlg(alg string, algs map[string]crypto.Hash) (encHeader string, h crypto.Hash, err error) {
-	h, ok := algs[alg]
+func useAlg(alg string, algs map[string]crypto.Hash) (encHeader string, hash crypto.Hash, err error) {
+	hash, ok := algs[alg]
 	if !ok {
 		return "", 0, ErrAlgUnk
 	}
-	if !h.Available() {
+	if !hash.Available() {
 		return "", 0, errHashLink
 	}
 
 	switch alg {
+	case ES256:
+		encHeader = "eyJhbGciOiJFUzI1NiJ9"
+	case ES384:
+		encHeader = "eyJhbGciOiJFUzM4NCJ9"
+	case ES512:
+		encHeader = "eyJhbGciOiJFUzUxMiJ9"
 	case HS256:
 		encHeader = "eyJhbGciOiJIUzI1NiJ9"
 	case HS384:
@@ -95,5 +138,5 @@ func useAlg(alg string, algs map[string]crypto.Hash) (encHeader string, h crypto
 		encHeader = encoding.EncodeToString([]byte(`{"alg":"` + alg + `"}`))
 	}
 
-	return encHeader, h, nil
+	return encHeader, hash, nil
 }

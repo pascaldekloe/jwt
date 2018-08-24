@@ -15,6 +15,72 @@ var benchClaims = &Claims{
 	},
 }
 
+func BenchmarkECDSASign(b *testing.B) {
+	b.Run(ES256, func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, err := benchClaims.ECDSASign(ES256, testKeyEC256)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+	b.Run(ES384, func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, err := benchClaims.ECDSASign(ES384, testKeyEC384)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+	b.Run(ES512, func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, err := benchClaims.ECDSASign(ES512, testKeyEC521)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+}
+
+func BenchmarkECDSACheck(b *testing.B) {
+	b.Run(ES256, func(b *testing.B) {
+		token, err := benchClaims.ECDSASign(ES256, testKeyEC256)
+		if err != nil {
+			b.Fatal(err)
+		}
+		for i := 0; i < b.N; i++ {
+			_, err := ECDSACheck(token, &testKeyEC256.PublicKey)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+	b.Run(ES384, func(b *testing.B) {
+		token, err := benchClaims.ECDSASign(ES384, testKeyEC384)
+		if err != nil {
+			b.Fatal(err)
+		}
+		for i := 0; i < b.N; i++ {
+			_, err := ECDSACheck(token, &testKeyEC384.PublicKey)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+	b.Run(ES512, func(b *testing.B) {
+		token, err := benchClaims.ECDSASign(ES512, testKeyEC521)
+		if err != nil {
+			b.Fatal(err)
+		}
+		for i := 0; i < b.N; i++ {
+			_, err := ECDSACheck(token, &testKeyEC521.PublicKey)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+}
+
 func BenchmarkHMACSign(b *testing.B) {
 	// 512-bit key
 	secret := make([]byte, 64)

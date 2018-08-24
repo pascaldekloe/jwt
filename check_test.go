@@ -3,6 +3,7 @@ package jwt
 import (
 	"bytes"
 	"crypto"
+	"crypto/ecdsa"
 	_ "crypto/md5" // link
 	"crypto/rsa"
 	"encoding/json"
@@ -12,6 +13,42 @@ import (
 
 	"github.com/pascaldekloe/goe/verify"
 )
+
+var goldenECDSAs = []struct {
+	key    *ecdsa.PublicKey
+	token  string
+	claims string
+}{
+	0: {
+		key:    &testKeyEC256.PublicKey,
+		token:  "eyJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJjdHVudCIsImF1ZCI6ImJvYXJkIn0.AnYB6w3Zh7MBYE9uLE8Hp693DHf-1Xm_WiXl-ZTAIabuO1ER4O38T5PPkducsHPZ4NCPLqh2bprlRJGnE_s5IA",
+		claims: `{"iss":"ctunt","aud":"board"}`,
+	},
+	1: {
+		key:    &testKeyEC384.PublicKey,
+		token:  "eyJhbGciOiJFUzM4NCJ9.e30.1WD7DU260TLDzwiJQa-ri7FBnXlRsOzEpTKDmMt51dzqDiYguVch7VqNLTVkHCb4oJ-LDJ8-PGaeoo4jcNkGQjGg1HUiHWEZNyUUPRbxnzTKOWD1Z3VAlPDgnhXp1i8t",
+		claims: `{}`,
+	},
+	2: {
+		key:    &testKeyEC521.PublicKey,
+		token:  "eyJhbGciOiJFUzUxMiJ9.eyJzdWIiOiJha3JpZWdlciIsInByZWZpeCI6IkRyLiJ9.APhisjBsvFDWLojTWUP7uyEiilIOU4KYVEgqFr5GdJbd5ucuejztFUvzRZq8njo2s0jLqwMN6H0IhG9YHDMRKTgQAbEbOT_13tN6Xs4sTtxefuf_jlJTfTLtg9_2A22iGYgSDBTzWpunC-Ofuq4XegptS2NuC6XGTFu41DbQX6EmEb-7",
+		claims: `{"sub":"akrieger","prefix":"Dr."}`,
+	},
+}
+
+func TestECDSACheck(t *testing.T) {
+	for i, gold := range goldenECDSAs {
+		claims, err := ECDSACheck([]byte(gold.token), gold.key)
+		if err != nil {
+			t.Errorf("%d: check error: %s", i, err)
+			continue
+		}
+		if !bytes.Equal([]byte(claims.Raw), []byte(gold.claims)) {
+			t.Errorf("%d: got claims JSON %q, want %q", i, claims.Raw, gold.claims)
+			continue
+		}
+	}
+}
 
 var goldenHMACs = []struct {
 	secret []byte
@@ -25,8 +62,8 @@ var goldenHMACs = []struct {
 		claims: &Claims{
 			Raw: json.RawMessage([]byte("{\"iss\":\"joe\",\r\n \"exp\":1300819380,\r\n \"http://example.com/is_root\":true}")),
 			Set: map[string]interface{}{
-				"iss": "joe",
-				"exp": 1300819380.0,
+				"iss":                        "joe",
+				"exp":                        1300819380.0,
 				"http://example.com/is_root": true,
 			},
 			Registered: Registered{
@@ -100,7 +137,11 @@ func TestRSACheck(t *testing.T) {
 }
 
 func TestCheckMiss(t *testing.T) {
-	_, err := HMACCheck([]byte(goldenHMACs[0].token), nil)
+	_, err := ECDSACheck([]byte(goldenECDSAs[0].token), &testKeyEC521.PublicKey)
+	if err != ErrSigMiss {
+		t.Errorf("ECDSA check got error %v, want %v", err, ErrSigMiss)
+	}
+	_, err = HMACCheck([]byte(goldenHMACs[0].token), nil)
 	if err != ErrSigMiss {
 		t.Errorf("HMAC check got error %v, want %v", err, ErrSigMiss)
 	}
@@ -111,7 +152,11 @@ func TestCheckMiss(t *testing.T) {
 }
 
 func TestCheckAlgWrong(t *testing.T) {
-	_, err := HMACCheck([]byte(goldenRSAs[0].token), nil)
+	_, err := ECDSACheck([]byte(goldenRSAs[0].token), nil)
+	if err != ErrAlgUnk {
+		t.Errorf("RSA alg for ECDSA got error %v, want %v", err, ErrAlgUnk)
+	}
+	_, err = HMACCheck([]byte(goldenRSAs[0].token), nil)
 	if err != ErrAlgUnk {
 		t.Errorf("RSA alg for HMAC got error %v, want %v", err, ErrAlgUnk)
 	}
@@ -151,7 +196,11 @@ func TestCheckHashNotLinked(t *testing.T) {
 
 func TestCheckIncomplete(t *testing.T) {
 	// header only
-	_, err := RSACheck([]byte("eyJhbGciOiJub25lIn0"), &testKeyRSA1024.PublicKey)
+	_, err := ECDSACheck([]byte("eyJhbGciOiJFUzI1NiJ9"), &testKeyEC256.PublicKey)
+	if err != errPart {
+		t.Errorf("one base64 chunk got error %v, want %v", err, errPart)
+	}
+	_, err = RSACheck([]byte("eyJhbGciOiJub25lIn0"), &testKeyRSA1024.PublicKey)
 	if err != errPart {
 		t.Errorf("one base64 chunk got error %v, want %v", err, errPart)
 	}
@@ -183,6 +232,10 @@ func TestCheckBrokenBase64(t *testing.T) {
 	}
 
 	want = "jwt: malformed signature: "
+	_, err = ECDSACheck([]byte("eyJhbGciOiJFUzI1NiJ9.e30.*"), nil)
+	if err == nil || !strings.HasPrefix(err.Error(), want) {
+		t.Errorf("corrupt base64 in ECDSA signature got error %v, want %s…", err, want)
+	}
 	_, err = HMACCheck([]byte("eyJhbGciOiJIUzI1NiJ9.e30.*"), nil)
 	if err == nil || !strings.HasPrefix(err.Error(), want) {
 		t.Errorf("corrupt base64 in HMAC signature got error %v, want %s…", err, want)

@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"crypto/ecdsa"
 	"crypto/rsa"
 	"errors"
 	"net/http"
@@ -20,22 +21,37 @@ var ErrNoHeader = errors.New("jwt: no HTTP Authorization")
 
 var errAuthSchema = errors.New("jwt: want Bearer schema")
 
+// ECDSACheckHeader applies ECDSACheck on a HTTP request.
+// Specifically it looks for a bearer token in the Authorization header.
+func ECDSACheckHeader(r *http.Request, key *ecdsa.PublicKey) (*Claims, error) {
+	token, err := tokenFromHeader(r)
+	if err != nil {
+		return nil, err
+	}
+	return ECDSACheck(token, key)
+}
+
 // HMACCheckHeader applies HMACCheck on a HTTP request.
 // Specifically it looks for a bearer token in the Authorization header.
 func HMACCheckHeader(r *http.Request, secret []byte) (*Claims, error) {
-	auth := r.Header.Get("Authorization")
-	if auth == "" {
-		return nil, ErrNoHeader
+	token, err := tokenFromHeader(r)
+	if err != nil {
+		return nil, err
 	}
-	if !strings.HasPrefix(auth, "Bearer ") {
-		return nil, errAuthSchema
-	}
-	return HMACCheck([]byte(auth[7:]), secret)
+	return HMACCheck(token, secret)
 }
 
 // RSACheckHeader applies RSACheck on a HTTP request.
 // Specifically it looks for a bearer token in the Authorization header.
 func RSACheckHeader(r *http.Request, key *rsa.PublicKey) (*Claims, error) {
+	token, err := tokenFromHeader(r)
+	if err != nil {
+		return nil, err
+	}
+	return RSACheck(token, key)
+}
+
+func tokenFromHeader(r *http.Request) ([]byte, error) {
 	auth := r.Header.Get("Authorization")
 	if auth == "" {
 		return nil, ErrNoHeader
@@ -43,7 +59,18 @@ func RSACheckHeader(r *http.Request, key *rsa.PublicKey) (*Claims, error) {
 	if !strings.HasPrefix(auth, "Bearer ") {
 		return nil, errAuthSchema
 	}
-	return RSACheck([]byte(auth[7:]), key)
+	return []byte(auth[7:]), nil
+}
+
+// ECDSASignHeader applies ECDSASign on a HTTP request.
+// Specifically it sets a bearer token in the Authorization header.
+func (c *Claims) ECDSASignHeader(r *http.Request, alg string, key *ecdsa.PrivateKey) error {
+	token, err := c.ECDSASign(alg, key)
+	if err != nil {
+		return err
+	}
+	r.Header.Set("Authorization", "Bearer "+string(token))
+	return nil
 }
 
 // HMACSignHeader applies HMACSign on a HTTP request.
@@ -76,6 +103,8 @@ type Handler struct {
 
 	// Secret is the HMAC key.
 	Secret []byte
+	// ECDSAKey applies ECDSAAlgs and disables HMACAlgs when set.
+	ECDSAKey *ecdsa.PublicKey
 	// RSAKey applies RSAAlgs and disables HMACAlgs when set.
 	RSAKey *rsa.PublicKey
 
@@ -96,22 +125,23 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// verify claims
 	var claims *Claims
 	var err error
-	if h.RSAKey != nil {
-		claims, err = RSACheckHeader(r, h.RSAKey)
-	} else {
+	if h.ECDSAKey == nil && h.RSAKey == nil {
 		claims, err = HMACCheckHeader(r, h.Secret)
+	} else {
+		err = ErrAlgUnk
+		if h.RSAKey != nil {
+			claims, err = RSACheckHeader(r, h.RSAKey)
+		}
+		if err == ErrAlgUnk && h.ECDSAKey != nil {
+			claims, err = ECDSACheckHeader(r, h.ECDSAKey)
+		}
 	}
-	switch err {
-	case nil:
-		break
-
-	case ErrNoHeader:
-		w.Header().Set("WWW-Authenticate", "Bearer")
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-
-	default:
-		w.Header().Set("WWW-Authenticate", `Bearer error="invalid_token", error_description=`+strconv.QuoteToASCII(err.Error()))
+	if err != nil {
+		if err == ErrNoHeader {
+			w.Header().Set("WWW-Authenticate", "Bearer")
+		} else {
+			w.Header().Set("WWW-Authenticate", `Bearer error="invalid_token", error_description=`+strconv.QuoteToASCII(err.Error()))
+		}
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}

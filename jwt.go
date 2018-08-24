@@ -12,13 +12,26 @@ import (
 
 // Algorithm Identification Tokens
 const (
-	HS256 = "HS256" // HMAC SHA-256
-	HS384 = "HS384" // HMAC SHA-384
-	HS512 = "HS512" // HMAC SHA-512
-	RS256 = "RS256" // RSASSA-PKCS1-v1_5 with SHA-256
-	RS384 = "RS384" // RSASSA-PKCS1-v1_5 with SHA-348
-	RS512 = "RS512" // RSASSA-PKCS1-v1_5 with SHA-512
+	HS256 = "HS256" // HMAC using SHA-256
+	HS384 = "HS384" // HMAC using SHA-384
+	HS512 = "HS512" // HMAC using SHA-512
+	RS256 = "RS256" // RSASSA-PKCS1-v1_5 using SHA-256
+	RS384 = "RS384" // RSASSA-PKCS1-v1_5 using SHA-384
+	RS512 = "RS512" // RSASSA-PKCS1-v1_5 using SHA-512
+	ES256 = "ES256" // ECDSA using P-256 and SHA-256
+	ES384 = "ES384" // ECDSA using P-384 and SHA-384
+	ES512 = "ES512" // ECDSA using P-521 and SHA-512
 )
+
+// ECDSAAlgs is the ECDSA hash algorithm registration.
+// When adding additional entries you also need to
+// import the respective packages to link the hash
+// function into the binary [crypto.Hash.Available].
+var ECDSAAlgs = map[string]crypto.Hash{
+	ES256: crypto.SHA256,
+	ES384: crypto.SHA384,
+	ES512: crypto.SHA512,
+}
 
 // HMACAlgs is the HMAC hash algorithm registration.
 // When adding additional entries you also need to

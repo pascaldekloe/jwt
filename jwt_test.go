@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -9,6 +10,27 @@ import (
 
 	"github.com/pascaldekloe/goe/verify"
 )
+
+var testKeyEC256 = mustParseECKey(`-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIBOm12aaXvqSzysOSGV2yL/xKY3kCtaOfAPY1KQN2sTJoAoGCCqGSM49
+AwEHoUQDQgAEX0iTLAcGqlWeGIRtIk0G2PRgpf/6gLxOTyMAdriP4NLRkuu+9Idt
+y3qmEizRC0N81j84E213/LuqLqnsrgfyiw==
+-----END EC PRIVATE KEY-----`)
+
+var testKeyEC384 = mustParseECKey(`-----BEGIN EC PRIVATE KEY-----
+MIGkAgEBBDBluSyfK9BEPc9y944ZLahd4xHRVse64iCeEC5gBQ4UM1961bsEthUC
+NKXyTGTBuW2gBwYFK4EEACKhZANiAAR3Il6V61OwAnb6oYm4hQ4TVVaGQ2QGzrSi
+eYGoRewNhAaZ8wfemWX4fww7yNi6AmUzWV8Su5Qq3dtN3nLpKUEaJrTvfjtowrr/
+ZtU1fZxzI/agEpG2+uLFW6JNdYzp67w=
+-----END EC PRIVATE KEY-----`)
+
+var testKeyEC521 = mustParseECKey(`-----BEGIN EC PRIVATE KEY-----
+MIHcAgEBBEIBH31vhkSH+x+J8C/xf/PRj81u3MCqgiaGdW1S1jcjEuikczbbX689
+9ETHGCPtHEWw/Il1RAFaKMvndmfDVd/YapmgBwYFK4EEACOhgYkDgYYABAGNpBDA
+Lx6rKQXWdWQR581uw9dTuV8zjmkSpLZ3k0qLHVlOqt00AfEL4NO+E7fxh4SuAZPb
+RDMu2lx4lWOM2EyFvgFIyu8xlA9lEg5GKq+A7+y5r99RLughiDd52vGnudMspHEy
+x6IpwXzTZR/T8TkluL3jDWtVNFxGBf/aEErnpeLfRQ==
+-----END EC PRIVATE KEY-----`)
 
 var testKeyRSA1024 = mustParseRSAKey(`-----BEGIN RSA PRIVATE KEY-----
 MIICXAIBAAKBgQDCzQ4MMppUkCXTi/BjPWO2gLnaVmPhyMdo7rnccfoBnH5lCTdY
@@ -261,6 +283,19 @@ func mustParseRSAKey(s string) *rsa.PrivateKey {
 	}
 
 	key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		panic(err)
+	}
+	return key
+}
+
+func mustParseECKey(s string) *ecdsa.PrivateKey {
+	block, _ := pem.Decode([]byte(s))
+	if block == nil {
+		panic("invalid PEM")
+	}
+
+	key, err := x509.ParseECPrivateKey(block.Bytes)
 	if err != nil {
 		panic(err)
 	}

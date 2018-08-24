@@ -17,6 +17,10 @@ func TestCheckHeaderPresent(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	_, err = ECDSACheckHeader(req, nil)
+	if err != ErrNoHeader {
+		t.Errorf("ECDSA check got %v, want %v", err, ErrNoHeader)
+	}
 	_, err = HMACCheckHeader(req, nil)
 	if err != ErrNoHeader {
 		t.Errorf("HMAC check got %v, want %v", err, ErrNoHeader)
@@ -34,6 +38,10 @@ func TestCheckHeaderSchema(t *testing.T) {
 	}
 	req.Header.Set("Authorization", "Basic QWxhZGRpbjpPcGVuU2VzYW1l")
 
+	_, err = ECDSACheckHeader(req, nil)
+	if err != errAuthSchema {
+		t.Errorf("ECDSA check got %v, want %v", err, errAuthSchema)
+	}
 	_, err = HMACCheckHeader(req, nil)
 	if err != errAuthSchema {
 		t.Errorf("HMAC check got %v, want %v", err, errAuthSchema)
@@ -55,6 +63,10 @@ func TestSignBrokenClaimsHeader(t *testing.T) {
 
 	c := new(Claims)
 	c.Issued = &n
+	err = c.ECDSASignHeader(req, ES256, testKeyEC256)
+	if _, ok := err.(*json.UnsupportedValueError); !ok {
+		t.Errorf("ECDSA got error %#v, want json.UnsupportedValueError", err)
+	}
 	err = c.HMACSignHeader(req, HS256, nil)
 	if _, ok := err.(*json.UnsupportedValueError); !ok {
 		t.Errorf("HMAC got error %#v, want json.UnsupportedValueError", err)

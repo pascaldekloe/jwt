@@ -6,8 +6,8 @@ A JSON Web Token (JWT) library for the Go programming language.
 
 The API enforces secure use by design. Unsigned tokens are
 [rejected](https://godoc.org/github.com/pascaldekloe/jwt#ErrUnsecured)
-and there is no support for (ECDSA) encryption—use wire encryption instead.
-With less than 500 lines of code and no third party dependencies, the
+and there is no support for encryption—use wire encryption instead.
+With about 500 lines of code and no third party dependencies, the
 implementation maintains full unit test coverage.
 
 This is free and unencumbered software released into the
@@ -17,10 +17,12 @@ This is free and unencumbered software released into the
 ## Get Started
 
 The package comes with functions to verify 
-[[HMACCheck](https://godoc.org/github.com/pascaldekloe/jwt#HMACCheck),
+[[ECDSACheck](https://godoc.org/github.com/pascaldekloe/jwt#ECDSACheck),
+[HMACCheck](https://godoc.org/github.com/pascaldekloe/jwt#HMACCheck),
 [RSACheck](https://godoc.org/github.com/pascaldekloe/jwt#RSACheck)] 
 and issue 
-[[HMACSign](https://godoc.org/github.com/pascaldekloe/jwt#Claims.HMACSign),
+[[ECDSASign](https://godoc.org/github.com/pascaldekloe/jwt#Claims.ECDSASign),
+[HMACSign](https://godoc.org/github.com/pascaldekloe/jwt#Claims.HMACSign),
 [RSASign](https://godoc.org/github.com/pascaldekloe/jwt#Claims.RSASign)]
 claims.
 
@@ -75,18 +77,24 @@ Optionally one can use the claims object in the service handlers as shown in the
 ### Performance on a Mac Pro (late 2013)
 
 ```
-BenchmarkHMACSign/HS256-12         	  500000	      3398 ns/op
-BenchmarkHMACSign/HS384-12         	  500000	      3940 ns/op
-BenchmarkHMACSign/HS512-12         	  300000	      4032 ns/op
-BenchmarkHMACCheck/HS256-12        	  200000	      6853 ns/op
-BenchmarkHMACCheck/HS384-12        	  200000	      7495 ns/op
-BenchmarkHMACCheck/HS512-12        	  200000	      7603 ns/op
-BenchmarkRSASign/1024-bit-12       	    3000	    422137 ns/op
-BenchmarkRSASign/2048-bit-12       	    1000	   2094975 ns/op
-BenchmarkRSASign/4096-bit-12       	     100	  12902447 ns/op
-BenchmarkRSACheck/1024-bit-12      	   50000	     34042 ns/op
-BenchmarkRSACheck/2048-bit-12      	   20000	     73650 ns/op
-BenchmarkRSACheck/4096-bit-12      	   10000	    203782 ns/op
+BenchmarkECDSASign/ES256-12         	   50000	     38114 ns/op
+BenchmarkECDSASign/ES384-12         	     300	   4279447 ns/op
+BenchmarkECDSASign/ES512-12         	     200	   8064569 ns/op
+BenchmarkECDSACheck/ES256-12        	   10000	    105350 ns/op
+BenchmarkECDSACheck/ES384-12        	     200	   8331596 ns/op
+BenchmarkECDSACheck/ES512-12        	     100	  16024017 ns/op
+BenchmarkHMACSign/HS256-12          	  500000	      3498 ns/op
+BenchmarkHMACSign/HS384-12          	  300000	      4071 ns/op
+BenchmarkHMACSign/HS512-12          	  300000	      4144 ns/op
+BenchmarkHMACCheck/HS256-12         	  200000	      6834 ns/op
+BenchmarkHMACCheck/HS384-12         	  200000	      7543 ns/op
+BenchmarkHMACCheck/HS512-12         	  200000	      7622 ns/op
+BenchmarkRSASign/1024-bit-12        	    3000	    424131 ns/op
+BenchmarkRSASign/2048-bit-12        	    1000	   2102947 ns/op
+BenchmarkRSASign/4096-bit-12        	     100	  12877484 ns/op
+BenchmarkRSACheck/1024-bit-12       	   50000	     32982 ns/op
+BenchmarkRSACheck/2048-bit-12       	   20000	     73431 ns/op
+BenchmarkRSACheck/4096-bit-12       	   10000	    201450 ns/op
 ```
 
 [![JWT.io](https://jwt.io/img/badge.svg)](https://jwt.io/)

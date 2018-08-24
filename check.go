@@ -3,12 +3,14 @@ package jwt
 import (
 	"bytes"
 	"crypto"
+	"crypto/ecdsa"
 	"crypto/hmac"
 	"crypto/rsa"
 	_ "crypto/sha256" // link binary
 	_ "crypto/sha512" // link binary
 	"encoding/json"
 	"errors"
+	"math/big"
 )
 
 // ErrSigMiss means the signature check failed.
@@ -18,6 +20,38 @@ var ErrSigMiss = errors.New("jwt: signature mismatch")
 var ErrUnsecured = errors.New("jwt: unsecured—no signature")
 
 var errPart = errors.New("jwt: missing base64 part")
+
+// ECDSACheck parses a JWT and returns the claims set if, and only if, the
+// signature checks out. Note that this excludes unsecured JWTs [ErrUnsecured].
+// When the algorithm is not in ECDSAAlgs then the error is ErrAlgUnk.
+// See Valid to complete the verification.
+func ECDSACheck(jwt []byte, key *ecdsa.PublicKey) (*Claims, error) {
+	firstDot, lastDot, buf, err := scan(jwt)
+	if err != nil {
+		return nil, err
+	}
+
+	// create signature
+	hash, err := selectHash(ECDSAAlgs, jwt[:firstDot], buf)
+	if err != nil {
+		return nil, err
+	}
+	digest := hash.New()
+	digest.Write(jwt[:lastDot])
+
+	// verify signature
+	n, err := encoding.Decode(buf, jwt[lastDot+1:])
+	if err != nil {
+		return nil, errors.New("jwt: malformed signature: " + err.Error())
+	}
+	r := big.NewInt(0).SetBytes(buf[:n/2])
+	s := big.NewInt(0).SetBytes(buf[n/2 : n])
+	if !ecdsa.Verify(key, digest.Sum(buf[:0]), r, s) {
+		return nil, ErrSigMiss
+	}
+
+	return parseClaims(jwt[firstDot+1:lastDot], buf)
+}
 
 // HMACCheck parses a JWT and returns the claims set if, and only if, the
 // signature checks out. Note that this excludes unsecured JWTs [ErrUnsecured].
@@ -34,15 +68,15 @@ func HMACCheck(jwt, secret []byte) (*Claims, error) {
 	if err != nil {
 		return nil, err
 	}
-	mac := hmac.New(hash.New, secret)
-	mac.Write(jwt[:lastDot])
+	digest := hmac.New(hash.New, secret)
+	digest.Write(jwt[:lastDot])
 
 	// verify signature
 	n, err := encoding.Decode(buf, jwt[lastDot+1:])
 	if err != nil {
 		return nil, errors.New("jwt: malformed signature: " + err.Error())
 	}
-	if !hmac.Equal(buf[:n], mac.Sum(buf[n:n])) {
+	if !hmac.Equal(buf[:n], digest.Sum(buf[n:n])) {
 		return nil, ErrSigMiss
 	}
 
@@ -64,15 +98,15 @@ func RSACheck(jwt []byte, key *rsa.PublicKey) (*Claims, error) {
 	if err != nil {
 		return nil, err
 	}
-	h := hash.New()
-	h.Write(jwt[:lastDot])
+	digest := hash.New()
+	digest.Write(jwt[:lastDot])
 
 	// verify signature
 	n, err := encoding.Decode(buf, jwt[lastDot+1:])
 	if err != nil {
 		return nil, errors.New("jwt: malformed signature: " + err.Error())
 	}
-	if err := rsa.VerifyPKCS1v15(key, hash, h.Sum(buf[n:n]), buf[:n]); err != nil {
+	if err := rsa.VerifyPKCS1v15(key, hash, digest.Sum(buf[n:n]), buf[:n]); err != nil {
 		return nil, ErrSigMiss
 	}
 
