@@ -114,9 +114,11 @@ type Handler struct {
 	// 401 (Unauthorized) and a description.
 	HeaderBinding map[string]string
 
-	// Func is called after the JWT validation succeeds and
-	// before any header bindings. Requests are dropped when
-	// the return is false.
+	// When not nil, then Func is called after the JWT validation
+	// succeeds and before any header bindings. Target is skipped
+	// [request drop] when the return is false.
+	// This feature may be used to further customise requests or
+	// as a filter or as an extended http.HandlerFunc.
 	Func func(http.ResponseWriter, *http.Request, *Claims) (pass bool)
 }
 
