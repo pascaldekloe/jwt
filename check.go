@@ -23,24 +23,24 @@ var errPart = errors.New("jwt: missing base64 part")
 
 // ECDSACheck parses a JWT and returns the claims set if, and only if, the
 // signature checks out. Note that this excludes unsecured JWTs [ErrUnsecured].
-// When the algorithm is not in ECDSAAlgs then the error is ErrAlgUnk.
+// When the algorithm is not in ECDSAAlgs, then the error is ErrAlgUnk.
 // See Valid to complete the verification.
-func ECDSACheck(jwt []byte, key *ecdsa.PublicKey) (*Claims, error) {
-	firstDot, lastDot, buf, err := scan(jwt)
+func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
+	firstDot, lastDot, buf, err := scan(token)
 	if err != nil {
 		return nil, err
 	}
 
 	// create signature
-	hash, err := selectHash(ECDSAAlgs, jwt[:firstDot], buf)
+	hash, err := selectHash(ECDSAAlgs, token[:firstDot], buf)
 	if err != nil {
 		return nil, err
 	}
 	digest := hash.New()
-	digest.Write(jwt[:lastDot])
+	digest.Write(token[:lastDot])
 
 	// verify signature
-	n, err := encoding.Decode(buf, jwt[lastDot+1:])
+	n, err := encoding.Decode(buf, token[lastDot+1:])
 	if err != nil {
 		return nil, errors.New("jwt: malformed signature: " + err.Error())
 	}
@@ -50,29 +50,29 @@ func ECDSACheck(jwt []byte, key *ecdsa.PublicKey) (*Claims, error) {
 		return nil, ErrSigMiss
 	}
 
-	return parseClaims(jwt[firstDot+1:lastDot], buf)
+	return parseClaims(token[firstDot+1:lastDot], buf)
 }
 
 // HMACCheck parses a JWT and returns the claims set if, and only if, the
 // signature checks out. Note that this excludes unsecured JWTs [ErrUnsecured].
-// When the algorithm is not in HMACAlgs then the error is ErrAlgUnk.
+// When the algorithm is not in HMACAlgs, then the error is ErrAlgUnk.
 // See Valid to complete the verification.
-func HMACCheck(jwt, secret []byte) (*Claims, error) {
-	firstDot, lastDot, buf, err := scan(jwt)
+func HMACCheck(token, secret []byte) (*Claims, error) {
+	firstDot, lastDot, buf, err := scan(token)
 	if err != nil {
 		return nil, err
 	}
 
 	// create signature
-	hash, err := selectHash(HMACAlgs, jwt[:firstDot], buf)
+	hash, err := selectHash(HMACAlgs, token[:firstDot], buf)
 	if err != nil {
 		return nil, err
 	}
 	digest := hmac.New(hash.New, secret)
-	digest.Write(jwt[:lastDot])
+	digest.Write(token[:lastDot])
 
 	// verify signature
-	n, err := encoding.Decode(buf, jwt[lastDot+1:])
+	n, err := encoding.Decode(buf, token[lastDot+1:])
 	if err != nil {
 		return nil, errors.New("jwt: malformed signature: " + err.Error())
 	}
@@ -80,29 +80,29 @@ func HMACCheck(jwt, secret []byte) (*Claims, error) {
 		return nil, ErrSigMiss
 	}
 
-	return parseClaims(jwt[firstDot+1:lastDot], buf)
+	return parseClaims(token[firstDot+1:lastDot], buf)
 }
 
 // RSACheck parses a JWT and returns the claims set if, and only if, the
 // signature checks out. Note that this excludes unsecured JWTs [ErrUnsecured].
-// When the algorithm is not in RSAAlgs then the error is ErrAlgUnk.
+// When the algorithm is not in RSAAlgs, then the error is ErrAlgUnk.
 // See Valid to complete the verification.
-func RSACheck(jwt []byte, key *rsa.PublicKey) (*Claims, error) {
-	firstDot, lastDot, buf, err := scan(jwt)
+func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
+	firstDot, lastDot, buf, err := scan(token)
 	if err != nil {
 		return nil, err
 	}
 
 	// create signature
-	hash, err := selectHash(RSAAlgs, jwt[:firstDot], buf)
+	hash, err := selectHash(RSAAlgs, token[:firstDot], buf)
 	if err != nil {
 		return nil, err
 	}
 	digest := hash.New()
-	digest.Write(jwt[:lastDot])
+	digest.Write(token[:lastDot])
 
 	// verify signature
-	n, err := encoding.Decode(buf, jwt[lastDot+1:])
+	n, err := encoding.Decode(buf, token[lastDot+1:])
 	if err != nil {
 		return nil, errors.New("jwt: malformed signature: " + err.Error())
 	}
@@ -110,13 +110,13 @@ func RSACheck(jwt []byte, key *rsa.PublicKey) (*Claims, error) {
 		return nil, ErrSigMiss
 	}
 
-	return parseClaims(jwt[firstDot+1:lastDot], buf)
+	return parseClaims(token[firstDot+1:lastDot], buf)
 }
 
 // Scan detects the 3 base64 chunks and allocates matching buffer.
-func scan(jwt []byte) (firstDot, lastDot int, buf []byte, err error) {
-	firstDot = bytes.IndexByte(jwt, '.')
-	lastDot = bytes.LastIndexByte(jwt, '.')
+func scan(token []byte) (firstDot, lastDot int, buf []byte, err error) {
+	firstDot = bytes.IndexByte(token, '.')
+	lastDot = bytes.LastIndexByte(token, '.')
 	if lastDot <= firstDot {
 		// zero or one dot
 		return 0, 0, nil, errPart
@@ -124,7 +124,7 @@ func scan(jwt []byte) (firstDot, lastDot int, buf []byte, err error) {
 
 	// buffer must fit largest base64 chunk
 	// start with signature
-	max := len(jwt) - lastDot
+	max := len(token) - lastDot
 	// compare with payload
 	if l := lastDot - firstDot; l > max {
 		max = l
