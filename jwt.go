@@ -23,37 +23,33 @@ const (
 	ES512 = "ES512" // ECDSA using P-521 and SHA-512
 )
 
-// ECDSAAlgs is the ECDSA hash algorithm registration.
 // When adding additional entries you also need to
 // import the respective packages to link the hash
 // function into the binary [crypto.Hash.Available].
-var ECDSAAlgs = map[string]crypto.Hash{
-	ES256: crypto.SHA256,
-	ES384: crypto.SHA384,
-	ES512: crypto.SHA512,
-}
+var (
+	// ECDSAAlgs is the ECDSA hash algorithm registration.
+	ECDSAAlgs = map[string]crypto.Hash{
+		ES256: crypto.SHA256,
+		ES384: crypto.SHA384,
+		ES512: crypto.SHA512,
+	}
 
-// HMACAlgs is the HMAC hash algorithm registration.
-// When adding additional entries you also need to
-// import the respective packages to link the hash
-// function into the binary [crypto.Hash.Available].
-var HMACAlgs = map[string]crypto.Hash{
-	HS256: crypto.SHA256,
-	HS384: crypto.SHA384,
-	HS512: crypto.SHA512,
-}
+	// HMACAlgs is the HMAC hash algorithm registration.
+	HMACAlgs = map[string]crypto.Hash{
+		HS256: crypto.SHA256,
+		HS384: crypto.SHA384,
+		HS512: crypto.SHA512,
+	}
 
-// RSAAlgs is the RSA hash algorithm registration.
-// When adding additional entries you also need to
-// import the respective packages to link the hash
-// function into the binary [crypto.Hash.Available].
-var RSAAlgs = map[string]crypto.Hash{
-	RS256: crypto.SHA256,
-	RS384: crypto.SHA384,
-	RS512: crypto.SHA512,
-}
+	// RSAAlgs is the RSA hash algorithm registration.
+	RSAAlgs = map[string]crypto.Hash{
+		RS256: crypto.SHA256,
+		RS384: crypto.SHA384,
+		RS512: crypto.SHA512,
+	}
+)
 
-// ErrAlgUnk signals an unsupported "alg" token (for the respective method).
+// ErrAlgUnk signals an unsupported "alg" value (for the respective method).
 var ErrAlgUnk = errors.New("jwt: algorithm unknown")
 
 // See crypto.Hash.Available.
@@ -100,8 +96,8 @@ type Claims struct {
 	Set map[string]interface{}
 }
 
-// Sync updates the Raw field and when the Set field is not nil then
-// all non-zero Registered values are copied into the map accordingly.
+// Sync updates the Raw field. When the Set field is not nil,
+// then all non-zero Registered values are copied into the map.
 func (c *Claims) Sync() error {
 	var payload interface{}
 
@@ -176,11 +172,7 @@ func (c *Claims) String(name string) (value string, ok bool) {
 
 	// fallback
 	value, ok = c.Set[name].(string)
-	if ok {
-		return
-	}
-
-	return "", false
+	return
 }
 
 // Number returns the claim when present and if the representation is a JSON number.
@@ -203,11 +195,7 @@ func (c *Claims) Number(name string) (value float64, ok bool) {
 
 	// fallback
 	value, ok = c.Set[name].(float64)
-	if ok {
-		return
-	}
-
-	return 0, false
+	return
 }
 
 // NumericTime is a JSON numeric value representing the number
