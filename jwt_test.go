@@ -1,10 +1,9 @@
 package jwt
 
 import (
+	"fmt"
 	"testing"
 	"time"
-
-	"github.com/pascaldekloe/goe/verify"
 )
 
 func TestNumericTimeMapping(t *testing.T) {
@@ -36,57 +35,54 @@ func TestNumericTimeMapping(t *testing.T) {
 	}
 }
 
-func TestOverride(t *testing.T) {
-	offset := time.Now()
+// Redundant Set entries are ignored and overridden.
+func ExampleClaims_precedence() {
+	offset := time.Unix(1537622794, 0)
 	c := Claims{
-		// registered struct fields take precedence
 		Registered: Registered{
 			Issuer:    "a",
 			Subject:   "b",
 			Audience:  "c",
-			Expires:   NewNumericTime(offset.Add(time.Second)),
-			NotBefore: NewNumericTime(offset),
-			Issued:    NewNumericTime(offset.Add(-time.Second)),
+			Expires:   NewNumericTime(offset.Add(time.Minute)),
+			NotBefore: NewNumericTime(offset.Add(time.Second)),
+			Issued:    NewNumericTime(offset),
 			ID:        "d",
 		},
-		// redundant mapping to be ignored
 		Set: map[string]interface{}{
-			"iss": "z",
-			"sub": "z",
-			"aud": "z",
-			"exp": NewNumericTime(offset.Add(time.Hour)),
-			"nbf": NewNumericTime(offset.Add(time.Hour)),
-			"iat": NewNumericTime(offset.Add(time.Hour)),
+			"iss": "w",
+			"sub": "x",
+			"aud": "y",
+			"exp": NewNumericTime(offset.Add(time.Millisecond)),
+			"nbf": NewNumericTime(offset.Add(time.Microsecond)),
+			"iat": NewNumericTime(offset.Add(time.Nanosecond)),
 			"jti": "z",
 		},
 	}
 
-	want := map[string]interface{}{
-		"iss": c.Issuer,
-		"sub": c.Subject,
-		"aud": c.Audience,
-		"exp": *c.Expires,
-		"nbf": *c.NotBefore,
-		"iat": *c.Issued,
-		"jti": c.ID,
-	}
-
-	// should pick the struct values
-	got := make(map[string]interface{})
-	for name := range want {
+	// typed lookups by name
+	for _, name := range []string{"iss", "sub", "aud", "exp", "nbf", "iat", "jti"} {
 		if s, ok := c.String(name); ok {
-			got[name] = s
-		} else if n, ok := c.Number(name); ok {
-			got[name] = NumericTime(n)
+			fmt.Printf("%q: %q\n", name, s)
+		}
+		if n, ok := c.Number(name); ok {
+			fmt.Printf("%q: %0.f\n", name, n)
 		}
 	}
-	verify.Values(t, "typed lookups", got, want)
 
-	// should replace all Set entries
 	if err := c.Sync(); err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
-	verify.Values(t, "synced set", want, c.Set)
+	fmt.Printf("%s\n", c.Raw)
+
+	// output:
+	// "iss": "a"
+	// "sub": "b"
+	// "aud": "c"
+	// "exp": 1537622854
+	// "nbf": 1537622795
+	// "iat": 1537622794
+	// "jti": "d"
+	// {"aud":"c","exp":1537622854,"iat":1537622794,"iss":"a","jti":"d","nbf":1537622795,"sub":"b"}
 }
 
 func TestClaimsValid(t *testing.T) {
@@ -119,38 +115,5 @@ func TestClaimsValid(t *testing.T) {
 	}
 	if c.Valid(c.Registered.Expires.Time().Add(time.Second)) {
 		t.Error("validated claims after time limit end")
-	}
-}
-
-func TestTypedLookups(t *testing.T) {
-	c := &Claims{
-		Set: map[string]interface{}{
-			"s": "a",
-			"n": 99.8,
-		},
-	}
-
-	if got, ok := c.String("s"); !ok {
-		t.Error("string lookup miss")
-	} else if got != "a" {
-		t.Errorf("got %q, want \"a\"", got)
-	}
-	if _, ok := c.String("n"); ok {
-		t.Error("got number as string")
-	}
-	if _, ok := c.String("x"); ok {
-		t.Error("got nonexisting string")
-	}
-
-	if got, ok := c.Number("n"); !ok {
-		t.Error("number lookup miss")
-	} else if got != 99.8 {
-		t.Errorf("got %f, want 99.8", got)
-	}
-	if _, ok := c.Number("s"); ok {
-		t.Error("got string as number")
-	}
-	if _, ok := c.Number("x"); ok {
-		t.Error("got nonexisting number")
 	}
 }

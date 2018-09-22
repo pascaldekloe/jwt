@@ -4,7 +4,6 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
-	_ "crypto/md5" // link
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
@@ -75,20 +74,6 @@ func TestSignAlgWrong(t *testing.T) {
 	_, err = new(Claims).RSASign(HS512, testKeyRSA1024)
 	if err != ErrAlgUnk {
 		t.Errorf("HMAC alg for RSA got error %v, want %v", err, ErrAlgUnk)
-	}
-}
-
-func TestSignAlgExtend(t *testing.T) {
-	alg := "HMD5"
-	if _, ok := HMACAlgs[alg]; ok {
-		t.Fatalf("non-standard alg %q present", alg)
-	}
-	HMACAlgs[alg] = crypto.MD5
-	defer delete(HMACAlgs, alg)
-
-	_, err := new(Claims).HMACSign(alg, nil)
-	if err != nil {
-		t.Fatal("extend sign error:", err)
 	}
 }
 

@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/ecdsa"
-	_ "crypto/md5" // link
 	"crypto/rsa"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -151,6 +151,13 @@ func TestCheckMiss(t *testing.T) {
 	}
 }
 
+// Reject the "none" algorithm with ErrUnsecured.
+func Example_noneAlg() {
+	_, err := HMACCheck([]byte("eyJhbGciOiJub25lIn0.e30."), nil)
+	fmt.Println(err)
+	// output: jwt: unsecured—no signature
+}
+
 func TestCheckAlgWrong(t *testing.T) {
 	_, err := ECDSACheck([]byte(goldenRSAs[0].token), nil)
 	if err != ErrAlgUnk {
@@ -163,20 +170,6 @@ func TestCheckAlgWrong(t *testing.T) {
 	_, err = RSACheck([]byte(goldenHMACs[0].token), &testKeyRSA1024.PublicKey)
 	if err != ErrAlgUnk {
 		t.Errorf("HMAC alg for RSA got error %v, want %v", err, ErrAlgUnk)
-	}
-}
-
-func TestCheckAlgExtend(t *testing.T) {
-	alg := "HMD5"
-	if _, ok := HMACAlgs[alg]; ok {
-		t.Fatalf("non-standard alg %q present", alg)
-	}
-	HMACAlgs[alg] = crypto.MD5
-	defer delete(HMACAlgs, alg)
-
-	_, err := HMACCheck([]byte("eyJhbGciOiJITUQ1In0.e30.5Dh5oHLwx9AWkvHR1qHtIw"), nil)
-	if err != nil {
-		t.Error("extend check error:", err)
 	}
 }
 
@@ -209,12 +202,6 @@ func TestCheckIncomplete(t *testing.T) {
 	_, err = HMACCheck([]byte("eyJhbGciOiJub25lIn0.e30"), nil)
 	if err != errPart {
 		t.Errorf("two base64 chunks got error %v, want %v", err, errPart)
-	}
-
-	// reject no signature
-	_, err = HMACCheck([]byte("eyJhbGciOiJub25lIn0.e30."), nil)
-	if err != ErrUnsecured {
-		t.Errorf("two base64 chunks got error %v, want %v", err, ErrUnsecured)
 	}
 }
 
