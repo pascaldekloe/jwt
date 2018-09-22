@@ -178,36 +178,42 @@ func parseClaims(enc, buf []byte) (*Claims, error) {
 	}
 	buf = buf[:n]
 
-	c := &Claims{Raw: json.RawMessage(buf)}
-
-	c.Set = make(map[string]interface{})
-	if err = json.Unmarshal(buf, &c.Set); err != nil {
+	m := make(map[string]interface{})
+	if err = json.Unmarshal(buf, &m); err != nil {
 		return nil, errors.New("jwt: malformed payload: " + err.Error())
 	}
+	c := &Claims{Raw: json.RawMessage(buf), Set: m}
 
 	// map registered claims on type match
-	if s, ok := c.Set["iss"].(string); ok {
+	if s, ok := m["iss"].(string); ok {
+		delete(m, "iss")
 		c.Issuer = s
 	}
-	if s, ok := c.Set["sub"].(string); ok {
+	if s, ok := m["sub"].(string); ok {
+		delete(m, "sub")
 		c.Subject = s
 	}
-	if s, ok := c.Set["aud"].(string); ok {
+	if s, ok := m["aud"].(string); ok {
+		delete(m, "aud")
 		c.Audience = s
 	}
-	if f, ok := c.Set["exp"].(float64); ok {
+	if f, ok := m["exp"].(float64); ok {
+		delete(m, "exp")
 		t := NumericTime(f)
 		c.Expires = &t
 	}
-	if f, ok := c.Set["nbf"].(float64); ok {
+	if f, ok := m["nbf"].(float64); ok {
+		delete(m, "nbf")
 		t := NumericTime(f)
 		c.NotBefore = &t
 	}
-	if f, ok := c.Set["iat"].(float64); ok {
+	if f, ok := m["iat"].(float64); ok {
+		delete(m, "iat")
 		t := NumericTime(f)
 		c.Issued = &t
 	}
-	if s, ok := c.Set["jti"].(string); ok {
+	if s, ok := m["jti"].(string); ok {
+		delete(m, "jti")
 		c.ID = s
 	}
 
