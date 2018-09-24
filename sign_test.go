@@ -62,21 +62,6 @@ func TestRSASign(t *testing.T) {
 	}
 }
 
-func TestSignAlgWrong(t *testing.T) {
-	_, err := new(Claims).ECDSASign(RS512, testKeyEC256)
-	if err != ErrAlgUnk {
-		t.Errorf("RSA alg for ECDSA got error %v, want %v", err, ErrAlgUnk)
-	}
-	_, err = new(Claims).HMACSign(RS512, nil)
-	if err != ErrAlgUnk {
-		t.Errorf("RSA alg for HMAC got error %v, want %v", err, ErrAlgUnk)
-	}
-	_, err = new(Claims).RSASign(HS512, testKeyRSA1024)
-	if err != ErrAlgUnk {
-		t.Errorf("HMAC alg for RSA got error %v, want %v", err, ErrAlgUnk)
-	}
-}
-
 func TestSignHashNotLinked(t *testing.T) {
 	alg := "HB2b256"
 	if _, ok := HMACAlgs[alg]; ok {
