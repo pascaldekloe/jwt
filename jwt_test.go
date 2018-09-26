@@ -35,7 +35,7 @@ func TestNumericTimeMapping(t *testing.T) {
 	}
 }
 
-// Redundant Set entries are ignored and overridden.
+// Duplicate Set entries are ignored (and overridden by Sync).
 func ExampleClaims_precedence() {
 	offset := time.Unix(1537622794, 0)
 	c := Claims{
@@ -44,18 +44,14 @@ func ExampleClaims_precedence() {
 			Subject:   "b",
 			Audience:  "c",
 			Expires:   NewNumericTime(offset.Add(time.Minute)),
-			NotBefore: NewNumericTime(offset.Add(time.Second)),
+			NotBefore: NewNumericTime(offset.Add(-time.Second)),
 			Issued:    NewNumericTime(offset),
 			ID:        "d",
 		},
 		Set: map[string]interface{}{
-			"iss": "w",
 			"sub": "x",
-			"aud": "y",
-			"exp": NewNumericTime(offset.Add(time.Millisecond)),
-			"nbf": NewNumericTime(offset.Add(time.Microsecond)),
-			"iat": NewNumericTime(offset.Add(time.Nanosecond)),
-			"jti": "z",
+			"exp": NewNumericTime(time.Now()),
+			"jti": "y",
 		},
 	}
 
@@ -70,19 +66,19 @@ func ExampleClaims_precedence() {
 	}
 
 	if err := c.Sync(); err != nil {
-		panic(err)
+		fmt.Println("synchronisation error:", err)
 	}
 	fmt.Printf("%s\n", c.Raw)
 
-	// output:
+	//output:
 	// "iss": "a"
 	// "sub": "b"
 	// "aud": "c"
 	// "exp": 1537622854
-	// "nbf": 1537622795
+	// "nbf": 1537622793
 	// "iat": 1537622794
 	// "jti": "d"
-	// {"aud":"c","exp":1537622854,"iat":1537622794,"iss":"a","jti":"d","nbf":1537622795,"sub":"b"}
+	// {"aud":"c","exp":1537622854,"iat":1537622794,"iss":"a","jti":"d","nbf":1537622793,"sub":"b"}
 }
 
 func TestClaimsValid(t *testing.T) {

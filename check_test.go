@@ -120,7 +120,8 @@ func TestCheckMiss(t *testing.T) {
 func Example_noneAlg() {
 	_, err := HMACCheck([]byte("eyJhbGciOiJub25lIn0.e30."), nil)
 	fmt.Println(err)
-	// output: jwt: unsecured—no signature
+
+	//output: jwt: unsecured—no signature
 }
 
 func TestCheckAlgWrong(t *testing.T) {
