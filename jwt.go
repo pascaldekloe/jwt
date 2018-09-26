@@ -59,13 +59,13 @@ var encoding = base64.RawURLEncoding
 
 // Standard (IANA registered) claim names.
 const (
-	issuer = "iss"
-	subject = "sub"
-	audience = "aud"
-	expires = "exp"
+	issuer    = "iss"
+	subject   = "sub"
+	audience  = "aud"
+	expires   = "exp"
 	notBefore = "nbf"
-	issued = "iat"
-	id = "jti"
+	issued    = "iat"
+	id        = "jti"
 )
 
 // Registered are the IANA registered "JSON Web Token Claims".
