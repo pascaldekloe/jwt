@@ -59,28 +59,13 @@ var encoding = base64.RawURLEncoding
 
 // Standard (IANA registered) claim names.
 const (
-	// Issuer identifies the principal that issued the JWT.
-	Issuer = "iss"
-
-	// Subject identifies the principal that is the subject of the JWT.
-	Subject = "sub"
-
-	// Audience identifies the recipients that the JWT is intended for.
-	Audience = "aud"
-
-	// Expires identifies the expiration time on or after which the JWT
-	// must not be accepted for processing.
-	Expires = "exp"
-
-	// NotBefore identifies the time before which the JWT must not be
-	// accepted for processing.
-	NotBefore = "nbf"
-
-	// Issued identifies the time at which the JWT was issued.
-	Issued = "iat"
-
-	// ID provides a unique identifier for the JWT.
-	ID = "jti"
+	issuer = "iss"
+	subject = "sub"
+	audience = "aud"
+	expires = "exp"
+	notBefore = "nbf"
+	issued = "iat"
+	id = "jti"
 )
 
 // Registered are the IANA registered "JSON Web Token Claims".
@@ -133,25 +118,25 @@ func (c *Claims) Sync() error {
 		payload = c.Set
 
 		if c.Issuer != "" {
-			c.Set[Issuer] = c.Issuer
+			c.Set[issuer] = c.Issuer
 		}
 		if c.Subject != "" {
-			c.Set[Subject] = c.Subject
+			c.Set[subject] = c.Subject
 		}
 		if c.Audience != "" {
-			c.Set[Audience] = c.Audience
+			c.Set[audience] = c.Audience
 		}
 		if c.Expires != nil {
-			c.Set[Expires] = *c.Expires
+			c.Set[expires] = *c.Expires
 		}
 		if c.NotBefore != nil {
-			c.Set[NotBefore] = *c.NotBefore
+			c.Set[notBefore] = *c.NotBefore
 		}
 		if c.Issued != nil {
-			c.Set[Issued] = *c.Issued
+			c.Set[issued] = *c.Issued
 		}
 		if c.ID != "" {
-			c.Set[ID] = c.ID
+			c.Set[id] = c.ID
 		}
 	}
 
@@ -166,8 +151,8 @@ func (c *Claims) Sync() error {
 // Valid returns whether the claims set may be accepted
 // for processing at the given moment in time.
 func (c *Claims) Valid(t time.Time) bool {
-	exp, expOK := c.Number(Expires)
-	nbf, nbfOK := c.Number(NotBefore)
+	exp, expOK := c.Number(expires)
+	nbf, nbfOK := c.Number(notBefore)
 
 	n := NewNumericTime(t)
 	if n == nil {
@@ -183,13 +168,13 @@ func (c *Claims) Valid(t time.Time) bool {
 func (c *Claims) String(name string) (value string, ok bool) {
 	// try Registered first
 	switch name {
-	case Issuer:
+	case issuer:
 		value = c.Issuer
-	case Subject:
+	case subject:
 		value = c.Subject
-	case Audience:
+	case audience:
 		value = c.Audience
-	case ID:
+	case id:
 		value = c.ID
 	}
 	if value != "" {
@@ -205,15 +190,15 @@ func (c *Claims) String(name string) (value string, ok bool) {
 func (c *Claims) Number(name string) (value float64, ok bool) {
 	// try Registered first
 	switch name {
-	case Expires:
+	case expires:
 		if c.Expires != nil {
 			return float64(*c.Expires), true
 		}
-	case NotBefore:
+	case notBefore:
 		if c.NotBefore != nil {
 			return float64(*c.NotBefore), true
 		}
-	case Issued:
+	case issued:
 		if c.Issued != nil {
 			return float64(*c.Issued), true
 		}

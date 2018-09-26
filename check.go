@@ -185,35 +185,35 @@ func parseClaims(enc, buf []byte) (*Claims, error) {
 	c := &Claims{Raw: json.RawMessage(buf), Set: m}
 
 	// map registered claims on type match
-	if s, ok := m[Issuer].(string); ok {
-		delete(m, Issuer)
+	if s, ok := m[issuer].(string); ok {
+		delete(m, issuer)
 		c.Issuer = s
 	}
-	if s, ok := m[Subject].(string); ok {
-		delete(m, Subject)
+	if s, ok := m[subject].(string); ok {
+		delete(m, subject)
 		c.Subject = s
 	}
-	if s, ok := m[Audience].(string); ok {
-		delete(m, Audience)
+	if s, ok := m[audience].(string); ok {
+		delete(m, audience)
 		c.Audience = s
 	}
-	if f, ok := m[Expires].(float64); ok {
-		delete(m, Expires)
+	if f, ok := m[expires].(float64); ok {
+		delete(m, expires)
 		t := NumericTime(f)
 		c.Expires = &t
 	}
-	if f, ok := m[NotBefore].(float64); ok {
-		delete(m, NotBefore)
+	if f, ok := m[notBefore].(float64); ok {
+		delete(m, notBefore)
 		t := NumericTime(f)
 		c.NotBefore = &t
 	}
-	if f, ok := m[Issued].(float64); ok {
-		delete(m, Issued)
+	if f, ok := m[issued].(float64); ok {
+		delete(m, issued)
 		t := NumericTime(f)
 		c.Issued = &t
 	}
-	if s, ok := m[ID].(string); ok {
-		delete(m, ID)
+	if s, ok := m[id].(string); ok {
+		delete(m, id)
 		c.ID = s
 	}
 
