@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"crypto/ecdsa"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -26,6 +27,10 @@ func TestCheckHeaderPresent(t *testing.T) {
 	if err != ErrNoHeader {
 		t.Errorf("RSA check got %v, want %v", err, ErrNoHeader)
 	}
+	_, err = new(KeyPool).CheckHeader(req)
+	if err != ErrNoHeader {
+		t.Errorf("KeyPool check got %v, want %v", err, ErrNoHeader)
+	}
 }
 
 func TestCheckHeaderSchema(t *testing.T) {
@@ -35,7 +40,7 @@ func TestCheckHeaderSchema(t *testing.T) {
 	}
 	req.Header.Set("Authorization", "Basic QWxhZGRpbjpPcGVuU2VzYW1l")
 
-	_, err = ECDSACheckHeader(req, nil)
+	_, err = ECDSACheckHeader(req, &testKeyEC256.PublicKey)
 	if err != errAuthSchema {
 		t.Errorf("ECDSA check got %v, want %v", err, errAuthSchema)
 	}
@@ -74,7 +79,9 @@ func testUnauthorized(t *testing.T, reqHeader string) (body, header string) {
 		Target: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 			t.Error("handler called")
 		}),
-		ECDSAKey: &testKeyEC256.PublicKey,
+		KeyPool: &KeyPool{
+			ECDSAs: []*ecdsa.PublicKey{&testKeyEC256.PublicKey},
+		},
 		HeaderBinding: map[string]string{
 			"iss": "X-Verified-Issuer",
 		},

@@ -7,7 +7,7 @@ A JSON Web Token (JWT) library for the Go programming language.
 The API enforces secure use by design. Unsigned tokens are
 [rejected](https://godoc.org/github.com/pascaldekloe/jwt#ErrUnsecured)
 and there is no support for encryption—use wire encryption instead.
-With about 500 lines of code and no third party dependencies, the
+With about 700 lines of code and no third party dependencies, the
 implementation maintains full unit test coverage.
 
 This is free and unencumbered software released into the
