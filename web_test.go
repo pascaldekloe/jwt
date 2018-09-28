@@ -27,9 +27,9 @@ func TestCheckHeaderPresent(t *testing.T) {
 	if err != ErrNoHeader {
 		t.Errorf("RSA check got %v, want %v", err, ErrNoHeader)
 	}
-	_, err = new(KeyPool).CheckHeader(req)
+	_, err = new(KeyRegister).CheckHeader(req)
 	if err != ErrNoHeader {
-		t.Errorf("KeyPool check got %v, want %v", err, ErrNoHeader)
+		t.Errorf("KeyRegister check got %v, want %v", err, ErrNoHeader)
 	}
 }
 
@@ -79,7 +79,7 @@ func testUnauthorized(t *testing.T, reqHeader string) (body, header string) {
 		Target: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 			t.Error("handler called")
 		}),
-		KeyPool: &KeyPool{
+		KeyRegister: &KeyRegister{
 			ECDSAs: []*ecdsa.PublicKey{&testKeyEC256.PublicKey},
 		},
 		HeaderBinding: map[string]string{
