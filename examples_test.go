@@ -62,7 +62,7 @@ func Example() {
 	fmt.Println("HTTP", resp.Status)
 	io.Copy(os.Stdout, resp.Body)
 
-	//output: HTTP 200 OK
+	// Output: HTTP 200 OK
 	// Hello Lana Anthony Kane!
 	// You are authorized as lakane.
 }
@@ -91,7 +91,7 @@ func ExampleHandler_direct() {
 	h.ServeHTTP(resp, req)
 	fmt.Printf("HTTP %d: %s", resp.Code, resp.Body)
 
-	//output: HTTP 200: deadline at 1991-04-12T23:59:59Z
+	// Output: HTTP 200: deadline at 1991-04-12T23:59:59Z
 }
 
 // Standard compliant security out-of-the-box.
@@ -132,7 +132,7 @@ func ExampleHandler_deny() {
 	}
 	doReq()
 
-	//output:
+	// Output:
 	// HTTP 401 Bearer
 	// HTTP 401 Bearer error="invalid_token", error_description="jwt: algorithm unknown"
 	// HTTP 401 Bearer error="invalid_token", error_description="jwt: time constraints exceeded"
@@ -165,5 +165,5 @@ SRcADdHh3NgrjDjalhLDB95ho5omG39l7qBKBTlBAYJhDuAk9rIk1FCfCB8upztt
 		fmt.Println("load error:", err)
 	}
 	fmt.Printf("got %d keys", n)
-	//output: got 1 keys
+	// Output: got 1 keys
 }

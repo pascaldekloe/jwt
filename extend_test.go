@@ -35,7 +35,7 @@ func Example_extend() {
 	}
 	fmt.Printf("JSON: %s\n", got.Raw)
 
-	//output:
+	// Output:
 	// token: eyJhbGciOiJIUzEifQ.eyJqdGkiOiJNZSBUb28hIn0.hHye7VnslIM4jO-MoBfggMe8MUQ
 	// JSON: {"jti":"Me Too!"}
 }

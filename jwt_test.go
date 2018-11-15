@@ -70,7 +70,7 @@ func ExampleClaims_precedence() {
 	}
 	fmt.Printf("%s\n", c.Raw)
 
-	//output:
+	// Output:
 	// "iss": "a"
 	// "sub": "b"
 	// "aud": "c"
