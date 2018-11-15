@@ -25,15 +25,17 @@ func Example_extend() {
 	token, err := c.HMACSign(HS1, []byte("guest"))
 	if err != nil {
 		fmt.Println("sign error:", err)
+		return
 	}
-	fmt.Printf("token: %s\n", token)
+	fmt.Println("token:", string(token))
 
 	// verify
 	got, err := jwt.HMACCheck(token, []byte("guest"))
 	if err != nil {
 		fmt.Println("check error:", err)
+		return
 	}
-	fmt.Printf("JSON: %s\n", got.Raw)
+	fmt.Println("JSON:", string(got.Raw))
 
 	// Output:
 	// token: eyJhbGciOiJIUzEifQ.eyJqdGkiOiJNZSBUb28hIn0.hHye7VnslIM4jO-MoBfggMe8MUQ

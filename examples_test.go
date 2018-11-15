@@ -30,7 +30,7 @@ func init() {
 	}
 }
 
-// Happy path for standard HTTP handler fuction security.
+// Claims with the standard HTTP client + server library.
 func Example() {
 	// run secured service
 	srv := httptest.NewTLSServer(&jwt.Handler{
@@ -67,6 +67,40 @@ func Example() {
 	// You are authorized as lakane.
 }
 
+// Typed claim lookups.
+func ExampleClaims_byName() {
+	offset := time.Unix(1537622794, 0)
+	c := jwt.Claims{
+		Registered: jwt.Registered{
+			Issuer:    "a",
+			Subject:   "b",
+			Audience:  "c",
+			Expires:   jwt.NewNumericTime(offset.Add(time.Minute)),
+			NotBefore: jwt.NewNumericTime(offset.Add(-time.Second)),
+			Issued:    jwt.NewNumericTime(offset),
+			ID:        "d",
+		},
+	}
+
+	for _, name := range []string{"iss", "sub", "aud", "exp", "nbf", "iat", "jti"} {
+		if s, ok := c.String(name); ok {
+			fmt.Printf("%q: %q\n", name, s)
+		}
+		if n, ok := c.Number(name); ok {
+			fmt.Printf("%q: %0.f\n", name, n)
+		}
+	}
+
+	// Output:
+	// "iss": "a"
+	// "sub": "b"
+	// "aud": "c"
+	// "exp": 1537622854
+	// "nbf": 1537622793
+	// "iat": 1537622794
+	// "jti": "d"
+}
+
 // Full access to the JWT claims.
 func ExampleHandler_direct() {
 	h := &jwt.Handler{
@@ -89,9 +123,11 @@ func ExampleHandler_direct() {
 	req.Header.Set("Authorization", "Bearer eyJhbGciOiJIUzI1NiJ9.eyJkZWFkbGluZSI6NjcxNTAwNzk5fQ.yeUUNOj4-RvNp5Lt0d3lpS7MTgsS_Uk9XnsXJ3kVLhw")
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
-	fmt.Printf("HTTP %d: %s", resp.Code, resp.Body)
+	fmt.Println("HTTP", resp.Code)
+	fmt.Println(resp.Body)
 
-	// Output: HTTP 200: deadline at 1991-04-12T23:59:59Z
+	// Output: HTTP 200
+	// deadline at 1991-04-12T23:59:59Z
 }
 
 // Standard compliant security out-of-the-box.
@@ -112,7 +148,8 @@ func ExampleHandler_deny() {
 	doReq := func() {
 		resp := httptest.NewRecorder()
 		h.ServeHTTP(resp, req)
-		fmt.Printf("HTTP %d %s\n", resp.Code, resp.Header().Get("WWW-Authenticate"))
+		fmt.Println("HTTP", resp.Code)
+		fmt.Println("Authorization:", resp.Header().Get("WWW-Authenticate"))
 	}
 
 	// request with no authorization
@@ -121,21 +158,24 @@ func ExampleHandler_deny() {
 	// request with disabled algorithm
 	var c jwt.Claims
 	if err := c.HMACSignHeader(req, jwt.HS512, []byte("guest")); err != nil {
-		fmt.Println(err)
+		fmt.Println("sign error:", err)
 	}
 	doReq()
 
 	// request with expired token
 	c.Expires = jwt.NewNumericTime(time.Now().Add(-time.Second))
 	if err := c.ECDSASignHeader(req, jwt.ES512, someECKey); err != nil {
-		fmt.Println(err)
+		fmt.Println("sign error:", err)
 	}
 	doReq()
 
 	// Output:
-	// HTTP 401 Bearer
-	// HTTP 401 Bearer error="invalid_token", error_description="jwt: algorithm unknown"
-	// HTTP 401 Bearer error="invalid_token", error_description="jwt: time constraints exceeded"
+	// HTTP 401
+	// Authorization: Bearer
+	// HTTP 401
+	// Authorization: Bearer error="invalid_token", error_description="jwt: algorithm unknown"
+	// HTTP 401
+	// Authorization: Bearer error="invalid_token", error_description="jwt: time constraints exceeded"
 }
 
 // PEM with password protection.
@@ -164,6 +204,6 @@ SRcADdHh3NgrjDjalhLDB95ho5omG39l7qBKBTlBAYJhDuAk9rIk1FCfCB8upztt
 	if err != nil {
 		fmt.Println("load error:", err)
 	}
-	fmt.Printf("got %d keys", n)
+	fmt.Println("got", n, "keys")
 	// Output: got 1 keys
 }

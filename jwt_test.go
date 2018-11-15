@@ -1,7 +1,6 @@
 package jwt
 
 import (
-	"fmt"
 	"testing"
 	"time"
 )
@@ -35,8 +34,7 @@ func TestNumericTimeMapping(t *testing.T) {
 	}
 }
 
-// Duplicate Set entries are ignored (and overridden by Sync).
-func ExampleClaims_precedence() {
+func TestClaimsSync(t *testing.T) {
 	offset := time.Unix(1537622794, 0)
 	c := Claims{
 		Registered: Registered{
@@ -48,37 +46,20 @@ func ExampleClaims_precedence() {
 			Issued:    NewNumericTime(offset),
 			ID:        "d",
 		},
+		// duplicate entries
 		Set: map[string]interface{}{
 			"sub": "x",
 			"exp": NewNumericTime(time.Now()),
-			"jti": "y",
 		},
 	}
 
-	// typed lookups by name
-	for _, name := range []string{"iss", "sub", "aud", "exp", "nbf", "iat", "jti"} {
-		if s, ok := c.String(name); ok {
-			fmt.Printf("%q: %q\n", name, s)
-		}
-		if n, ok := c.Number(name); ok {
-			fmt.Printf("%q: %0.f\n", name, n)
-		}
-	}
-
 	if err := c.Sync(); err != nil {
-		fmt.Println("synchronisation error:", err)
+		t.Fatal("sync error: ", err)
 	}
-	fmt.Printf("%s\n", c.Raw)
-
-	// Output:
-	// "iss": "a"
-	// "sub": "b"
-	// "aud": "c"
-	// "exp": 1537622854
-	// "nbf": 1537622793
-	// "iat": 1537622794
-	// "jti": "d"
-	// {"aud":"c","exp":1537622854,"iat":1537622794,"iss":"a","jti":"d","nbf":1537622793,"sub":"b"}
+	const want = `{"aud":"c","exp":1537622854,"iat":1537622794,"iss":"a","jti":"d","nbf":1537622793,"sub":"b"}`
+	if got := string(c.Raw); got != want {
+		t.Errorf("got JSON %q, want %q", got, want)
+	}
 }
 
 func TestClaimsValid(t *testing.T) {
