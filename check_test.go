@@ -5,7 +5,6 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
-	"fmt"
 	"strings"
 	"testing"
 )
@@ -116,12 +115,11 @@ func TestCheckMiss(t *testing.T) {
 	}
 }
 
-// Reject the "none" algorithm with ErrUnsecured.
-func Example_noneAlg() {
+func TestErrUnsecured(t *testing.T) {
 	_, err := HMACCheck([]byte("eyJhbGciOiJub25lIn0.e30."), nil)
-	fmt.Println(err)
-
-	//output: jwt: unsecured—no signature
+	if err != ErrUnsecured {
+		t.Errorf("got error %v, want %v", err, ErrUnsecured)
+	}
 }
 
 func TestCheckAlgWrong(t *testing.T) {
