@@ -128,6 +128,26 @@ zy+yxL9GXRV+vvJLdKOJfTWihiG8i2qiIMmX0XSV8qUuvNCfruCfr4vGtWDRuFs/
 EeRpjDtIq46JS/EMcvoetl0Ch8l2tGLC1fpOD4kQsd9TSaTMO3MSy/5WIGg=
 -----END RSA PRIVATE KEY-----
 
+-----BEGIN CERTIFICATE-----
+MIIDJjCCAg6gAwIBAgIIWnmqQk9sgXYwDQYJKoZIhvcNAQEFBQAwNjE0MDIGA1UE
+AxMrZmVkZXJhdGVkLXNpZ25vbi5zeXN0ZW0uZ3NlcnZpY2VhY2NvdW50LmNvbTAe
+Fw0xODExMDkxNDQ5MTJaFw0xODExMjYwMzA0MTJaMDYxNDAyBgNVBAMTK2ZlZGVy
+YXRlZC1zaWdub24uc3lzdGVtLmdzZXJ2aWNlYWNjb3VudC5jb20wggEiMA0GCSqG
+SIb3DQEBAQUAA4IBDwAwggEKAoIBAQCdGvVFEQk4EdcdmjaM2kmQ1cTV9oYfU3ZP
+/U5vW4XziT2ms2F1XnZ766XmnNphNpZA1AU0ep8Nr5wEQSHXK3C5TlSOkcboNMIt
+tZ3PmG7RiOND4smR7/w5PEU8OGJORDrtkd3/VAbBxfGO+xT+DmbzzjdWvRyzMStF
+1jVhyVNQyrcdc8M0icy+yX0Ak/jDxEatSxk/RMmTgUszqq47qKCL4KXsLIexnztj
+fALmlA8AqXomajjtENg35SNEE9645mKR9FoGqN6YxtG3zSas5LSWIiTZUqRbIkSR
+UHTtGexUOm1CVlz+d4dEMpR1VTG/TaFrqH6ofLxhLJAerXQ0B4abAgMBAAGjODA2
+MAwGA1UdEwEB/wQCMAAwDgYDVR0PAQH/BAQDAgeAMBYGA1UdJQEB/wQMMAoGCCsG
+AQUFBwMCMA0GCSqGSIb3DQEBBQUAA4IBAQCM/qA3dh9rikZC4gHNs34MnjFtgrst
+vP/UsBl6or3pu4ILDC4YrQ2WwZ5ONQoS9tLLGCebOXfAhYtkdImivdYjM0ntEfer
+CIynd/kXVTJMrSFPBk0ybu76ZflYZjLZq6HN2Y2f2y1meNQmbIM+Ohn5D6hdOgzp
+O+ukTX5hVA8ADGFaHULfK1xvGl+zIi93jYySO/g3ktUU85R/LTHD3vImiQVOkaIO
+9QoqLa5QG0bBfcspZm8Fqq0NXyR2ZE1iztNHiElfWnxGIUiDdKMZpFwPOaRR3IWn
+EUTC5n7n+Qeyo3rL3iLhC/jn3rouX1FA5J7baL17KzDSiF5eQVlLOIfy
+-----END CERTIFICATE-----
+
 `
 
 	var r KeyRegister
@@ -135,8 +155,8 @@ EeRpjDtIq46JS/EMcvoetl0Ch8l2tGLC1fpOD4kQsd9TSaTMO3MSy/5WIGg=
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n != 6 {
-		t.Errorf("extracted %d keys, want 6", n)
+	if n != 7 {
+		t.Errorf("extracted %d keys, want 7", n)
 	}
 
 	// add the HMAC keys
@@ -178,7 +198,6 @@ EeRpjDtIq46JS/EMcvoetl0Ch8l2tGLC1fpOD4kQsd9TSaTMO3MSy/5WIGg=
 	}
 }
 
-// Includes unsupported key.
 func TestKeyRegisterLoadPublicKeys(t *testing.T) {
 	const keys = `Tree Public Keys
 RSA:
@@ -194,29 +213,15 @@ EC:
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEX0iTLAcGqlWeGIRtIk0G2PRgpf/6
 gLxOTyMAdriP4NLRkuu+9Idty3qmEizRC0N81j84E213/LuqLqnsrgfyiw==
 -----END PUBLIC KEY-----
-
-DSA [unsupported]:
------BEGIN PUBLIC KEY-----
-MIIBtjCCASsGByqGSM44BAEwggEeAoGBAKJ49sDmljGvdKlxuUP9cemh23dXxPQ4
-UJoBucpqn24uv//Ot86UOWqQL/BizfkTVLv8rruy2eqRJ0Ys9gO0Tw3HX7qZKPdy
-aIjT90vVyb8Yi2VCtNv0aFsJI/pDvHM8oAEoNu7yBdOEgFAgFo5NYiqR0KJJw5iX
-ekUhKBFOyRhjAhUAuo4P2LcnJDI9dHgJ9BWmgXeSUoECgYBYs2ne8gwAAMnChq4u
-nW7G5PaiMLf2gOsRpYnM9oQAIu2UNKe3+Bz8RHBARXuu6h6X38RwQcCIFvb5Cnj6
-ir0BUYJgm+IXUWj16GksOhzBTTUsNolVPi+qQhYslRqxahmm4W7Qs/TQJEYPMfQe
-9g6FNHbjeMSOqr/7V/G2w3AhUAOBhAACgYAm4plkBKnp1BQ8bCyjDVjMB4wBNJUI
-r8MMB4MpPBd2mtsm6KdoRQknwSQVnZd/R+G3hZ3R7Eh6+C1+Vq32T6PqrRPYRim6
-T31LD06+mXbG9Cd9IYG05/LuyCBHOorcbSgKW2G+JhV2L75ajLniQdg1ZOrZuBlg
-qsa4IOtmJV3zuw==
------END PUBLIC KEY-----
 `
 
 	var r KeyRegister
 	n, err := r.LoadPEM([]byte(keys), nil)
+	if err != nil {
+		t.Fatal("load error:", err)
+	}
 	if n != 2 {
 		t.Errorf("loaded %d keys, want 2", n)
-	}
-	if want := "jwt: unsupported key type *dsa.PublicKey"; err == nil || err.Error() != want {
-		t.Errorf("got error %q, want %q", err, want)
 	}
 	if len(r.ECDSAs) != 1 {
 		t.Errorf("got %d ECDSA keys, want 1", len(r.ECDSAs))
@@ -293,8 +298,52 @@ SRcADdHh3NgrjDjalhLDB95ho5omG39l7qBKBTlBAYJhDuAk9rIk1FCfCB8upztt
 -----END RSA PRIVATE KEY-----`, `
 -----BEGIN PUBLIC KEY-----
 SRcADdHh3NgrjDjalhLDB95ho5omG39l7qBKBTlBAYJhDuAk9rIk1FCfCB8upztt
------END PUBLIC KEY-----
+-----END PUBLIC KEY-----`, `
+-----BEGIN CERTIFICATE-----
+MIIDJjCCAg6gAwIBAgIIWnmqQk9sgXYwDQYJKoZIhvcNAQEFBQAwNjE0MDIGA1UE
+-----END CERTIFICATE-----
 	`}
+
+	for _, pem := range pems {
+		n, err := new(KeyRegister).LoadPEM([]byte(pem), nil)
+		if n != 0 || err == nil {
+			t.Errorf("loaded %d keys with error %v", n, err)
+		}
+	}
+}
+
+func TestKeyRegisterLoadUnsupported(t *testing.T) {
+	pems := []string{`
+-----BEGIN CERTIFICATE-----
+MIICpzCCAhACAg4AMA0GCSqGSIb3DQEBBQUAMIGbMQswCQYDVQQGEwJKUDEOMAwG
+A1UECBMFVG9reW8xEDAOBgNVBAcTB0NodW8ta3UxETAPBgNVBAoTCEZyYW5rNERE
+MRgwFgYDVQQLEw9XZWJDZXJ0IFN1cHBvcnQxGDAWBgNVBAMTD0ZyYW5rNEREIFdl
+YiBDQTEjMCEGCSqGSIb3DQEJARYUc3VwcG9ydEBmcmFuazRkZC5jb20wHhcNMTIw
+ODIyMDcyNjQzWhcNMTcwODIxMDcyNjQzWjBKMQswCQYDVQQGEwJKUDEOMAwGA1UE
+CAwFVG9reW8xETAPBgNVBAoMCEZyYW5rNEREMRgwFgYDVQQDDA93d3cuZXhhbXBs
+ZS5jb20wgfAwgagGByqGSM44BAEwgZwCQQDKVt7ZYtFRCzrm2/NTjl45YtMgVctQ
+pLadAowFRydY13uhGw+JXyM+qmngfQkXImQpoYdIe+A8DWG2vaO3wKQ3AhUAxx6d
+eaDs+XNHcbsiVQ1osvxrG8sCQHQYZDlSy/A5AFXrWXUNlTJbNhWDnitiG/95qYCe
+FGnwYPp/WyhX+/lbDmQujkrbd4wYStudZM0cc4iDAWeOHQ0DQwACQDtK/S6POMQE
+8aI+skBdNQn+Ch76kNDhztC/suOr9FbCSxnZ/CfhSgE1phOJyEkdR2jgErl3uh51
+lo+7to76LLUwDQYJKoZIhvcNAQEFBQADgYEAnrmxZ3HB0LmVoFYdBJWxNBkRaFyn
+jBmRsSJp2xvFg2nyAF77AOqBuFOFqOxg04eDxH8TGLQOWjqdyCFCY79AQlmkdB+8
+Z5SWqPEwLJHVLd91O9avQwwRQT5TAxGXFkHTlQxOoaGfTsVQFqSDnlYC4mFjspA7
+W+K8+llxOFmtVzU=
+-----END CERTIFICATE-----`, `
+DSA [unsupported]:
+-----BEGIN PUBLIC KEY-----
+MIIBtjCCASsGByqGSM44BAEwggEeAoGBAKJ49sDmljGvdKlxuUP9cemh23dXxPQ4
+UJoBucpqn24uv//Ot86UOWqQL/BizfkTVLv8rruy2eqRJ0Ys9gO0Tw3HX7qZKPdy
+aIjT90vVyb8Yi2VCtNv0aFsJI/pDvHM8oAEoNu7yBdOEgFAgFo5NYiqR0KJJw5iX
+ekUhKBFOyRhjAhUAuo4P2LcnJDI9dHgJ9BWmgXeSUoECgYBYs2ne8gwAAMnChq4u
+nW7G5PaiMLf2gOsRpYnM9oQAIu2UNKe3+Bz8RHBARXuu6h6X38RwQcCIFvb5Cnj6
+ir0BUYJgm+IXUWj16GksOhzBTTUsNolVPi+qQhYslRqxahmm4W7Qs/TQJEYPMfQe
+9g6FNHbjeMSOqr/7V/G2w3AhUAOBhAACgYAm4plkBKnp1BQ8bCyjDVjMB4wBNJUI
+r8MMB4MpPBd2mtsm6KdoRQknwSQVnZd/R+G3hZ3R7Eh6+C1+Vq32T6PqrRPYRim6
+T31LD06+mXbG9Cd9IYG05/LuyCBHOorcbSgKW2G+JhV2L75ajLniQdg1ZOrZuBlg
+qsa4IOtmJV3zuw==
+-----END PUBLIC KEY-----`}
 
 	for _, pem := range pems {
 		n, err := new(KeyRegister).LoadPEM([]byte(pem), nil)

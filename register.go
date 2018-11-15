@@ -92,18 +92,24 @@ func (r *KeyRegister) LoadPEM(data, password []byte) (n int, err error) {
 		}
 
 		switch block.Type {
+		case "CERTIFICATE":
+			certs, err := x509.ParseCertificates(block.Bytes)
+			if err != nil {
+				return n, err
+			}
+			for _, c := range certs {
+				if err := r.add(c.PublicKey); err != nil {
+					return n, err
+				}
+			}
+
 		case "PUBLIC KEY":
 			key, err := x509.ParsePKIXPublicKey(block.Bytes)
 			if err != nil {
 				return n, err
 			}
-			switch t := key.(type) {
-			case *ecdsa.PublicKey:
-				r.ECDSAs = append(r.ECDSAs, t)
-			case *rsa.PublicKey:
-				r.RSAs = append(r.RSAs, t)
-			default:
-				return n, fmt.Errorf("jwt: unsupported key type %T", t)
+			if err := r.add(key); err != nil {
+				return n, err
 			}
 
 		case "EC PRIVATE KEY":
@@ -126,4 +132,16 @@ func (r *KeyRegister) LoadPEM(data, password []byte) (n int, err error) {
 
 		n++
 	}
+}
+
+func (r *KeyRegister) add(key interface{}) error {
+	switch t := key.(type) {
+	case *ecdsa.PublicKey:
+		r.ECDSAs = append(r.ECDSAs, t)
+	case *rsa.PublicKey:
+		r.RSAs = append(r.RSAs, t)
+	default:
+		return fmt.Errorf("jwt: unsupported key type %T", t)
+	}
+	return nil
 }
