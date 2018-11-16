@@ -9,7 +9,7 @@ import (
 
 // Tests the golden cases.
 func TestKeyRegister(t *testing.T) {
-	const fatPEM = `All samples from test_keys.go combined here:
+	const pem = `All samples from test_keys.go combined:
 
 -----BEGIN EC PRIVATE KEY-----
 MHcCAQEEIBOm12aaXvqSzysOSGV2yL/xKY3kCtaOfAPY1KQN2sTJoAoGCCqGSM49
@@ -128,6 +128,8 @@ zy+yxL9GXRV+vvJLdKOJfTWihiG8i2qiIMmX0XSV8qUuvNCfruCfr4vGtWDRuFs/
 EeRpjDtIq46JS/EMcvoetl0Ch8l2tGLC1fpOD4kQsd9TSaTMO3MSy/5WIGg=
 -----END RSA PRIVATE KEY-----
 
+… plus certificate sample:
+
 -----BEGIN CERTIFICATE-----
 MIIDJjCCAg6gAwIBAgIIWnmqQk9sgXYwDQYJKoZIhvcNAQEFBQAwNjE0MDIGA1UE
 AxMrZmVkZXJhdGVkLXNpZ25vbi5zeXN0ZW0uZ3NlcnZpY2VhY2NvdW50LmNvbTAe
@@ -147,11 +149,10 @@ O+ukTX5hVA8ADGFaHULfK1xvGl+zIi93jYySO/g3ktUU85R/LTHD3vImiQVOkaIO
 9QoqLa5QG0bBfcspZm8Fqq0NXyR2ZE1iztNHiElfWnxGIUiDdKMZpFwPOaRR3IWn
 EUTC5n7n+Qeyo3rL3iLhC/jn3rouX1FA5J7baL17KzDSiF5eQVlLOIfy
 -----END CERTIFICATE-----
-
 `
 
 	var r KeyRegister
-	n, err := r.LoadPEM([]byte(fatPEM), nil)
+	n, err := r.LoadPEM([]byte(pem), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +200,7 @@ EUTC5n7n+Qeyo3rL3iLhC/jn3rouX1FA5J7baL17KzDSiF5eQVlLOIfy
 }
 
 func TestKeyRegisterLoadPublicKeys(t *testing.T) {
-	const keys = `Tree Public Keys
+	const pem = `Public Keys
 RSA:
 -----BEGIN PUBLIC KEY-----
 MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDCzQ4MMppUkCXTi/BjPWO2gLna
@@ -216,7 +217,7 @@ gLxOTyMAdriP4NLRkuu+9Idty3qmEizRC0N81j84E213/LuqLqnsrgfyiw==
 `
 
 	var r KeyRegister
-	n, err := r.LoadPEM([]byte(keys), nil)
+	n, err := r.LoadPEM([]byte(pem), nil)
 	if err != nil {
 		t.Fatal("load error:", err)
 	}
@@ -246,8 +247,7 @@ BLACKTi000000000000000000000000000000000000000000000000000000000
 }
 
 func TestKeyRegisterLoadPassNotNeeded(t *testing.T) {
-	n, err := new(KeyRegister).LoadPEM([]byte(`
------BEGIN PUBLIC KEY-----
+	n, err := new(KeyRegister).LoadPEM([]byte(`-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEX0iTLAcGqlWeGIRtIk0G2PRgpf/6
 gLxOTyMAdriP4NLRkuu+9Idty3qmEizRC0N81j84E213/LuqLqnsrgfyiw==
 -----END PUBLIC KEY-----`), []byte{1, 2, 3, 4})
@@ -260,7 +260,7 @@ gLxOTyMAdriP4NLRkuu+9Idty3qmEizRC0N81j84E213/LuqLqnsrgfyiw==
 }
 
 func TestKeyRegisterLoadPassMiss(t *testing.T) {
-	const encryptedPEM = `-----BEGIN RSA PRIVATE KEY-----
+	const pem = `-----BEGIN RSA PRIVATE KEY-----
 Proc-Type: 4,ENCRYPTED
 DEK-Info: AES-128-CBC,65789712555A3E9FECD1D5E235B97B0C
 
@@ -279,7 +279,7 @@ xzvC4Vm1r/Oa4TTUbf5tVto7ua/lZvwnu5DIWn2zy5ZUPrtn22r1ymVui7Iuhl0b
 SRcADdHh3NgrjDjalhLDB95ho5omG39l7qBKBTlBAYJhDuAk9rIk1FCfCB8upztt
 -----END RSA PRIVATE KEY-----`
 
-	n, err := new(KeyRegister).LoadPEM([]byte(encryptedPEM), nil)
+	n, err := new(KeyRegister).LoadPEM([]byte(pem), nil)
 	if n != 0 {
 		t.Errorf("loaded %d keys, want 0", n)
 	}
@@ -289,20 +289,15 @@ SRcADdHh3NgrjDjalhLDB95ho5omG39l7qBKBTlBAYJhDuAk9rIk1FCfCB8upztt
 }
 
 func TestKeyRegisterLoadBroken(t *testing.T) {
-	pems := []string{`
------BEGIN EC PRIVATE KEY-----
+	pems := []string{`-----BEGIN EC PRIVATE KEY-----
 SRcADdHh3NgrjDjalhLDB95ho5omG39l7qBKBTlBAYJhDuAk9rIk1FCfCB8upztt
------END EC PRIVATE KEY-----`, `
------BEGIN RSA PRIVATE KEY-----
+-----END EC PRIVATE KEY-----`, `-----BEGIN RSA PRIVATE KEY-----
 SRcADdHh3NgrjDjalhLDB95ho5omG39l7qBKBTlBAYJhDuAk9rIk1FCfCB8upztt
------END RSA PRIVATE KEY-----`, `
------BEGIN PUBLIC KEY-----
+-----END RSA PRIVATE KEY-----`, `-----BEGIN PUBLIC KEY-----
 SRcADdHh3NgrjDjalhLDB95ho5omG39l7qBKBTlBAYJhDuAk9rIk1FCfCB8upztt
------END PUBLIC KEY-----`, `
------BEGIN CERTIFICATE-----
+-----END PUBLIC KEY-----`, `-----BEGIN CERTIFICATE-----
 MIIDJjCCAg6gAwIBAgIIWnmqQk9sgXYwDQYJKoZIhvcNAQEFBQAwNjE0MDIGA1UE
------END CERTIFICATE-----
-	`}
+-----END CERTIFICATE-----`}
 
 	for _, pem := range pems {
 		n, err := new(KeyRegister).LoadPEM([]byte(pem), nil)
@@ -313,8 +308,7 @@ MIIDJjCCAg6gAwIBAgIIWnmqQk9sgXYwDQYJKoZIhvcNAQEFBQAwNjE0MDIGA1UE
 }
 
 func TestKeyRegisterLoadUnsupported(t *testing.T) {
-	pems := []string{`
------BEGIN CERTIFICATE-----
+	pems := []string{`-----BEGIN CERTIFICATE-----
 MIICpzCCAhACAg4AMA0GCSqGSIb3DQEBBQUAMIGbMQswCQYDVQQGEwJKUDEOMAwG
 A1UECBMFVG9reW8xEDAOBgNVBAcTB0NodW8ta3UxETAPBgNVBAoTCEZyYW5rNERE
 MRgwFgYDVQQLEw9XZWJDZXJ0IFN1cHBvcnQxGDAWBgNVBAMTD0ZyYW5rNEREIFdl
@@ -330,9 +324,7 @@ lo+7to76LLUwDQYJKoZIhvcNAQEFBQADgYEAnrmxZ3HB0LmVoFYdBJWxNBkRaFyn
 jBmRsSJp2xvFg2nyAF77AOqBuFOFqOxg04eDxH8TGLQOWjqdyCFCY79AQlmkdB+8
 Z5SWqPEwLJHVLd91O9avQwwRQT5TAxGXFkHTlQxOoaGfTsVQFqSDnlYC4mFjspA7
 W+K8+llxOFmtVzU=
------END CERTIFICATE-----`, `
-DSA [unsupported]:
------BEGIN PUBLIC KEY-----
+-----END CERTIFICATE-----`, `-----BEGIN PUBLIC KEY-----
 MIIBtjCCASsGByqGSM44BAEwggEeAoGBAKJ49sDmljGvdKlxuUP9cemh23dXxPQ4
 UJoBucpqn24uv//Ot86UOWqQL/BizfkTVLv8rruy2eqRJ0Ys9gO0Tw3HX7qZKPdy
 aIjT90vVyb8Yi2VCtNv0aFsJI/pDvHM8oAEoNu7yBdOEgFAgFo5NYiqR0KJJw5iX

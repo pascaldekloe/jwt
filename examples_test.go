@@ -180,7 +180,7 @@ func ExampleHandler_deny() {
 
 // PEM with password protection.
 func ExampleKeyRegister_LoadPEM_encrypted() {
-	const key = `-----BEGIN RSA PRIVATE KEY-----
+	const pem = `-----BEGIN RSA PRIVATE KEY-----
 Proc-Type: 4,ENCRYPTED
 DEK-Info: AES-128-CBC,65789712555A3E9FECD1D5E235B97B0C
 
@@ -200,7 +200,7 @@ SRcADdHh3NgrjDjalhLDB95ho5omG39l7qBKBTlBAYJhDuAk9rIk1FCfCB8upztt
 -----END RSA PRIVATE KEY-----`
 
 	var r jwt.KeyRegister
-	n, err := r.LoadPEM([]byte(key), []byte("dangerzone"))
+	n, err := r.LoadPEM([]byte(pem), []byte("dangerzone"))
 	if err != nil {
 		fmt.Println("load error:", err)
 	}
