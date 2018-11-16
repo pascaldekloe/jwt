@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"hash"
+	"strconv"
 )
 
 // ECDSASign calls Sync and returns a new JWT.
@@ -22,7 +23,8 @@ func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey) (token []byte, err
 	sig := make([]byte, 2*((key.Curve.Params().BitSize+7)/8))
 	encSigLen := encoding.EncodedLen(len(sig))
 
-	encHeader, hash, err := useAlg(alg, ECDSAAlgs)
+	hash := ECDSAAlgs[alg]
+	encHeader, err := c.formatHeader(alg, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +54,8 @@ func (c *Claims) HMACSign(alg string, secret []byte) (token []byte, err error) {
 		return nil, err
 	}
 
-	encHeader, hash, err := useAlg(alg, HMACAlgs)
+	hash := HMACAlgs[alg]
+	encHeader, err := c.formatHeader(alg, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +75,8 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err err
 		return nil, err
 	}
 
-	encHeader, hash, err := useAlg(alg, RSAAlgs)
+	hash := RSAAlgs[alg]
+	encHeader, err := c.formatHeader(alg, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -106,37 +110,51 @@ func (c *Claims) newUnsignedToken(encHeader string, encSigLen int, digest hash.H
 	return token
 }
 
-func useAlg(alg string, algs map[string]crypto.Hash) (encHeader string, hash crypto.Hash, err error) {
-	hash, ok := algs[alg]
-	if !ok {
-		return "", 0, ErrAlgUnk
+// FormatHeader encodes the JOSE header and validates the hash.
+func (c *Claims) formatHeader(alg string, hash crypto.Hash) (encHeader string, err error) {
+	if hash == 0 {
+		return "", ErrAlgUnk
 	}
 	if !hash.Available() {
-		return "", 0, errHashLink
+		return "", errHashLink
+	}
+
+	if kid := c.KeyID; kid != "" {
+		buf := make([]byte, 7, 24+len(kid))
+		copy(buf, `{"alg":`)
+		buf = strconv.AppendQuote(buf, alg)
+		buf = append(buf, `,"kid":`...)
+		buf = strconv.AppendQuote(buf, kid)
+		buf = append(buf, '}')
+
+		return encoding.EncodeToString(buf), nil
 	}
 
 	switch alg {
 	case ES256:
-		encHeader = "eyJhbGciOiJFUzI1NiJ9"
+		return "eyJhbGciOiJFUzI1NiJ9", nil
 	case ES384:
-		encHeader = "eyJhbGciOiJFUzM4NCJ9"
+		return "eyJhbGciOiJFUzM4NCJ9", nil
 	case ES512:
-		encHeader = "eyJhbGciOiJFUzUxMiJ9"
+		return "eyJhbGciOiJFUzUxMiJ9", nil
 	case HS256:
-		encHeader = "eyJhbGciOiJIUzI1NiJ9"
+		return "eyJhbGciOiJIUzI1NiJ9", nil
 	case HS384:
-		encHeader = "eyJhbGciOiJIUzM4NCJ9"
+		return "eyJhbGciOiJIUzM4NCJ9", nil
 	case HS512:
-		encHeader = "eyJhbGciOiJIUzUxMiJ9"
+		return "eyJhbGciOiJIUzUxMiJ9", nil
 	case RS256:
-		encHeader = "eyJhbGciOiJSUzI1NiJ9"
+		return "eyJhbGciOiJSUzI1NiJ9", nil
 	case RS384:
-		encHeader = "eyJhbGciOiJSUzM4NCJ9"
+		return "eyJhbGciOiJSUzM4NCJ9", nil
 	case RS512:
-		encHeader = "eyJhbGciOiJSUzUxMiJ9"
+		return "eyJhbGciOiJSUzUxMiJ9", nil
 	default:
-		encHeader = encoding.EncodeToString([]byte(`{"alg":"` + alg + `"}`))
-	}
+		buf := make([]byte, 7, 14)
+		copy(buf, `{"alg":`)
+		buf = strconv.AppendQuote(buf, alg)
+		buf = append(buf, '}')
 
-	return encHeader, hash, nil
+		return encoding.EncodeToString(buf), nil
+	}
 }

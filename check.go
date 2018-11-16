@@ -10,6 +10,7 @@ import (
 	_ "crypto/sha512" // link binary
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 )
 
@@ -31,8 +32,10 @@ func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
 		return nil, err
 	}
 
+	var c Claims
+
 	// create signature
-	hash, err := selectHash(ECDSAAlgs, token[:firstDot], buf)
+	hash, err := c.parseHeader(ECDSAAlgs, token[:firstDot], buf)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +53,7 @@ func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
 		return nil, ErrSigMiss
 	}
 
-	return parseClaims(token[firstDot+1:lastDot], buf)
+	return &c, c.parseClaims(token[firstDot+1:lastDot], buf)
 }
 
 // HMACCheck parses a JWT and returns the claims set if, and only if, the
@@ -63,8 +66,10 @@ func HMACCheck(token, secret []byte) (*Claims, error) {
 		return nil, err
 	}
 
+	var c Claims
+
 	// create signature
-	hash, err := selectHash(HMACAlgs, token[:firstDot], buf)
+	hash, err := c.parseHeader(HMACAlgs, token[:firstDot], buf)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +85,7 @@ func HMACCheck(token, secret []byte) (*Claims, error) {
 		return nil, ErrSigMiss
 	}
 
-	return parseClaims(token[firstDot+1:lastDot], buf)
+	return &c, c.parseClaims(token[firstDot+1:lastDot], buf)
 }
 
 // RSACheck parses a JWT and returns the claims set if, and only if, the
@@ -93,8 +98,10 @@ func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
 		return nil, err
 	}
 
+	var c Claims
+
 	// create signature
-	hash, err := selectHash(RSAAlgs, token[:firstDot], buf)
+	hash, err := c.parseHeader(RSAAlgs, token[:firstDot], buf)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +117,7 @@ func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
 		return nil, ErrSigMiss
 	}
 
-	return parseClaims(token[firstDot+1:lastDot], buf)
+	return &c, c.parseClaims(token[firstDot+1:lastDot], buf)
 }
 
 // Scan detects the 3 base64 chunks and allocates matching buffer.
@@ -137,11 +144,13 @@ func scan(token []byte) (firstDot, lastDot int, buf []byte, err error) {
 	return
 }
 
-// SelectHash reads the "alg" header field from enc.
-func selectHash(algs map[string]crypto.Hash, enc, buf []byte) (crypto.Hash, error) {
-	// parse header
+// ParseHeader decodes the JOSE header and validates the applicability.
+func (c *Claims) parseHeader(algs map[string]crypto.Hash, enc, buf []byte) (crypto.Hash, error) {
+	// parse critical subset of the registered "JOSE Header Parameter Names"
 	var header struct {
-		Alg string `json:"alg"`
+		Alg  string   // algorithm
+		Kid  string   // key identifier
+		Crit []string // extensions which must be understood and processed.
 	}
 	n, err := encoding.Decode(buf, enc)
 	if err != nil {
@@ -165,24 +174,34 @@ func selectHash(algs map[string]crypto.Hash, enc, buf []byte) (crypto.Hash, erro
 		return 0, errHashLink
 	}
 
+	// "If any of the listed extension Header Parameters are not understood
+	// and supported by the recipient, then the JWS is invalid."
+	// — "JSON Web Signature (JWS)" RFC 7515, subsection 4.1.11
+	if len(header.Crit) != 0 {
+		return 0, fmt.Errorf("jwt: unsupported critical extension in JOSE header: %q", header.Crit)
+	}
+
+	c.KeyID = header.Kid
+
 	return hash, nil
 }
 
 // ParseClaims unmarshals the payload from enc.
 // Buf remains in use (by the Raw field)!
-func parseClaims(enc, buf []byte) (*Claims, error) {
+func (c *Claims) parseClaims(enc, buf []byte) error {
 	// decode payload
 	n, err := encoding.Decode(buf, enc)
 	if err != nil {
-		return nil, errors.New("jwt: malformed payload: " + err.Error())
+		return errors.New("jwt: malformed payload: " + err.Error())
 	}
 	buf = buf[:n]
+	c.Raw = json.RawMessage(buf)
 
 	m := make(map[string]interface{})
+	c.Set = m
 	if err = json.Unmarshal(buf, &m); err != nil {
-		return nil, errors.New("jwt: malformed payload: " + err.Error())
+		return errors.New("jwt: malformed payload: " + err.Error())
 	}
-	c := &Claims{Raw: json.RawMessage(buf), Set: m}
 
 	// map registered claims on type match
 	if s, ok := m[issuer].(string); ok {
@@ -217,5 +236,5 @@ func parseClaims(enc, buf []byte) (*Claims, error) {
 		c.ID = s
 	}
 
-	return c, nil
+	return nil
 }

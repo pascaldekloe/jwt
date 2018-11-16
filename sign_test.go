@@ -13,10 +13,10 @@ import (
 )
 
 func TestECDSASign(t *testing.T) {
-	const key, value = "N", ";;Q.;;"
+	const want = "sweet-44 tender-9 hot-juicy porkchops"
 
 	var c Claims
-	c.Set = map[string]interface{}{key: value}
+	c.KeyID = want
 	token, err := c.ECDSASign("ES384", testKeyEC384)
 	if err != nil {
 		t.Fatal("sign error:", err)
@@ -26,8 +26,8 @@ func TestECDSASign(t *testing.T) {
 	if err != nil {
 		t.Fatal("check error:", err)
 	}
-	if s := got.Set[key]; s != value {
-		t.Errorf("got value %q for %q, want %q", s, key, value)
+	if got.KeyID != want {
+		t.Errorf("got key ID %q, want %q", got.KeyID, want)
 	}
 }
 
@@ -129,7 +129,7 @@ uRVZaJLTfpQ+n88IcdG4WPKnRZqxGnrq3DjtIvFrBlM=
 	}
 }
 
-func TestUseAlg(t *testing.T) {
+func TestFormatHeader(t *testing.T) {
 	/// test all standard algorithms
 	algs := make(map[string]crypto.Hash)
 	for alg, hash := range ECDSAAlgs {
@@ -142,15 +142,11 @@ func TestUseAlg(t *testing.T) {
 		algs[alg] = hash
 	}
 
-	for alg, wantHash := range algs {
-		header, hash, err := useAlg(alg, algs)
+	for alg, hash := range algs {
+		header, err := new(Claims).formatHeader(alg, hash)
 		if err != nil {
 			t.Errorf("error for %q: %s", alg, err)
 			continue
-		}
-
-		if hash != wantHash {
-			t.Errorf("wrong hash for %q", alg)
 		}
 
 		headerJSON, err := encoding.DecodeString(header)

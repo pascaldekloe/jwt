@@ -151,6 +151,14 @@ func TestCheckHashNotLinked(t *testing.T) {
 	}
 }
 
+func TestJOSEExtension(t *testing.T) {
+	_, err := HMACCheck([]byte("eyJhbGciOiJIUzI1NiIsImNyaXQiOlsiZXhwIl0sImV4cCI6MTM2MzI4NDAwMH0.e30.8Ep7gVUA49twmE6NYAiEwVwwtn_UmJEkOH1uQSPPYr0"), nil)
+	const want = "jwt: unsupported critical extension in JOSE header: [\"exp\"]"
+	if err == nil || err.Error() != want {
+		t.Errorf("got error %q, want %q", err, want)
+	}
+}
+
 func TestCheckIncomplete(t *testing.T) {
 	// header only
 	_, err := ECDSACheck([]byte("eyJhbGciOiJFUzI1NiJ9"), &testKeyEC256.PublicKey)

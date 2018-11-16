@@ -105,6 +105,9 @@ type Claims struct {
 	// Set has the claims set mapped by name for non-standard usecases.
 	// Use Registered fields when possible.
 	Set map[string]interface{}
+
+	// Optional free-form identifier used to match a specific key.
+	KeyID string
 }
 
 // Sync updates the Raw field. When the Set field is not nil,
