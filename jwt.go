@@ -232,7 +232,7 @@ func (n *NumericTime) Time() time.Time {
 	return time.Unix(0, int64(float64(*n)*float64(time.Second))).UTC()
 }
 
-// String returs the ISO representation.
+// String returns the ISO representation with the empty string for nil.
 func (n *NumericTime) String() string {
 	if n == nil {
 		return ""
