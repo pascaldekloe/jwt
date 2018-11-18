@@ -1,7 +1,6 @@
 package jwt
 
 import (
-	"bytes"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
@@ -16,8 +15,8 @@ var goldenECDSAs = []struct {
 }{
 	0: {
 		key:    &testKeyEC256.PublicKey,
-		token:  "eyJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJjdHVudCIsImF1ZCI6ImJvYXJkIn0.AnYB6w3Zh7MBYE9uLE8Hp693DHf-1Xm_WiXl-ZTAIabuO1ER4O38T5PPkducsHPZ4NCPLqh2bprlRJGnE_s5IA",
-		claims: `{"iss":"ctunt","aud":"board"}`,
+		token:  "eyJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJjdHVudCIsImF1ZCI6WyJib2FyZCJdfQ.zBjKIRdBzKiTUe34edjYRQyPy5-c_UkkBn3rip3GxvHeEhJnoop3TEWCdO4luIeX6Cfj9uJUOqIskra5-CHrXA",
+		claims: `{"iss":"ctunt","aud":["board"]}`,
 	},
 	1: {
 		key:    &testKeyEC384.PublicKey,
@@ -38,7 +37,7 @@ func TestECDSACheck(t *testing.T) {
 			t.Errorf("%d: check error: %s", i, err)
 			continue
 		}
-		if !bytes.Equal([]byte(claims.Raw), []byte(gold.claims)) {
+		if string(claims.Raw) != gold.claims {
 			t.Errorf("%d: got claims JSON %q, want %q", i, claims.Raw, gold.claims)
 		}
 	}
@@ -69,7 +68,7 @@ func TestHMACCheck(t *testing.T) {
 			t.Errorf("%d: check error: %s", i, err)
 			continue
 		}
-		if !bytes.Equal([]byte(claims.Raw), []byte(gold.claims)) {
+		if string(claims.Raw) != gold.claims {
 			t.Errorf("%d: got claims JSON %q, want %q", i, claims.Raw, gold.claims)
 		}
 	}
@@ -94,9 +93,27 @@ func TestRSACheck(t *testing.T) {
 			t.Errorf("%d: check error: %s", i, err)
 			continue
 		}
-		if !bytes.Equal([]byte(claims.Raw), []byte(gold.claims)) {
+		if string(claims.Raw) != gold.claims {
 			t.Errorf("%d: got claims JSON %q, want %q", i, claims.Raw, gold.claims)
 		}
+	}
+}
+
+func TestCheckAudiences(t *testing.T) {
+	const token = "eyJhbGciOiJSUzUxMiJ9.eyJhdWQiOlsiT3RoZXIgQmFycnkiLCJEZXNlcnQgRWFnbGUiLG51bGxdfQ.TtztyCP1yhNcr6DfwuHul9pBNlIXiNNvEC-lob4feS6M6TxbBu0gdhM70vtbMX7eMRPvyd1_4upq01hbGKl50WTpFPtEyb-nGG0jBjgin2gLp8rugKSZHepipOVeKcLl7ruwk40AV-wc_8RbApyT2Bsl8p90MW6tMDobAZEEVt4"
+	claims, err := RSACheck([]byte(token), &testKeyRSA1024.PublicKey)
+	if err != nil {
+		t.Fatal("check error:", err)
+	}
+
+	// note the null pointer
+	const payload = `{"aud":["Other Barry","Desert Eagle",null]}`
+	if string(claims.Raw) != payload {
+		t.Errorf("got JSON %q, want %q", claims.Raw, payload)
+	}
+
+	if a := claims.Audiences; len(a) != 2 || a[0] != "Other Barry" || a[1] != "Desert Eagle" {
+		t.Errorf(`got audiences %q, want ["Other Barry" "Desert Eagle"]`, claims.Audiences)
 	}
 }
 

@@ -10,8 +10,8 @@ import (
 
 var benchClaims = &Claims{
 	Registered: Registered{
-		Expires:  NewNumericTime(time.Now()),
-		Audience: "benchmark",
+		Issuer: "benchmark",
+		Issued: NewNumericTime(time.Now()),
 	},
 }
 

@@ -37,20 +37,17 @@ func TestNumericTimeMapping(t *testing.T) {
 func TestClaimsSync(t *testing.T) {
 	offset := time.Unix(1537622794, 0)
 	c := Claims{
+		// cover all registered fields
 		Registered: Registered{
 			Issuer:    "a",
 			Subject:   "b",
-			Audience:  "c",
+			Audiences: []string{"c"},
 			Expires:   NewNumericTime(offset.Add(time.Minute)),
 			NotBefore: NewNumericTime(offset.Add(-time.Second)),
 			Issued:    NewNumericTime(offset),
 			ID:        "d",
 		},
-		// duplicate entries
-		Set: map[string]interface{}{
-			"sub": "x",
-			"exp": NewNumericTime(time.Now()),
-		},
+		Set: make(map[string]interface{}),
 	}
 
 	if err := c.Sync(); err != nil {
@@ -59,6 +56,48 @@ func TestClaimsSync(t *testing.T) {
 	const want = `{"aud":"c","exp":1537622854,"iat":1537622794,"iss":"a","jti":"d","nbf":1537622793,"sub":"b"}`
 	if got := string(c.Raw); got != want {
 		t.Errorf("got JSON %q, want %q", got, want)
+	}
+	if len(c.Set) != 7 {
+		t.Errorf("got %d entries in claims set, want 7", len(c.Set))
+	}
+}
+
+func TestClaimsSyncMerge(t *testing.T) {
+	c := Claims{
+		Registered: Registered{
+			Subject:   "kkazanova",
+			Audiences: []string{"KGB", "RU"},
+		},
+		Set: map[string]interface{}{
+			"iss": nil,
+			"sub": "karcher",
+			"aud": "ISIS",
+		},
+	}
+
+	if s, ok := c.String("aud"); ok {
+		t.Errorf(`got audience string %q for 2 element array value`, s)
+	}
+
+	if err := c.Sync(); err != nil {
+		t.Fatal("sync error: ", err)
+	}
+	const want = `{"aud":["KGB","RU"],"iss":null,"sub":"kkazanova"}`
+	if got := string(c.Raw); got != want {
+		t.Errorf("got JSON %q, want %q", got, want)
+	}
+}
+
+func TestClaimsSyncNone(t *testing.T) {
+	var c Claims
+	if err := c.Sync(); err != nil {
+		t.Fatal("sync error: ", err)
+	}
+	if string(c.Raw) != "{}" {
+		t.Errorf(`got JSON %q, want "{}"`, c.Raw)
+	}
+	if c.Set != nil {
+		t.Error("claims set map not nil after Sync")
 	}
 }
 

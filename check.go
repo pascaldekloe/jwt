@@ -212,10 +212,30 @@ func (c *Claims) parseClaims(enc, buf []byte) error {
 		delete(m, subject)
 		c.Subject = s
 	}
-	if s, ok := m[audience].(string); ok {
+
+	// “In the general case, the "aud" value is an array of case-sensitive
+	// strings, each containing a StringOrURI value.  In the special case
+	// when the JWT has one audience, the "aud" value MAY be a single
+	// case-sensitive string containing a StringOrURI value.”
+	switch a := m[audience].(type) {
+	case []interface{}:
+		allStrings := true
+		for _, o := range a {
+			if s, ok := o.(string); ok {
+				c.Audiences = append(c.Audiences, s)
+			} else {
+				allStrings = false
+			}
+		}
+		if allStrings {
+			delete(m, audience)
+		}
+
+	case string:
 		delete(m, audience)
-		c.Audience = s
+		c.Audiences = []string{a}
 	}
+
 	if f, ok := m[expires].(float64); ok {
 		delete(m, expires)
 		t := NumericTime(f)

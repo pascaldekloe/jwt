@@ -76,8 +76,8 @@ type Registered struct {
 	// Subject identifies the principal that is the subject of the JWT.
 	Subject string `json:"sub,omitempty"`
 
-	// Audience identifies the recipients that the JWT is intended for.
-	Audience string `json:"aud,omitempty"`
+	// Audiences identifies the recipients that the JWT is intended for.
+	Audiences []string `json:"aud,omitempty"`
 
 	// Expires identifies the expiration time on or after which the JWT
 	// must not be accepted for processing.
@@ -126,8 +126,17 @@ func (c *Claims) Sync() error {
 		if c.Subject != "" {
 			c.Set[subject] = c.Subject
 		}
-		if c.Audience != "" {
-			c.Set[audience] = c.Audience
+		switch len(c.Audiences) {
+		case 0:
+			break
+		case 1:
+			c.Set[audience] = c.Audiences[0]
+		default:
+			a := make([]interface{}, len(c.Audiences))
+			for i, s := range c.Audiences {
+				a[i] = s
+			}
+			c.Set[audience] = a
 		}
 		if c.Expires != nil {
 			c.Set[expires] = *c.Expires
@@ -176,7 +185,12 @@ func (c *Claims) String(name string) (value string, ok bool) {
 	case subject:
 		value = c.Subject
 	case audience:
-		value = c.Audience
+		if len(c.Audiences) == 1 {
+			return c.Audiences[0], true
+		}
+		if len(c.Audiences) != 0 {
+			return "", false
+		}
 	case id:
 		value = c.ID
 	}

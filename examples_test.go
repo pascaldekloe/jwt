@@ -74,7 +74,7 @@ func ExampleClaims_byName() {
 		Registered: jwt.Registered{
 			Issuer:    "a",
 			Subject:   "b",
-			Audience:  "c",
+			Audiences: []string{"c"},
 			Expires:   jwt.NewNumericTime(offset.Add(time.Minute)),
 			NotBefore: jwt.NewNumericTime(offset.Add(-time.Second)),
 			Issued:    jwt.NewNumericTime(offset),
