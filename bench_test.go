@@ -108,8 +108,7 @@ func BenchmarkRSA(b *testing.B) {
 			b.Fatal(err)
 		}
 
-		size := ((key.N.BitLen() + 7) / 8) * 8
-		b.Run(fmt.Sprintf("check-%d-bit", size), func(b *testing.B) {
+		b.Run(fmt.Sprintf("check-%d-bit", key.Size()), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_, err := RSACheck(token, &key.PublicKey)
 				if err != nil {

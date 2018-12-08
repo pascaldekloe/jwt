@@ -81,8 +81,7 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err err
 		return nil, err
 	}
 	digest := hash.New()
-	// TODO: use key.Size() as of Go 1.11 (cl103876)
-	encSigLen := encoding.EncodedLen((key.N.BitLen() + 7) / 8)
+	encSigLen := encoding.EncodedLen(key.Size())
 	token = c.newUnsignedToken(encHeader, encSigLen, digest)
 
 	// append signature
