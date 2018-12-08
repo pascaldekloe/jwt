@@ -102,21 +102,19 @@ func ExampleClaims_byName() {
 }
 
 // Full access to the JWT claims.
-func ExampleHandler_direct() {
+func ExampleHandler_context() {
 	h := &jwt.Handler{
-		Target: nil,
-		Secret: []byte("killarcherdie"),
-
-		// use as http.HandlerFunc with JWT argument
-		Func: func(w http.ResponseWriter, req *http.Request, claims *jwt.Claims) (pass bool) {
+		Target: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			claims := req.Context().Value("verified-jwt").(*jwt.Claims)
 			if n, ok := claims.Number("deadline"); !ok {
 				fmt.Fprintln(w, "you don't have a deadline")
 			} else {
 				t := jwt.NumericTime(n)
 				fmt.Fprintln(w, "deadline at", t.String())
 			}
-			return // false stops further processing
-		},
+		}),
+		Secret:     []byte("killarcherdie"),
+		ContextKey: "verified-jwt",
 	}
 
 	req := httptest.NewRequest("GET", "/status", nil)
@@ -170,6 +168,34 @@ func ExampleHandler_deny() {
 	// Try with no authorization… HTTP 401 Bearer
 	// Try with disabled algorithm… HTTP 401 Bearer error="invalid_token", error_description="jwt: algorithm unknown"
 	// Try with expired token… HTTP 401 Bearer error="invalid_token", error_description="jwt: time constraints exceeded"
+}
+
+// Use Func as a request filter.
+func ExampleHandler_filter() {
+	h := &jwt.Handler{
+		ECDSAKey: &someECKey.PublicKey,
+		Target: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("Elaborate voicemail hoax!"))
+		}),
+		Func: func(w http.ResponseWriter, req *http.Request, claims *jwt.Claims) (pass bool) {
+			w.Write([]byte("Ring, ring!"))
+
+			return claims.Subject == "marcher"
+		},
+	}
+
+	// build request
+	req := httptest.NewRequest("GET", "/urgent", nil)
+	if err := new(jwt.Claims).ECDSASignHeader(req, jwt.ES512, someECKey); err != nil {
+		fmt.Println("sign error:", err)
+	}
+
+	// get response
+	resp := httptest.NewRecorder()
+	h.ServeHTTP(resp, req)
+	fmt.Println("HTTP", resp.Code, resp.Body)
+
+	// Output: HTTP 200 Ring, ring!
 }
 
 // PEM with password protection.

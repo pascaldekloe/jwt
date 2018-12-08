@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"errors"
@@ -126,6 +127,11 @@ type Handler struct {
 	// 401 (Unauthorized) and a description.
 	HeaderBinding map[string]string
 
+	// ContextKey places the validated Claims in the context of
+	// each respective request passed to Target when set. See
+	// http.Request.Context and context.Context.Value.
+	ContextKey string
+
 	// When not nil, then Func is called after the JWT validation
 	// succeeds and before any header bindings. Target is skipped
 	// [request drop] when the return is false.
@@ -185,6 +191,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		r.Header.Set(headerName, s)
+	}
+
+	// place claims in request context
+	if h.ContextKey != "" {
+		r = r.WithContext(context.WithValue(r.Context(), h.ContextKey, claims))
 	}
 
 	h.Target.ServeHTTP(w, r)

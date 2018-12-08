@@ -70,8 +70,8 @@ func Greeting(w http.ResponseWriter, req *http.Request) {
 }
 ```
 
-Optionally one can use the claims object in the service handlers as shown in the
-[“direct” example](https://godoc.org/github.com/pascaldekloe/jwt#example-Handler--Direct).
+Optionally one can use the claims object from the HTTP request as shown in the
+[“context” example](https://godoc.org/github.com/pascaldekloe/jwt#example-Handler--Context).
 
 
 ### Performance on a Mac Pro (late 2013)
