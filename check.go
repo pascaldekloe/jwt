@@ -144,9 +144,9 @@ func scan(token []byte) (firstDot, lastDot int, buf []byte, err error) {
 	return
 }
 
-// ParseHeader decodes the JOSE header and validates the applicability.
+// ParseHeader decodes the enc(oded) “JOSE Header” and validates the applicability.
 func (c *Claims) parseHeader(algs map[string]crypto.Hash, enc, buf []byte) (crypto.Hash, error) {
-	// parse critical subset of the registered "JOSE Header Parameter Names"
+	// parse critical subset of the registered “JOSE Header Parameter Names”
 	var header struct {
 		Alg  string   // algorithm
 		Kid  string   // key identifier
@@ -174,9 +174,9 @@ func (c *Claims) parseHeader(algs map[string]crypto.Hash, enc, buf []byte) (cryp
 		return 0, errHashLink
 	}
 
-	// "If any of the listed extension Header Parameters are not understood
-	// and supported by the recipient, then the JWS is invalid."
-	// — "JSON Web Signature (JWS)" RFC 7515, subsection 4.1.11
+	// “If any of the listed extension Header Parameters are not understood
+	// and supported by the recipient, then the JWS is invalid.”
+	// — “JSON Web Signature (JWS)” RFC 7515, subsection 4.1.11
 	if len(header.Crit) != 0 {
 		return 0, fmt.Errorf("jwt: unsupported critical extension in JOSE header: %q", header.Crit)
 	}

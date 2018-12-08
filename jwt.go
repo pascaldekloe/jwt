@@ -1,4 +1,4 @@
-// Package jwt implements "JSON Web Token (JWT)" RFC 7519.
+// Package jwt implements “JSON Web Token (JWT)” RFC 7519.
 // Signatures only; no unsecured nor encrypted tokens.
 package jwt
 
@@ -68,7 +68,7 @@ const (
 	id        = "jti"
 )
 
-// Registered are the IANA registered "JSON Web Token Claims".
+// Registered are the IANA registered “JSON Web Token Claims”.
 type Registered struct {
 	// Issuer identifies the principal that issued the JWT.
 	Issuer string `json:"iss,omitempty"`
@@ -106,7 +106,12 @@ type Claims struct {
 	// Use Registered fields when possible.
 	Set map[string]interface{}
 
-	// Optional free-form identifier used to match a specific key.
+	// “The "kid" (key ID) Header Parameter is a hint indicating which key
+	// was used to secure the JWS.  This parameter allows originators to
+	// explicitly signal a change of key to recipients.  The structure of
+	// the "kid" value is unspecified.  Its value MUST be a case-sensitive
+	// string.  Use of this Header Parameter is OPTIONAL.”
+	// — “JSON Web Signature (JWS)” RFC 7515, subsection 4.1.4
 	KeyID string
 }
 
@@ -226,9 +231,9 @@ func (c *Claims) Number(name string) (value float64, ok bool) {
 	return
 }
 
-// NumericTime is a JSON numeric value representing the number
-// of seconds from 1970-01-01T00:00:00Z UTC until the specified
-// UTC date/time, ignoring leap seconds.
+// NumericTime, named NumericDate, is “A JSON numeric value representing
+// the number of seconds from 1970-01-01T00:00:00Z UTC until the specified
+// UTC date/time, ignoring leap seconds.”
 type NumericTime float64
 
 // NewNumericTime returns the the corresponding

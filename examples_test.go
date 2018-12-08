@@ -115,7 +115,7 @@ func ExampleHandler_direct() {
 				t := jwt.NumericTime(n)
 				fmt.Fprintln(w, "deadline at", t.String())
 			}
-			return // false stops processing
+			return // false stops further processing
 		},
 	}
 
@@ -133,49 +133,43 @@ func ExampleHandler_direct() {
 // Standard compliant security out-of-the-box.
 func ExampleHandler_deny() {
 	h := &jwt.Handler{
+		ECDSAKey: &someECKey.PublicKey,
 		Target: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 			panic("reached target handler")
 		}),
-
-		ECDSAKey: &someECKey.PublicKey,
-
 		Func: func(w http.ResponseWriter, req *http.Request, claims *jwt.Claims) (pass bool) {
 			panic("reached JWT-enhanced handler")
 		},
 	}
-
 	req := httptest.NewRequest("GET", "/had-something-for-this", nil)
-	doReq := func() {
-		resp := httptest.NewRecorder()
-		h.ServeHTTP(resp, req)
-		fmt.Println("HTTP", resp.Code)
-		fmt.Println("Authorization:", resp.Header().Get("WWW-Authenticate"))
-	}
 
-	// request with no authorization
-	doReq()
+	fmt.Print("Try with no authorization… ")
+	resp := httptest.NewRecorder()
+	h.ServeHTTP(resp, req)
+	fmt.Println("HTTP", resp.Code, resp.Header().Get("WWW-Authenticate"))
 
-	// request with disabled algorithm
+	fmt.Print("Try with disabled algorithm… ")
 	var c jwt.Claims
 	if err := c.HMACSignHeader(req, jwt.HS512, []byte("guest")); err != nil {
 		fmt.Println("sign error:", err)
 	}
-	doReq()
+	resp = httptest.NewRecorder()
+	h.ServeHTTP(resp, req)
+	fmt.Println("HTTP", resp.Code, resp.Header().Get("WWW-Authenticate"))
 
-	// request with expired token
+	fmt.Print("Try with expired token… ")
 	c.Expires = jwt.NewNumericTime(time.Now().Add(-time.Second))
 	if err := c.ECDSASignHeader(req, jwt.ES512, someECKey); err != nil {
 		fmt.Println("sign error:", err)
 	}
-	doReq()
+	resp = httptest.NewRecorder()
+	h.ServeHTTP(resp, req)
+	fmt.Println("HTTP", resp.Code, resp.Header().Get("WWW-Authenticate"))
 
 	// Output:
-	// HTTP 401
-	// Authorization: Bearer
-	// HTTP 401
-	// Authorization: Bearer error="invalid_token", error_description="jwt: algorithm unknown"
-	// HTTP 401
-	// Authorization: Bearer error="invalid_token", error_description="jwt: time constraints exceeded"
+	// Try with no authorization… HTTP 401 Bearer
+	// Try with disabled algorithm… HTTP 401 Bearer error="invalid_token", error_description="jwt: algorithm unknown"
+	// Try with expired token… HTTP 401 Bearer error="invalid_token", error_description="jwt: time constraints exceeded"
 }
 
 // PEM with password protection.

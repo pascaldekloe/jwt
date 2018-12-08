@@ -9,7 +9,7 @@ import (
 	"fmt"
 )
 
-// KeyRegister contains a set of recognized credentials.
+// KeyRegister contains recognized credentials.
 type KeyRegister struct {
 	ECDSAs  []*ecdsa.PublicKey // ECDSA credentials
 	RSAs    []*rsa.PublicKey   // RSA credentials
@@ -72,8 +72,10 @@ func (r *KeyRegister) Check(token []byte) (*Claims, error) {
 
 var errUnencryptedPEM = errors.New("jwt: unencrypted PEM rejected due password expectation")
 
-// LoadPEM adds keys from PEM-encoded data and returns the count.
-// PEM encryption is enforced for non-empty password values.
+// LoadPEM adds keys from PEM-encoded data and returns the count. PEM encryption
+// is enforced for non-empty password values. The source may be certificates,
+// public keys, private keys, or a combination of any of the previous. Private
+// keys are discared after the (automatic) public key extraction completes.
 func (r *KeyRegister) LoadPEM(data, password []byte) (n int, err error) {
 	for {
 		block, remainder := pem.Decode(data)
