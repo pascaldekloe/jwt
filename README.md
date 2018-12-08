@@ -1,6 +1,5 @@
 [![API Documentation](https://godoc.org/github.com/pascaldekloe/jwt?status.svg)](https://godoc.org/github.com/pascaldekloe/jwt)
 [![Build Status](https://travis-ci.org/pascaldekloe/jwt.svg?branch=master)](https://travis-ci.org/pascaldekloe/jwt)
-[![Test Coverage](https://cover.run/go/github.com/pascaldekloe/jwt.svg?style=flat&tag=golang-1.10)](https://cover.run/go?tag=golang-1.10&repo=github.com%2Fpascaldekloe%2Fjwt)
 
 A JSON Web Token (JWT) library for the Go programming language.
 
