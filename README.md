@@ -77,24 +77,24 @@ Optionally one can use the claims object in the service handlers as shown in the
 ### Performance on a Mac Pro (late 2013)
 
 ```
-BenchmarkECDSASign/ES256-12         	   50000	     38114 ns/op
-BenchmarkECDSASign/ES384-12         	     300	   4279447 ns/op
-BenchmarkECDSASign/ES512-12         	     200	   8064569 ns/op
-BenchmarkECDSACheck/ES256-12        	   10000	    105350 ns/op
-BenchmarkECDSACheck/ES384-12        	     200	   8331596 ns/op
-BenchmarkECDSACheck/ES512-12        	     100	  16024017 ns/op
-BenchmarkHMACSign/HS256-12          	  500000	      3498 ns/op
-BenchmarkHMACSign/HS384-12          	  300000	      4071 ns/op
-BenchmarkHMACSign/HS512-12          	  300000	      4144 ns/op
-BenchmarkHMACCheck/HS256-12         	  200000	      6834 ns/op
-BenchmarkHMACCheck/HS384-12         	  200000	      7543 ns/op
-BenchmarkHMACCheck/HS512-12         	  200000	      7622 ns/op
-BenchmarkRSASign/1024-bit-12        	    3000	    424131 ns/op
-BenchmarkRSASign/2048-bit-12        	    1000	   2102947 ns/op
-BenchmarkRSASign/4096-bit-12        	     100	  12877484 ns/op
-BenchmarkRSACheck/1024-bit-12       	   50000	     32982 ns/op
-BenchmarkRSACheck/2048-bit-12       	   20000	     73431 ns/op
-BenchmarkRSACheck/4096-bit-12       	   10000	    201450 ns/op
+ECDSA/sign-ES256-12    37.7µs ± 0%
+ECDSA/sign-ES384-12    4.26ms ± 0%
+ECDSA/sign-ES512-12    8.03ms ± 0%
+ECDSA/check-ES256-12    106µs ± 0%
+ECDSA/check-ES384-12   8.36ms ± 0%
+ECDSA/check-ES512-12   15.7ms ± 0%
+HMAC/sign-HS256-12     3.47µs ± 0%
+HMAC/sign-HS384-12     3.97µs ± 0%
+HMAC/sign-HS512-12     4.03µs ± 0%
+HMAC/check-HS256-12    6.97µs ± 0%
+HMAC/check-HS384-12    7.96µs ± 4%
+HMAC/check-HS512-12    7.81µs ± 0%
+RSA/sign-1024-bit-12    418µs ± 0%
+RSA/sign-2048-bit-12   2.09ms ± 0%
+RSA/sign-4096-bit-12   12.9ms ± 0%
+RSA/check-1024-bit-12  33.2µs ± 0%
+RSA/check-2048-bit-12  73.4µs ± 0%
+RSA/check-4096-bit-12   201µs ± 0%
 ```
 
 [![JWT.io](https://jwt.io/img/badge.svg)](https://jwt.io/)
