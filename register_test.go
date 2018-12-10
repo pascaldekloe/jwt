@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/x509"
+	"strings"
 	"testing"
 )
 
@@ -414,4 +415,10 @@ P9j/1Whc92wzd4Osod3U6Tw9g+C1LuHuHOoLJhj5nUQQcP8UQk6jzKPwr4L4uKAc
 			t.Errorf("header %s got error %q, want %q", header, err, errHashLink)
 		}
 	}
+
+        want := "jwt: malformed header: "
+        _, err = r.Check([]byte("broken"))
+        if err == nil || !strings.HasPrefix(err.Error(), want) {
+                t.Errorf("corrupt JSON in header got error %v, want %s…", err, want)
+        }
 }

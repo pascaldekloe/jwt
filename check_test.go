@@ -132,13 +132,6 @@ func TestCheckMiss(t *testing.T) {
 	}
 }
 
-func TestErrUnsecured(t *testing.T) {
-	_, err := HMACCheck([]byte("eyJhbGciOiJub25lIn0.e30."), nil)
-	if err != ErrUnsecured {
-		t.Errorf("got error %v, want %v", err, ErrUnsecured)
-	}
-}
-
 func TestCheckAlgWrong(t *testing.T) {
 	_, err := ECDSACheck([]byte(goldenRSAs[0].token), nil)
 	if err != ErrAlgUnk {
@@ -180,17 +173,21 @@ func TestCheckIncomplete(t *testing.T) {
 	// header only
 	_, err := ECDSACheck([]byte("eyJhbGciOiJFUzI1NiJ9"), &testKeyEC256.PublicKey)
 	if err != errPart {
-		t.Errorf("one base64 chunk got error %v, want %v", err, errPart)
+		t.Errorf("header only got error %v, want %v", err, errPart)
 	}
 	_, err = RSACheck([]byte("eyJhbGciOiJub25lIn0"), &testKeyRSA1024.PublicKey)
-	if err != errPart {
-		t.Errorf("one base64 chunk got error %v, want %v", err, errPart)
+	if err != ErrUnsecured {
+		t.Errorf("unsecured header only got error %v, want %v", err, errPart)
 	}
 
-	// header + body; missing signature
-	_, err = HMACCheck([]byte("eyJhbGciOiJub25lIn0.e30"), nil)
+	// header + claims; no signature
+	_, err = ECDSACheck([]byte("eyJhbGciOiJFUzI1NiJ9.e30"), &testKeyEC384.PublicKey)
 	if err != errPart {
-		t.Errorf("two base64 chunks got error %v, want %v", err, errPart)
+		t.Errorf("missing signature got error %v, want %v", err, errPart)
+	}
+	_, err = HMACCheck([]byte("eyJhbGciOiJub25lIn0.e30"), nil)
+	if err != ErrUnsecured {
+		t.Errorf("unsecured got error %v, want %v", err, errPart)
 	}
 }
 

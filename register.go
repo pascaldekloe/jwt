@@ -1,12 +1,15 @@
 package jwt
 
 import (
+	"crypto"
+	"crypto/hmac"
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"math/big"
 )
 
 // KeyRegister contains recognized credentials.
@@ -19,55 +22,66 @@ type KeyRegister struct {
 // Check parses a JWT and returns the claims set if, and only if, the signature
 // checks out. Note that this excludes unsecured JWTs [ErrUnsecured].
 // See Claims.Valid to complete the verification.
-func (r *KeyRegister) Check(token []byte) (*Claims, error) {
-	err := ErrAlgUnk
-	var c *Claims
-
-	for _, secret := range r.Secrets {
-		c, err = HMACCheck(token, secret)
-		if err == nil {
-			return c, nil
-		}
-		if err == ErrAlgUnk {
-			break
-		}
-		if err != ErrSigMiss {
-			return nil, err
-		}
-	}
-	if err == ErrSigMiss {
+func (reg *KeyRegister) Check(token []byte) (*Claims, error) {
+	header, buf, err := parseHeader(token)
+	if err != nil {
 		return nil, err
 	}
 
-	for _, key := range r.RSAs {
-		c, err = RSACheck(token, key)
-		if err == nil {
-			return c, nil
+	var verifySig func(content, sig []byte, hash crypto.Hash) error
+	hash, err := header.match(HMACAlgs)
+	if err == nil {
+		verifySig = func(content, sig []byte, hash crypto.Hash) error {
+			for _, secret := range reg.Secrets {
+				digest := hmac.New(hash.New, secret)
+				digest.Write(content)
+				if hmac.Equal(sig, digest.Sum(sig[len(sig):])) {
+					return nil
+				}
+			}
+			return ErrSigMiss
 		}
-		if err == ErrAlgUnk {
-			break
+	} else if err != ErrAlgUnk {
+		return nil, err
+	} else if hash, err = header.match(RSAAlgs); err == nil {
+		verifySig = func(content, sig []byte, hash crypto.Hash) error {
+			digest := hash.New()
+			digest.Write(content)
+			digestSum := digest.Sum(sig[len(sig):])
+			for _, key := range reg.RSAs {
+				if err := rsa.VerifyPKCS1v15(key, hash, digestSum, sig); err == nil {
+					return nil
+				}
+			}
+			return ErrSigMiss
 		}
-		if err != ErrSigMiss {
-			return nil, err
+	} else if err != ErrAlgUnk {
+		return nil, err
+	} else if hash, err = header.match(ECDSAAlgs); err == nil {
+		verifySig = func(content, sig []byte, hash crypto.Hash) error {
+			r := big.NewInt(0).SetBytes(sig[:len(sig)/2])
+			s := big.NewInt(0).SetBytes(sig[len(sig)/2:])
+			digest := hash.New()
+			digest.Write(content)
+			digestSum := digest.Sum(sig[:0])
+			for _, key := range reg.ECDSAs {
+				if ecdsa.Verify(key, digestSum, r, s) {
+					return nil
+				}
+			}
+			return ErrSigMiss
 		}
-	}
-	if err == ErrSigMiss {
+	} else {
 		return nil, err
 	}
 
-	for _, key := range r.ECDSAs {
-		c, err = ECDSACheck(token, key)
-		if err == nil {
-			return c, nil
-		}
-		if err == ErrAlgUnk {
-			break
-		}
-		if err != ErrSigMiss {
-			return nil, err
-		}
+	claims, err := verifyAndParseClaims(token, buf, hash, verifySig)
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+
+	claims.KeyID = header.Kid
+	return claims, nil
 }
 
 var errUnencryptedPEM = errors.New("jwt: unencrypted PEM rejected due password expectation")
