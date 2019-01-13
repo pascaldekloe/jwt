@@ -103,7 +103,16 @@ type Claims struct {
 	Raw json.RawMessage
 
 	// Set has the claims set mapped by name for non-standard usecases.
-	// Use Registered fields when possible.
+	// Use Registered fields where possible. Note that JSON/JavaScript
+	// numbers are always of the double precision floating-point type.
+	// Non-standard claims are read as follows.
+	//
+	//	bool, for JSON booleans
+	//	float64, for JSON numbers
+	//	string, for JSON strings
+	//	[]interface{}, for JSON arrays
+	//	map[string]interface{}, for JSON objects
+	//	nil for JSON null
 	Set map[string]interface{}
 
 	// “The "kid" (key ID) Header Parameter is a hint indicating which key
