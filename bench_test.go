@@ -91,8 +91,7 @@ func BenchmarkRSA(b *testing.B) {
 	keys := []*rsa.PrivateKey{testKeyRSA1024, testKeyRSA2048, testKeyRSA4096}
 
 	for _, key := range keys {
-		size := ((key.N.BitLen() + 7) / 8) * 8
-		b.Run(fmt.Sprintf("sign-%d-bit", size), func(b *testing.B) {
+		b.Run(fmt.Sprintf("sign-%d-bit", key.Size()*8), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_, err := benchClaims.RSASign(RS384, key)
 				if err != nil {
@@ -108,7 +107,7 @@ func BenchmarkRSA(b *testing.B) {
 			b.Fatal(err)
 		}
 
-		b.Run(fmt.Sprintf("check-%d-bit", key.Size()), func(b *testing.B) {
+		b.Run(fmt.Sprintf("check-%d-bit", key.Size()*8), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_, err := RSACheck(token, &key.PublicKey)
 				if err != nil {
