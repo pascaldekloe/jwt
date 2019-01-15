@@ -173,20 +173,25 @@ func ExampleHandler_deny() {
 // Use Func as a request filter.
 func ExampleHandler_filter() {
 	h := &jwt.Handler{
-		ECDSAKey: &someECKey.PublicKey,
+		KeyRegister: &jwt.KeyRegister{
+			RSAs: []*rsa.PublicKey{&someRSAKey.PublicKey},
+		},
 		Target: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("Elaborate voicemail hoax!"))
 		}),
 		Func: func(w http.ResponseWriter, req *http.Request, claims *jwt.Claims) (pass bool) {
-			w.Write([]byte("Ring, ring!"))
+			if claims.Subject != "marcher" {
+				http.Error(w, "Ring, ring!", http.StatusServiceUnavailable)
+				return false
+			}
 
-			return claims.Subject == "marcher"
+			return true
 		},
 	}
 
 	// build request
 	req := httptest.NewRequest("GET", "/urgent", nil)
-	if err := new(jwt.Claims).ECDSASignHeader(req, jwt.ES512, someECKey); err != nil {
+	if err := new(jwt.Claims).RSASignHeader(req, jwt.PS512, someRSAKey); err != nil {
 		fmt.Println("sign error:", err)
 	}
 
@@ -195,7 +200,7 @@ func ExampleHandler_filter() {
 	h.ServeHTTP(resp, req)
 	fmt.Println("HTTP", resp.Code, resp.Body)
 
-	// Output: HTTP 200 Ring, ring!
+	// Output: HTTP 503 Ring, ring!
 }
 
 // PEM with password protection.

@@ -85,7 +85,12 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err err
 	token = c.newUnsignedToken(encHeader, encSigLen, digest)
 
 	// append signature
-	sig, err := rsa.SignPKCS1v15(rand.Reader, key, hash, digest.Sum(nil))
+	var sig []byte
+	if alg[0] == 'P' {
+		sig, err = rsa.SignPSS(rand.Reader, key, hash, digest.Sum(nil), nil)
+	} else {
+		sig, err = rsa.SignPKCS1v15(rand.Reader, key, hash, digest.Sum(nil))
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -142,6 +147,12 @@ func (c *Claims) formatHeader(alg string, hash crypto.Hash) (encHeader string, e
 		return "eyJhbGciOiJIUzM4NCJ9", nil
 	case HS512:
 		return "eyJhbGciOiJIUzUxMiJ9", nil
+	case PS256:
+		return "eyJhbGciOiJQUzI1NiJ9", nil
+	case PS384:
+		return "eyJhbGciOiJQUzM4NCJ9", nil
+	case PS512:
+		return "eyJhbGciOiJQUzUxMiJ9", nil
 	case RS256:
 		return "eyJhbGciOiJSUzI1NiJ9", nil
 	case RS384:

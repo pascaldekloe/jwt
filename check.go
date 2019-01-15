@@ -77,7 +77,13 @@ func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
 
 		digest := hash.New()
 		digest.Write(content)
-		if err := rsa.VerifyPKCS1v15(key, hash, digest.Sum(sig[len(sig):]), sig); err != nil {
+
+		if header.Alg[0] == 'P' {
+			err = rsa.VerifyPSS(key, hash, digest.Sum(sig[len(sig):]), sig, nil)
+		} else {
+			err = rsa.VerifyPKCS1v15(key, hash, digest.Sum(sig[len(sig):]), sig)
+		}
+		if err != nil {
 			return ErrSigMiss
 		}
 		return nil

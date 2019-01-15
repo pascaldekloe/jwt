@@ -45,20 +45,33 @@ func TestHMACSign(t *testing.T) {
 	}
 }
 
-func TestRSASign(t *testing.T) {
-	c := &Claims{
-		Set: map[string]interface{}{
-			"iss": "malory",
-		},
-	}
-	got, err := c.RSASign("RS384", testKeyRSA2048)
-	if err != nil {
-		t.Fatal(err)
-	}
+// Full-cycle happy flow.
+func TestRSA(t *testing.T) {
+	var c Claims
+	c.Issuer = "Malory"
+	c.Set = map[string]interface{}{"dossier": nil}
 
-	want := "eyJhbGciOiJSUzM4NCJ9.eyJpc3MiOiJtYWxvcnkifQ.KuGs2gecLlfub_m7PcD_6EzQe35DT7MNZwhi2R9bsPgmloi47r3wRdVXEdtABGQeeUz3dOuPOQ20SuWbDTDetW7u6pRjsvjqN14-XKiWQJkjIO1jKkoAUUeIo3k-V65DB6JJHZpNhe4MTv_3JI52wAMH91zjdhP4Aado8Cd-DVW7pdgrHjjA7jfWyXsHcjQmzvzIdBSLOiNtAQsUAaAXeM9s-YCCH0ODMhYO9GMYk195TktbjVKMovjjTW-yC1SbNVGMD8m9-y2u-xX7Nmd2T6ArO4u0HAE6LYTBzn0sknTz_lU7rt3TCK2dCqDAhTXu2cbjrV3cu-1K_rSxHcRVLg"
-	if s := string(got); s != want {
-		t.Errorf("got %q, want %q", s, want)
+	for alg := range RSAAlgs {
+		token, err := c.RSASign(alg, testKeyRSA2048)
+		if err != nil {
+			t.Errorf("sign %q error: %s", alg, err)
+			continue
+		}
+
+		got, err := RSACheck(token, &testKeyRSA2048.PublicKey)
+		if err != nil {
+			t.Errorf("check %q error: %s", alg, err)
+			continue
+		}
+
+		if got.Issuer != "Malory" {
+			t.Errorf(`%q: got issuer %q, want "Malory"`, alg, got.Issuer)
+		}
+		if v, ok := got.Set["dossier"]; !ok {
+			t.Error("no dossier claim")
+		} else if v != nil {
+			t.Errorf("got dossier %#v, want nil", v)
+		}
 	}
 }
 

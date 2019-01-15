@@ -44,7 +44,12 @@ func (reg *KeyRegister) Check(token []byte) (*Claims, error) {
 			digest.Write(content)
 			digestSum := digest.Sum(sig[len(sig):])
 			for _, key := range reg.RSAs {
-				if err := rsa.VerifyPKCS1v15(key, hash, digestSum, sig); err == nil {
+				if header.Alg[0] == 'P' {
+					err = rsa.VerifyPSS(key, hash, digestSum, sig, nil)
+				} else {
+					err = rsa.VerifyPKCS1v15(key, hash, digestSum, sig)
+				}
+				if err == nil {
 					return nil
 				}
 			}

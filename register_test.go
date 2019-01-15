@@ -405,9 +405,11 @@ P9j/1Whc92wzd4Osod3U6Tw9g+C1LuHuHOoLJhj5nUQQcP8UQk6jzKPwr4L4uKAc
 	HMACAlgs["HM4"] = crypto.MD4
 	ECDSAAlgs["EM4"] = crypto.MD4
 	RSAAlgs["RM4"] = crypto.MD4
+	RSAAlgs["PM4"] = crypto.MD4
 	defer delete(HMACAlgs, "HM4")
 	defer delete(ECDSAAlgs, "EM4")
 	defer delete(RSAAlgs, "RM4")
+	defer delete(RSAAlgs, "PM4")
 	for _, header := range []string{"eyJhbGciOiJFTTQifQ", "eyJhbGciOiJITTQifQ", "eyJhbGciOiJSTTQifQ"} {
 		_, err := r.Check([]byte(header + ".e30."))
 		if err != errHashLink {
