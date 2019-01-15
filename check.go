@@ -27,7 +27,12 @@ var errPart = errors.New("jwt: missing base64 part")
 // When the algorithm is not in ECDSAAlgs, then the error is ErrAlgUnk.
 // See Valid to complete the verification.
 func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
-	return check(token, ECDSAAlgs, func(content, sig []byte, hash crypto.Hash) error {
+	return check(token, func(content, sig []byte, header *header) error {
+		hash, err := header.match(ECDSAAlgs)
+		if err != nil {
+			return err
+		}
+
 		r := big.NewInt(0).SetBytes(sig[:len(sig)/2])
 		s := big.NewInt(0).SetBytes(sig[len(sig)/2:])
 		digest := hash.New()
@@ -44,7 +49,12 @@ func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
 // When the algorithm is not in HMACAlgs, then the error is ErrAlgUnk.
 // See Valid to complete the verification.
 func HMACCheck(token, secret []byte) (*Claims, error) {
-	return check(token, HMACAlgs, func(content, sig []byte, hash crypto.Hash) error {
+	return check(token, func(content, sig []byte, header *header) error {
+		hash, err := header.match(HMACAlgs)
+		if err != nil {
+			return err
+		}
+
 		digest := hmac.New(hash.New, secret)
 		digest.Write(content)
 		if !hmac.Equal(sig, digest.Sum(sig[len(sig):])) {
@@ -59,7 +69,12 @@ func HMACCheck(token, secret []byte) (*Claims, error) {
 // When the algorithm is not in RSAAlgs, then the error is ErrAlgUnk.
 // See Valid to complete the verification.
 func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
-	return check(token, RSAAlgs, func(content, sig []byte, hash crypto.Hash) error {
+	return check(token, func(content, sig []byte, header *header) error {
+		hash, err := header.match(RSAAlgs)
+		if err != nil {
+			return err
+		}
+
 		digest := hash.New()
 		digest.Write(content)
 		if err := rsa.VerifyPKCS1v15(key, hash, digest.Sum(sig[len(sig):]), sig); err != nil {
@@ -69,18 +84,44 @@ func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
 	})
 }
 
-func check(token []byte, algs map[string]crypto.Hash, verifySig func(content, sig []byte, hash crypto.Hash) error) (*Claims, error) {
-	header, buf, err := parseHeader(token)
+func check(token []byte, verifySig func(content, sig []byte, header *header) error) (*Claims, error) {
+	firstDot := bytes.IndexByte(token, '.')
+	lastDot := bytes.LastIndexByte(token, '.')
+	if lastDot <= firstDot {
+		// zero or one dot
+		return nil, errPart
+	}
+
+	buf := make([]byte, encoding.DecodedLen(len(token)))
+
+	n, err := encoding.Decode(buf, token[:firstDot])
+	if err != nil {
+		return nil, errors.New("jwt: malformed header: " + err.Error())
+	}
+
+	header := new(header)
+	if err := json.Unmarshal(buf[:n], header); err != nil {
+		return nil, errors.New("jwt: malformed header: " + err.Error())
+	}
+
+	// “If any of the listed extension Header Parameters are not understood
+	// and supported by the recipient, then the JWS is invalid.”
+	// — “JSON Web Signature (JWS)” RFC 7515, subsection 4.1.11
+	if len(header.Crit) != 0 {
+		return nil, fmt.Errorf("jwt: unsupported critical extension in JOSE header: %q", header.Crit)
+	}
+
+	// verify signature
+	n, err = encoding.Decode(buf, token[lastDot+1:])
+	if err != nil {
+		return nil, errors.New("jwt: malformed signature: " + err.Error())
+	}
+	err = verifySig(token[:lastDot], buf[:n], header)
 	if err != nil {
 		return nil, err
 	}
 
-	hash, err := header.match(algs)
-	if err != nil {
-		return nil, err
-	}
-
-	claims, err := verifyAndParseClaims(token, buf, hash, verifySig)
+	claims, err := parseClaims(token[firstDot+1:lastDot], buf)
 	if err != nil {
 		return nil, err
 	}
@@ -94,26 +135,6 @@ type header struct {
 	Alg  string   // algorithm
 	Kid  string   // key identifier
 	Crit []string // extensions which must be understood and processed
-}
-
-// ParseHeader decodes the “JOSE Header” and allocates a matching buffer.
-func parseHeader(token []byte) (h *header, buf []byte, err error) {
-	buf = make([]byte, encoding.DecodedLen(len(token)))
-
-	end := bytes.IndexByte(token, '.')
-	if end < 0 {
-		end = len(token)
-	}
-	n, err := encoding.Decode(buf, token[:end])
-	if err != nil {
-		return nil, nil, errors.New("jwt: malformed header: " + err.Error())
-	}
-
-	h = new(header)
-	if err := json.Unmarshal(buf[:n], h); err != nil {
-		return nil, nil, errors.New("jwt: malformed header: " + err.Error())
-	}
-	return
 }
 
 func (h *header) match(algs map[string]crypto.Hash) (crypto.Hash, error) {
@@ -130,38 +151,12 @@ func (h *header) match(algs map[string]crypto.Hash) (crypto.Hash, error) {
 	if !hash.Available() {
 		return 0, errHashLink
 	}
-
-	// “If any of the listed extension Header Parameters are not understood
-	// and supported by the recipient, then the JWS is invalid.”
-	// — “JSON Web Signature (JWS)” RFC 7515, subsection 4.1.11
-	if len(h.Crit) != 0 {
-		return 0, fmt.Errorf("jwt: unsupported critical extension in JOSE header: %q", h.Crit)
-	}
-
 	return hash, nil
 }
 
 // Buf remains in use (by the Raw field)!
-func verifyAndParseClaims(token, buf []byte, hash crypto.Hash, verifySig func(content, sig []byte, hash crypto.Hash) error) (*Claims, error) {
-	firstDot := bytes.IndexByte(token, '.')
-	lastDot := bytes.LastIndexByte(token, '.')
-	if lastDot <= firstDot {
-		// zero or one dot
-		return nil, errPart
-	}
-
-	// verify signature
-	n, err := encoding.Decode(buf, token[lastDot+1:])
-	if err != nil {
-		return nil, errors.New("jwt: malformed signature: " + err.Error())
-	}
-	err = verifySig(token[:lastDot], buf[:n], hash)
-	if err != nil {
-		return nil, err
-	}
-
-	// decode payload
-	n, err = encoding.Decode(buf, token[firstDot+1:lastDot])
+func parseClaims(enc, buf []byte) (*Claims, error) {
+	n, err := encoding.Decode(buf, enc)
 	if err != nil {
 		return nil, errors.New("jwt: malformed payload: " + err.Error())
 	}
@@ -176,12 +171,7 @@ func verifyAndParseClaims(token, buf []byte, hash crypto.Hash, verifySig func(co
 		return nil, errors.New("jwt: malformed payload: " + err.Error())
 	}
 
-	c.extractRegistered()
-	return c, nil
-}
-
-// move from Set to Registered on type match
-func (c *Claims) extractRegistered() {
+	// move from Set to Registered on type match
 	m := c.Set
 	if s, ok := m[issuer].(string); ok {
 		delete(m, issuer)
@@ -234,4 +224,6 @@ func (c *Claims) extractRegistered() {
 		delete(m, id)
 		c.ID = s
 	}
+
+	return c, nil
 }

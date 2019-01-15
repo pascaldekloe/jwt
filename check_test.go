@@ -169,25 +169,31 @@ func TestJOSEExtension(t *testing.T) {
 	}
 }
 
-func TestCheckIncomplete(t *testing.T) {
-	// header only
+func TestErrPart(t *testing.T) {
 	_, err := ECDSACheck([]byte("eyJhbGciOiJFUzI1NiJ9"), &testKeyEC256.PublicKey)
 	if err != errPart {
-		t.Errorf("header only got error %v, want %v", err, errPart)
+		t.Errorf("header only got error %v", err)
 	}
 	_, err = RSACheck([]byte("eyJhbGciOiJub25lIn0"), &testKeyRSA1024.PublicKey)
-	if err != ErrUnsecured {
-		t.Errorf("unsecured header only got error %v, want %v", err, errPart)
+	if err != errPart {
+		t.Errorf("unsecured header only got error %v", err)
 	}
 
-	// header + claims; no signature
 	_, err = ECDSACheck([]byte("eyJhbGciOiJFUzI1NiJ9.e30"), &testKeyEC384.PublicKey)
 	if err != errPart {
-		t.Errorf("missing signature got error %v, want %v", err, errPart)
+		t.Errorf("one dot got error %v", err)
 	}
 	_, err = HMACCheck([]byte("eyJhbGciOiJub25lIn0.e30"), nil)
-	if err != ErrUnsecured {
-		t.Errorf("unsecured got error %v, want %v", err, errPart)
+	if err != errPart {
+		t.Errorf("unsecured one dot got error %v", err)
+	}
+}
+
+func TestErrUnsecured(t *testing.T) {
+	// example from RFC 7519, subsection 6.1.
+	const token = "eyJhbGciOiJub25lIn0.eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGFtcGxlLmNvbS9pc19yb290Ijp0cnVlfQ."
+	if _, err := HMACCheck([]byte(token), nil); err != ErrUnsecured {
+		t.Errorf("unsecured got error %v", err)
 	}
 }
 

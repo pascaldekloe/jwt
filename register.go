@@ -1,9 +1,8 @@
 package jwt
 
 import (
-	"crypto"
-	"crypto/hmac"
 	"crypto/ecdsa"
+	"crypto/hmac"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -23,15 +22,9 @@ type KeyRegister struct {
 // checks out. Note that this excludes unsecured JWTs [ErrUnsecured].
 // See Claims.Valid to complete the verification.
 func (reg *KeyRegister) Check(token []byte) (*Claims, error) {
-	header, buf, err := parseHeader(token)
-	if err != nil {
-		return nil, err
-	}
-
-	var verifySig func(content, sig []byte, hash crypto.Hash) error
-	hash, err := header.match(HMACAlgs)
-	if err == nil {
-		verifySig = func(content, sig []byte, hash crypto.Hash) error {
+	return check(token, func(content, sig []byte, header *header) error {
+		hash, err := header.match(HMACAlgs)
+		if err == nil {
 			for _, secret := range reg.Secrets {
 				digest := hmac.New(hash.New, secret)
 				digest.Write(content)
@@ -41,10 +34,12 @@ func (reg *KeyRegister) Check(token []byte) (*Claims, error) {
 			}
 			return ErrSigMiss
 		}
-	} else if err != ErrAlgUnk {
-		return nil, err
-	} else if hash, err = header.match(RSAAlgs); err == nil {
-		verifySig = func(content, sig []byte, hash crypto.Hash) error {
+		if err != ErrAlgUnk {
+			return err
+		}
+
+		hash, err = header.match(RSAAlgs)
+		if err == nil {
 			digest := hash.New()
 			digest.Write(content)
 			digestSum := digest.Sum(sig[len(sig):])
@@ -55,10 +50,12 @@ func (reg *KeyRegister) Check(token []byte) (*Claims, error) {
 			}
 			return ErrSigMiss
 		}
-	} else if err != ErrAlgUnk {
-		return nil, err
-	} else if hash, err = header.match(ECDSAAlgs); err == nil {
-		verifySig = func(content, sig []byte, hash crypto.Hash) error {
+		if err != ErrAlgUnk {
+			return err
+		}
+
+		hash, err = header.match(ECDSAAlgs)
+		if err == nil {
 			r := big.NewInt(0).SetBytes(sig[:len(sig)/2])
 			s := big.NewInt(0).SetBytes(sig[len(sig)/2:])
 			digest := hash.New()
@@ -71,17 +68,9 @@ func (reg *KeyRegister) Check(token []byte) (*Claims, error) {
 			}
 			return ErrSigMiss
 		}
-	} else {
-		return nil, err
-	}
 
-	claims, err := verifyAndParseClaims(token, buf, hash, verifySig)
-	if err != nil {
-		return nil, err
-	}
-
-	claims.KeyID = header.Kid
-	return claims, nil
+		return err
+	})
 }
 
 var errUnencryptedPEM = errors.New("jwt: unencrypted PEM rejected due password expectation")
