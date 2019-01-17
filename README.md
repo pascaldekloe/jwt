@@ -6,8 +6,9 @@ A JSON Web Token (JWT) library for the Go programming language.
 The API enforces secure use by design. Unsigned tokens are
 [rejected](https://godoc.org/github.com/pascaldekloe/jwt#ErrUnsecured)
 and there is no support for encryption—use wire encryption instead.
-With about 700 lines of code and no third party dependencies, the
-implementation maintains full unit test coverage.
+
+* No third party dependencies
+* Full unit test coverage
 
 This is free and unencumbered software released into the
 [public domain](https://creativecommons.org/publicdomain/zero/1.0).
@@ -15,22 +16,35 @@ This is free and unencumbered software released into the
 
 ## Get Started
 
-The package comes with functions to verify 
-[[ECDSACheck](https://godoc.org/github.com/pascaldekloe/jwt#ECDSACheck),
-[HMACCheck](https://godoc.org/github.com/pascaldekloe/jwt#HMACCheck),
-[RSACheck](https://godoc.org/github.com/pascaldekloe/jwt#RSACheck)] 
-and issue 
-[[ECDSASign](https://godoc.org/github.com/pascaldekloe/jwt#Claims.ECDSASign),
-[HMACSign](https://godoc.org/github.com/pascaldekloe/jwt#Claims.HMACSign),
-[RSASign](https://godoc.org/github.com/pascaldekloe/jwt#Claims.RSASign)]
-claims.
+The package comes with functions to verify and issue claims.
+
+```go
+var c jwt.Claims
+c.Issuer = "demo"
+token, err := c.HMACSign(jwt.HS256, []byte("guest")
+```
+
+```go
+var keys jwt.KeyRegister
+keys.RSAs = append(keys.RSAs, newPublicKey, oldPublicKey)
+
+claims, err := keys.Check(token, publicKey)
+if err != nil {
+	log.Println("token reject")
+	return
+}
+if !claims.Valid(time.Now()) {
+	log.Println("time constraints exceeded")
+	return
+}
+log.Println("hello", claims.Audience)
+```
 
 For server side security an `http.Handler` based setup can be used as well.
 The following example enforces the subject, formatted name and roles to be
 present as a valid JWT in all requests towards the `MyAPI` handler.
 
 ```go
-// configuration demo
 http.DefaultServeMux.Handle("/api/v1", &jwt.Handler{
 	Target: MyAPI, // the protected service multiplexer
 	RSAKey: JWTPublicKey,
@@ -76,24 +90,25 @@ Optionally one can use the claims object from the HTTP request as shown in the
 ### Performance on a Mac Pro (late 2013)
 
 ```
-ECDSA/sign-ES256-12    37.7µs ± 0%
-ECDSA/sign-ES384-12    4.26ms ± 0%
-ECDSA/sign-ES512-12    8.03ms ± 0%
-ECDSA/check-ES256-12    106µs ± 0%
-ECDSA/check-ES384-12   8.36ms ± 0%
-ECDSA/check-ES512-12   15.7ms ± 0%
-HMAC/sign-HS256-12     3.47µs ± 0%
-HMAC/sign-HS384-12     3.97µs ± 0%
-HMAC/sign-HS512-12     4.03µs ± 0%
-HMAC/check-HS256-12    6.97µs ± 0%
-HMAC/check-HS384-12    7.96µs ± 4%
-HMAC/check-HS512-12    7.81µs ± 0%
-RSA/sign-1024-bit-12    418µs ± 0%
-RSA/sign-2048-bit-12   2.09ms ± 0%
+name                   time/op
+ECDSA/sign-ES256-12    37.3µs ± 0%
+ECDSA/sign-ES384-12    4.23ms ± 0%
+ECDSA/sign-ES512-12    7.70ms ± 0%
+ECDSA/check-ES256-12    105µs ± 1%
+ECDSA/check-ES384-12   8.25ms ± 0%
+ECDSA/check-ES512-12   14.7ms ± 0%
+HMAC/sign-HS256-12     3.29µs ± 0%
+HMAC/sign-HS384-12     3.83µs ± 0%
+HMAC/sign-HS512-12     3.90µs ± 0%
+HMAC/check-HS256-12    6.55µs ± 0%
+HMAC/check-HS384-12    7.07µs ± 0%
+HMAC/check-HS512-12    7.27µs ± 0%
+RSA/sign-1024-bit-12    422µs ± 0%
+RSA/sign-2048-bit-12   2.11ms ± 0%
 RSA/sign-4096-bit-12   12.9ms ± 0%
-RSA/check-1024-bit-12  33.2µs ± 0%
-RSA/check-2048-bit-12  73.4µs ± 0%
-RSA/check-4096-bit-12   201µs ± 0%
+RSA/check-1024-bit-12  33.6µs ± 0%
+RSA/check-2048-bit-12  74.4µs ± 0%
+RSA/check-4096-bit-12   203µs ± 0%
 ```
 
 [![JWT.io](https://jwt.io/img/badge.svg)](https://jwt.io/)
