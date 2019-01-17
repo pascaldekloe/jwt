@@ -79,7 +79,7 @@ func testUnauthorized(t *testing.T, reqHeader string) (body, header string) {
 		Target: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 			t.Error("handler called")
 		}),
-		KeyRegister: &KeyRegister{
+		Keys: &KeyRegister{
 			ECDSAs: []*ecdsa.PublicKey{&testKeyEC256.PublicKey},
 		},
 		HeaderBinding: map[string]string{

@@ -21,11 +21,11 @@ type KeyRegister struct {
 // Check parses a JWT and returns the claims set if, and only if, the signature
 // checks out. Note that this excludes unsecured JWTs [ErrUnsecured].
 // See Claims.Valid to complete the verification.
-func (reg *KeyRegister) Check(token []byte) (*Claims, error) {
+func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 	return check(token, func(content, sig []byte, header *header) error {
 		hash, err := header.match(HMACAlgs)
 		if err == nil {
-			for _, secret := range reg.Secrets {
+			for _, secret := range keys.Secrets {
 				digest := hmac.New(hash.New, secret)
 				digest.Write(content)
 				if hmac.Equal(sig, digest.Sum(sig[len(sig):])) {
@@ -43,7 +43,7 @@ func (reg *KeyRegister) Check(token []byte) (*Claims, error) {
 			digest := hash.New()
 			digest.Write(content)
 			digestSum := digest.Sum(sig[len(sig):])
-			for _, key := range reg.RSAs {
+			for _, key := range keys.RSAs {
 				if header.Alg[0] == 'P' {
 					err = rsa.VerifyPSS(key, hash, digestSum, sig, nil)
 				} else {
@@ -66,7 +66,7 @@ func (reg *KeyRegister) Check(token []byte) (*Claims, error) {
 			digest := hash.New()
 			digest.Write(content)
 			digestSum := digest.Sum(sig[:0])
-			for _, key := range reg.ECDSAs {
+			for _, key := range keys.ECDSAs {
 				if ecdsa.Verify(key, digestSum, r, s) {
 					return nil
 				}
@@ -84,7 +84,7 @@ var errUnencryptedPEM = errors.New("jwt: unencrypted PEM rejected due password e
 // is enforced for non-empty password values. The source may be certificates,
 // public keys, private keys, or a combination of any of the previous. Private
 // keys are discared after the (automatic) public key extraction completes.
-func (r *KeyRegister) LoadPEM(data, password []byte) (n int, err error) {
+func (keys *KeyRegister) LoadPEM(data, password []byte) (n int, err error) {
 	for {
 		block, remainder := pem.Decode(data)
 		if block == nil {
@@ -108,7 +108,7 @@ func (r *KeyRegister) LoadPEM(data, password []byte) (n int, err error) {
 				return n, err
 			}
 			for _, c := range certs {
-				if err := r.add(c.PublicKey); err != nil {
+				if err := keys.add(c.PublicKey); err != nil {
 					return n, err
 				}
 			}
@@ -118,7 +118,7 @@ func (r *KeyRegister) LoadPEM(data, password []byte) (n int, err error) {
 			if err != nil {
 				return n, err
 			}
-			if err := r.add(key); err != nil {
+			if err := keys.add(key); err != nil {
 				return n, err
 			}
 
@@ -127,14 +127,14 @@ func (r *KeyRegister) LoadPEM(data, password []byte) (n int, err error) {
 			if err != nil {
 				return n, err
 			}
-			r.ECDSAs = append(r.ECDSAs, &key.PublicKey)
+			keys.ECDSAs = append(keys.ECDSAs, &key.PublicKey)
 
 		case "RSA PRIVATE KEY":
 			key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 			if err != nil {
 				return n, err
 			}
-			r.RSAs = append(r.RSAs, &key.PublicKey)
+			keys.RSAs = append(keys.RSAs, &key.PublicKey)
 
 		default:
 			return n, fmt.Errorf("jwt: unknown PEM type %q", block.Type)
@@ -144,12 +144,12 @@ func (r *KeyRegister) LoadPEM(data, password []byte) (n int, err error) {
 	}
 }
 
-func (r *KeyRegister) add(key interface{}) error {
+func (keys *KeyRegister) add(key interface{}) error {
 	switch t := key.(type) {
 	case *ecdsa.PublicKey:
-		r.ECDSAs = append(r.ECDSAs, t)
+		keys.ECDSAs = append(keys.ECDSAs, t)
 	case *rsa.PublicKey:
-		r.RSAs = append(r.RSAs, t)
+		keys.RSAs = append(keys.RSAs, t)
 	default:
 		return fmt.Errorf("jwt: unsupported key type %T", t)
 	}

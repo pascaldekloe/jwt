@@ -173,7 +173,7 @@ func ExampleHandler_deny() {
 // Use Func as a request filter.
 func ExampleHandler_filter() {
 	h := &jwt.Handler{
-		KeyRegister: &jwt.KeyRegister{
+		Keys: &jwt.KeyRegister{
 			RSAs: []*rsa.PublicKey{&someRSAKey.PublicKey},
 		},
 		Target: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -224,8 +224,8 @@ xzvC4Vm1r/Oa4TTUbf5tVto7ua/lZvwnu5DIWn2zy5ZUPrtn22r1ymVui7Iuhl0b
 SRcADdHh3NgrjDjalhLDB95ho5omG39l7qBKBTlBAYJhDuAk9rIk1FCfCB8upztt
 -----END RSA PRIVATE KEY-----`
 
-	var r jwt.KeyRegister
-	n, err := r.LoadPEM([]byte(pem), []byte("dangerzone"))
+	var keys jwt.KeyRegister
+	n, err := keys.LoadPEM([]byte(pem), []byte("dangerzone"))
 	if err != nil {
 		fmt.Println("load error:", err)
 	}

@@ -151,8 +151,8 @@ EUTC5n7n+Qeyo3rL3iLhC/jn3rouX1FA5J7baL17KzDSiF5eQVlLOIfy
 -----END CERTIFICATE-----
 `
 
-	var r KeyRegister
-	n, err := r.LoadPEM([]byte(pem), nil)
+	var keys KeyRegister
+	n, err := keys.LoadPEM([]byte(pem), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,11 +162,11 @@ EUTC5n7n+Qeyo3rL3iLhC/jn3rouX1FA5J7baL17KzDSiF5eQVlLOIfy
 
 	// add the HMAC keys
 	for _, gold := range goldenHMACs {
-		r.Secrets = append(r.Secrets, gold.secret)
+		keys.Secrets = append(keys.Secrets, gold.secret)
 	}
 
 	for i, gold := range goldenHMACs {
-		claims, err := r.Check([]byte(gold.token))
+		claims, err := keys.Check([]byte(gold.token))
 		if err != nil {
 			t.Errorf("HMAC %d: check error: %s", i, err)
 			continue
@@ -177,7 +177,7 @@ EUTC5n7n+Qeyo3rL3iLhC/jn3rouX1FA5J7baL17KzDSiF5eQVlLOIfy
 	}
 
 	for i, gold := range goldenECDSAs {
-		claims, err := r.Check([]byte(gold.token))
+		claims, err := keys.Check([]byte(gold.token))
 		if err != nil {
 			t.Errorf("ECDSA %d: check error: %s", i, err)
 			continue
@@ -188,7 +188,7 @@ EUTC5n7n+Qeyo3rL3iLhC/jn3rouX1FA5J7baL17KzDSiF5eQVlLOIfy
 	}
 
 	for i, gold := range goldenRSAs {
-		claims, err := r.Check([]byte(gold.token))
+		claims, err := keys.Check([]byte(gold.token))
 		if err != nil {
 			t.Errorf("RSA %d: check error: %s", i, err)
 			continue
@@ -216,19 +216,19 @@ gLxOTyMAdriP4NLRkuu+9Idty3qmEizRC0N81j84E213/LuqLqnsrgfyiw==
 -----END PUBLIC KEY-----
 `
 
-	var r KeyRegister
-	n, err := r.LoadPEM([]byte(pem), nil)
+	var keys KeyRegister
+	n, err := keys.LoadPEM([]byte(pem), nil)
 	if err != nil {
 		t.Fatal("load error:", err)
 	}
 	if n != 2 {
 		t.Errorf("loaded %d keys, want 2", n)
 	}
-	if len(r.ECDSAs) != 1 {
-		t.Errorf("got %d ECDSA keys, want 1", len(r.ECDSAs))
+	if len(keys.ECDSAs) != 1 {
+		t.Errorf("got %d ECDSA keys, want 1", len(keys.ECDSAs))
 	}
-	if len(r.RSAs) != 1 {
-		t.Errorf("got %d RSA keys, want 1", len(r.RSAs))
+	if len(keys.RSAs) != 1 {
+		t.Errorf("got %d RSA keys, want 1", len(keys.RSAs))
 	}
 }
 
@@ -363,8 +363,8 @@ P9j/1Whc92wzd4Osod3U6Tw9g+C1LuHuHOoLJhj5nUQQcP8UQk6jzKPwr4L4uKAc
 -----END PUBLIC KEY-----
 `
 
-	var r KeyRegister
-	n, err := r.LoadPEM([]byte(pem), nil)
+	var keys KeyRegister
+	n, err := keys.LoadPEM([]byte(pem), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -372,30 +372,30 @@ P9j/1Whc92wzd4Osod3U6Tw9g+C1LuHuHOoLJhj5nUQQcP8UQk6jzKPwr4L4uKAc
 		t.Fatalf("got %d keys, want 2", n)
 	}
 
-	r.Secrets = append(r.Secrets, []byte{1, 2})
+	keys.Secrets = append(keys.Secrets, []byte{1, 2})
 
 	// check unsupported algorithm
 	const encryptedToken = "eyJhbGciOiJSU0ExXzUiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0.QR1Owv2ug2WyPBnbQrRARTeEk9kDO2w8qDcjiHnSJflSdv1iNqhWXaKH4MqAkQtMoNfABIPJaZm0HaA415sv3aeuBWnD8J-Ui7Ah6cWafs3ZwwFKDFUUsWHSK-IPKxLGTkND09XyjORj_CHAgOPJ-Sd8ONQRnJvWn_hXV1BNMHzUjPyYwEsRhDhzjAD26imasOTsgruobpYGoQcXUwFDn7moXPRfDE8-NoQX7N7ZYMmpUDkR-Cx9obNGwJQ3nM52YCitxoQVPzjbl7WBuB7AohdBoZOdZ24WlN1lVIeh8v1K4krB8xgKvRU8kgFrEn_a1rZgN5TiysnmzTROF869lQ.AxY8DCtDaGlsbGljb3RoZQ.MKOle7UQrG6nSxTLX6Mqwt0orbHvAKeWnDYvpIAeZ72deHxz3roJDXQyhxx0wKaMHDjUEOKIwrtkHthpqEanSBNYHZgmNOV7sln1Eu9g3J8.fiK51VwhsxJ-siBMR-YFiA"
-	_, err = r.Check([]byte(encryptedToken))
+	_, err = keys.Check([]byte(encryptedToken))
 	if err != ErrAlgUnk {
 		t.Errorf("encrypted token got error %q, want %q", err, ErrAlgUnk)
 	}
 
 	// check golden cases
 	for i, gold := range goldenHMACs {
-		_, err := r.Check([]byte(gold.token))
+		_, err := keys.Check([]byte(gold.token))
 		if err != ErrSigMiss {
 			t.Errorf("HMAC %d: got error %q, want %q", i, err, ErrSigMiss)
 		}
 	}
 	for i, gold := range goldenECDSAs {
-		_, err := r.Check([]byte(gold.token))
+		_, err := keys.Check([]byte(gold.token))
 		if err != ErrSigMiss {
 			t.Errorf("ECDSA %d: got error %q, want %q", i, err, ErrSigMiss)
 		}
 	}
 	for i, gold := range goldenRSAs {
-		_, err := r.Check([]byte(gold.token))
+		_, err := keys.Check([]byte(gold.token))
 		if err != ErrSigMiss {
 			t.Errorf("RSA %d: got error %q, want %q", i, err, ErrSigMiss)
 		}
@@ -411,7 +411,7 @@ P9j/1Whc92wzd4Osod3U6Tw9g+C1LuHuHOoLJhj5nUQQcP8UQk6jzKPwr4L4uKAc
 	defer delete(RSAAlgs, "RM4")
 	defer delete(RSAAlgs, "PM4")
 	for _, header := range []string{"eyJhbGciOiJFTTQifQ", "eyJhbGciOiJITTQifQ", "eyJhbGciOiJSTTQifQ"} {
-		_, err := r.Check([]byte(header + ".e30."))
+		_, err := keys.Check([]byte(header + ".e30."))
 		if err != errHashLink {
 			t.Errorf("header %s got error %q, want %q", header, err, errHashLink)
 		}

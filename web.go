@@ -54,12 +54,12 @@ func RSACheckHeader(r *http.Request, key *rsa.PublicKey) (*Claims, error) {
 
 // CheckHeader applies KeyRegister.Check on a HTTP request.
 // Specifically it looks for a bearer token in the Authorization header.
-func (reg *KeyRegister) CheckHeader(r *http.Request) (*Claims, error) {
+func (keys *KeyRegister) CheckHeader(r *http.Request) (*Claims, error) {
 	token, err := tokenFromHeader(r)
 	if err != nil {
 		return nil, err
 	}
-	return reg.Check(token)
+	return keys.Check(token)
 }
 
 func tokenFromHeader(r *http.Request) ([]byte, error) {
@@ -118,8 +118,8 @@ type Handler struct {
 	ECDSAKey *ecdsa.PublicKey
 	// RSAKey applies RSAAlgs and disables HMACAlgs when set.
 	RSAKey *rsa.PublicKey
-	// KeyRegister disables Secret, ECDSAKey and RSAKey when set.
-	KeyRegister *KeyRegister
+	// Keys disables Secret, ECDSAKey and RSAKey when set.
+	Keys *KeyRegister
 
 	// HeaderBinding maps JWT claim names to HTTP header names.
 	// All requests passed to Target have these headers set. In
@@ -145,8 +145,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// verify claims
 	var claims *Claims
 	var err error
-	if h.KeyRegister != nil {
-		claims, err = h.KeyRegister.CheckHeader(r)
+	if h.Keys != nil {
+		claims, err = h.Keys.CheckHeader(r)
 	} else if h.ECDSAKey == nil && h.RSAKey == nil {
 		claims, err = HMACCheckHeader(r, h.Secret)
 	} else {
