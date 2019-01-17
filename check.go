@@ -27,21 +27,25 @@ var errPart = errors.New("jwt: missing base64 part")
 // When the algorithm is not in ECDSAAlgs, then the error is ErrAlgUnk.
 // See Valid to complete the verification.
 func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
-	return check(token, func(content, sig []byte, header *header) error {
-		hash, err := header.match(ECDSAAlgs)
-		if err != nil {
-			return err
-		}
+	firstDot, lastDot, sig, header, err := scan(token)
+	if err != nil {
+		return nil, err
+	}
 
-		r := big.NewInt(0).SetBytes(sig[:len(sig)/2])
-		s := big.NewInt(0).SetBytes(sig[len(sig)/2:])
-		digest := hash.New()
-		digest.Write(content)
-		if !ecdsa.Verify(key, digest.Sum(sig[:0]), r, s) {
-			return ErrSigMiss
-		}
-		return nil
-	})
+	hash, err := header.match(ECDSAAlgs)
+	if err != nil {
+		return nil, err
+	}
+
+	r := big.NewInt(0).SetBytes(sig[:len(sig)/2])
+	s := big.NewInt(0).SetBytes(sig[len(sig)/2:])
+	digest := hash.New()
+	digest.Write(token[:lastDot])
+	if !ecdsa.Verify(key, digest.Sum(sig[:0]), r, s) {
+		return nil, ErrSigMiss
+	}
+
+	return parseClaims(token[firstDot+1:lastDot], sig[:cap(sig)], header)
 }
 
 // HMACCheck parses a JWT and returns the claims set if, and only if, the
@@ -49,19 +53,23 @@ func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
 // When the algorithm is not in HMACAlgs, then the error is ErrAlgUnk.
 // See Valid to complete the verification.
 func HMACCheck(token, secret []byte) (*Claims, error) {
-	return check(token, func(content, sig []byte, header *header) error {
-		hash, err := header.match(HMACAlgs)
-		if err != nil {
-			return err
-		}
+	firstDot, lastDot, sig, header, err := scan(token)
+	if err != nil {
+		return nil, err
+	}
 
-		digest := hmac.New(hash.New, secret)
-		digest.Write(content)
-		if !hmac.Equal(sig, digest.Sum(sig[len(sig):])) {
-			return ErrSigMiss
-		}
-		return nil
-	})
+	hash, err := header.match(HMACAlgs)
+	if err != nil {
+		return nil, err
+	}
+
+	digest := hmac.New(hash.New, secret)
+	digest.Write(token[:lastDot])
+	if !hmac.Equal(sig, digest.Sum(sig[len(sig):])) {
+		return nil, ErrSigMiss
+	}
+
+	return parseClaims(token[firstDot+1:lastDot], sig[:cap(sig)], header)
 }
 
 // RSACheck parses a JWT and returns the claims set if, and only if, the
@@ -69,71 +77,66 @@ func HMACCheck(token, secret []byte) (*Claims, error) {
 // When the algorithm is not in RSAAlgs, then the error is ErrAlgUnk.
 // See Valid to complete the verification.
 func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
-	return check(token, func(content, sig []byte, header *header) error {
-		hash, err := header.match(RSAAlgs)
-		if err != nil {
-			return err
-		}
+	firstDot, lastDot, sig, header, err := scan(token)
+	if err != nil {
+		return nil, err
+	}
 
-		digest := hash.New()
-		digest.Write(content)
+	hash, err := header.match(RSAAlgs)
+	if err != nil {
+		return nil, err
+	}
 
-		if header.Alg[0] == 'P' {
-			err = rsa.VerifyPSS(key, hash, digest.Sum(sig[len(sig):]), sig, nil)
-		} else {
-			err = rsa.VerifyPKCS1v15(key, hash, digest.Sum(sig[len(sig):]), sig)
-		}
-		if err != nil {
-			return ErrSigMiss
-		}
-		return nil
-	})
+	digest := hash.New()
+	digest.Write(token[:lastDot])
+
+	if header.Alg[0] == 'P' {
+		err = rsa.VerifyPSS(key, hash, digest.Sum(sig[len(sig):]), sig, nil)
+	} else {
+		err = rsa.VerifyPKCS1v15(key, hash, digest.Sum(sig[len(sig):]), sig)
+	}
+	if err != nil {
+		return nil, ErrSigMiss
+	}
+
+	return parseClaims(token[firstDot+1:lastDot], sig[:cap(sig)], header)
 }
 
-func check(token []byte, verifySig func(content, sig []byte, header *header) error) (*Claims, error) {
-	firstDot := bytes.IndexByte(token, '.')
-	lastDot := bytes.LastIndexByte(token, '.')
+func scan(token []byte) (firstDot, lastDot int, sig []byte, h *header, err error) {
+	firstDot = bytes.IndexByte(token, '.')
+	lastDot = bytes.LastIndexByte(token, '.')
 	if lastDot <= firstDot {
 		// zero or one dot
-		return nil, errPart
+		return 0, 0, nil, nil, errPart
 	}
 
 	buf := make([]byte, encoding.DecodedLen(len(token)))
 
 	n, err := encoding.Decode(buf, token[:firstDot])
 	if err != nil {
-		return nil, errors.New("jwt: malformed header: " + err.Error())
+		return 0, 0, nil, nil, errors.New("jwt: malformed header: " + err.Error())
 	}
 
-	header := new(header)
-	if err := json.Unmarshal(buf[:n], header); err != nil {
-		return nil, errors.New("jwt: malformed header: " + err.Error())
+	h = new(header)
+	if err := json.Unmarshal(buf[:n], h); err != nil {
+		return 0, 0, nil, nil, errors.New("jwt: malformed header: " + err.Error())
 	}
 
 	// “If any of the listed extension Header Parameters are not understood
 	// and supported by the recipient, then the JWS is invalid.”
 	// — “JSON Web Signature (JWS)” RFC 7515, subsection 4.1.11
-	if len(header.Crit) != 0 {
-		return nil, fmt.Errorf("jwt: unsupported critical extension in JOSE header: %q", header.Crit)
+	if len(h.Crit) != 0 {
+		return 0, 0, nil, nil, fmt.Errorf("jwt: unsupported critical extension in JOSE header: %q", h.Crit)
 	}
 
 	// verify signature
 	n, err = encoding.Decode(buf, token[lastDot+1:])
 	if err != nil {
-		return nil, errors.New("jwt: malformed signature: " + err.Error())
+		return 0, 0, nil, nil, errors.New("jwt: malformed signature: " + err.Error())
 	}
-	err = verifySig(token[:lastDot], buf[:n], header)
-	if err != nil {
-		return nil, err
-	}
+	sig = buf[:n]
 
-	claims, err := parseClaims(token[firstDot+1:lastDot], buf)
-	if err != nil {
-		return nil, err
-	}
-
-	claims.KeyID = header.Kid
-	return claims, nil
+	return
 }
 
 // Header is a critical subset of the registered “JOSE Header Parameter Names”.
@@ -161,7 +164,7 @@ func (h *header) match(algs map[string]crypto.Hash) (crypto.Hash, error) {
 }
 
 // Buf remains in use (by the Raw field)!
-func parseClaims(enc, buf []byte) (*Claims, error) {
+func parseClaims(enc, buf []byte, header *header) (*Claims, error) {
 	n, err := encoding.Decode(buf, enc)
 	if err != nil {
 		return nil, errors.New("jwt: malformed payload: " + err.Error())
@@ -170,8 +173,9 @@ func parseClaims(enc, buf []byte) (*Claims, error) {
 
 	// construct result
 	c := &Claims{
-		Raw: json.RawMessage(buf),
-		Set: make(map[string]interface{}),
+		Raw:   json.RawMessage(buf),
+		Set:   make(map[string]interface{}),
+		KeyID: header.Kid,
 	}
 	if err = json.Unmarshal(buf, &c.Set); err != nil {
 		return nil, errors.New("jwt: malformed payload: " + err.Error())

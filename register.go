@@ -22,60 +22,69 @@ type KeyRegister struct {
 // checks out. Note that this excludes unsecured JWTs [ErrUnsecured].
 // See Claims.Valid to complete the verification.
 func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
-	return check(token, func(content, sig []byte, header *header) error {
-		hash, err := header.match(HMACAlgs)
-		if err == nil {
-			for _, secret := range keys.Secrets {
-				digest := hmac.New(hash.New, secret)
-				digest.Write(content)
-				if hmac.Equal(sig, digest.Sum(sig[len(sig):])) {
-					return nil
-				}
-			}
-			return ErrSigMiss
-		}
-		if err != ErrAlgUnk {
-			return err
-		}
+	firstDot, lastDot, sig, header, err := scan(token)
+	if err != nil {
+		return nil, err
+	}
 
-		hash, err = header.match(RSAAlgs)
-		if err == nil {
-			digest := hash.New()
-			digest.Write(content)
-			digestSum := digest.Sum(sig[len(sig):])
-			for _, key := range keys.RSAs {
-				if header.Alg[0] == 'P' {
-					err = rsa.VerifyPSS(key, hash, digestSum, sig, nil)
-				} else {
-					err = rsa.VerifyPKCS1v15(key, hash, digestSum, sig)
-				}
-				if err == nil {
-					return nil
-				}
+	switch hash, err := header.match(HMACAlgs); err {
+	case nil:
+		for _, secret := range keys.Secrets {
+			digest := hmac.New(hash.New, secret)
+			digest.Write(token[:lastDot])
+			if hmac.Equal(sig, digest.Sum(sig[len(sig):])) {
+				return parseClaims(token[firstDot+1:lastDot], sig[:cap(sig)], header)
 			}
-			return ErrSigMiss
 		}
-		if err != ErrAlgUnk {
-			return err
-		}
+		return nil, ErrSigMiss
 
-		hash, err = header.match(ECDSAAlgs)
-		if err == nil {
-			r := big.NewInt(0).SetBytes(sig[:len(sig)/2])
-			s := big.NewInt(0).SetBytes(sig[len(sig)/2:])
-			digest := hash.New()
-			digest.Write(content)
-			digestSum := digest.Sum(sig[:0])
-			for _, key := range keys.ECDSAs {
-				if ecdsa.Verify(key, digestSum, r, s) {
-					return nil
-				}
+	case ErrAlgUnk:
+		break // next
+	default:
+		return nil, err
+	}
+
+	switch hash, err := header.match(RSAAlgs); err {
+	case nil:
+		digest := hash.New()
+		digest.Write(token[:lastDot])
+		digestSum := digest.Sum(sig[len(sig):])
+		for _, key := range keys.RSAs {
+			if header.Alg[0] == 'P' {
+				err = rsa.VerifyPSS(key, hash, digestSum, sig, nil)
+			} else {
+				err = rsa.VerifyPKCS1v15(key, hash, digestSum, sig)
 			}
-			return ErrSigMiss
+			if err == nil {
+				return parseClaims(token[firstDot+1:lastDot], sig[:cap(sig)], header)
+			}
 		}
+		return nil, ErrSigMiss
 
-		return err
-	})
+	case ErrAlgUnk:
+		break // next
+	default:
+		return nil, err
+	}
+
+	switch hash, err := header.match(ECDSAAlgs); err {
+	case nil:
+		r := big.NewInt(0).SetBytes(sig[:len(sig)/2])
+		s := big.NewInt(0).SetBytes(sig[len(sig)/2:])
+		digest := hash.New()
+		digest.Write(token[:lastDot])
+		digestSum := digest.Sum(sig[:0])
+
+		for _, key := range keys.ECDSAs {
+			if ecdsa.Verify(key, digestSum, r, s) {
+				return parseClaims(token[firstDot+1:lastDot], sig[:cap(sig)], header)
+			}
+		}
+		return nil, ErrSigMiss
+
+	default:
+		return nil, err
+	}
 }
 
 var errUnencryptedPEM = errors.New("jwt: unencrypted PEM rejected due password expectation")
