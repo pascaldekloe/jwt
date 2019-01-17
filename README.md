@@ -19,25 +19,35 @@ This is free and unencumbered software released into the
 The package comes with functions to verify and issue claims.
 
 ```go
-var c jwt.Claims
-c.Issuer = "demo"
-token, err := c.HMACSign(jwt.HS256, []byte("guest")
+// create a JWT
+var claims jwt.Claims
+claims.Issuer = "demo"
+token, err := claims.HMACSign(jwt.HS256, []byte("guest"))
 ```
+
+The register helps with key migrations and fallback scenarios.
 
 ```go
 var keys jwt.KeyRegister
-keys.RSAs = append(keys.RSAs, newPublicKey, oldPublicKey)
-
-claims, err := keys.Check(token, publicKey)
+keyCount, err := keys.LoadPEM(text, nil)
 if err != nil {
-	log.Println("token reject")
+	log.Fatal("JWT key import: ", err)
+}
+log.Print(keyCount, " JWT key(s) ready")
+```
+
+```go
+// use a JWT
+claims, err := keys.Check(token)
+if err != nil {
+	log.Print("credentials denied")
 	return
 }
 if !claims.Valid(time.Now()) {
-	log.Println("time constraints exceeded")
+	log.Print("time constraints exceeded")
 	return
 }
-log.Println("hello", claims.Audience)
+log.Print("hello ", claims.Audiences)
 ```
 
 For server side security an `http.Handler` based setup can be used as well.
