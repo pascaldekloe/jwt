@@ -159,13 +159,13 @@ func (c *Claims) Sync() error {
 			c.Set[audience] = a
 		}
 		if c.Expires != nil {
-			c.Set[expires] = *c.Expires
+			c.Set[expires] = float64(*c.Expires)
 		}
 		if c.NotBefore != nil {
-			c.Set[notBefore] = *c.NotBefore
+			c.Set[notBefore] = float64(*c.NotBefore)
 		}
 		if c.Issued != nil {
-			c.Set[issued] = *c.Issued
+			c.Set[issued] = float64(*c.Issued)
 		}
 		if c.ID != "" {
 			c.Set[id] = c.ID
