@@ -45,7 +45,7 @@ func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
 		return nil, ErrSigMiss
 	}
 
-	return parseClaims(token[firstDot+1:lastDot], sig[:cap(sig)], header)
+	return parseClaims(token[firstDot+1:lastDot], sig, header)
 }
 
 // HMACCheck parses a JWT and returns the claims set if, and only if, the
@@ -69,7 +69,7 @@ func HMACCheck(token, secret []byte) (*Claims, error) {
 		return nil, ErrSigMiss
 	}
 
-	return parseClaims(token[firstDot+1:lastDot], sig[:cap(sig)], header)
+	return parseClaims(token[firstDot+1:lastDot], sig, header)
 }
 
 // RSACheck parses a JWT and returns the claims set if, and only if, the
@@ -99,7 +99,7 @@ func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
 		return nil, ErrSigMiss
 	}
 
-	return parseClaims(token[firstDot+1:lastDot], sig[:cap(sig)], header)
+	return parseClaims(token[firstDot+1:lastDot], sig, header)
 }
 
 func scan(token []byte) (firstDot, lastDot int, sig []byte, h *header, err error) {
@@ -110,13 +110,12 @@ func scan(token []byte) (firstDot, lastDot int, sig []byte, h *header, err error
 		return 0, 0, nil, nil, errPart
 	}
 
+	// header
 	buf := make([]byte, encoding.DecodedLen(len(token)))
-
 	n, err := encoding.Decode(buf, token[:firstDot])
 	if err != nil {
 		return 0, 0, nil, nil, errors.New("jwt: malformed header: " + err.Error())
 	}
-
 	h = new(header)
 	if err := json.Unmarshal(buf[:n], h); err != nil {
 		return 0, 0, nil, nil, errors.New("jwt: malformed header: " + err.Error())
@@ -129,7 +128,7 @@ func scan(token []byte) (firstDot, lastDot int, sig []byte, h *header, err error
 		return 0, 0, nil, nil, fmt.Errorf("jwt: unsupported critical extension in JOSE header: %q", h.Crit)
 	}
 
-	// verify signature
+	// signature
 	n, err = encoding.Decode(buf, token[lastDot+1:])
 	if err != nil {
 		return 0, 0, nil, nil, errors.New("jwt: malformed signature: " + err.Error())
@@ -163,8 +162,9 @@ func (h *header) match(algs map[string]crypto.Hash) (crypto.Hash, error) {
 	return hash, nil
 }
 
-// Buf remains in use (by the Raw field)!
+// Buf remains in use as the Raw field.
 func parseClaims(enc, buf []byte, header *header) (*Claims, error) {
+	buf = buf[:cap(buf)]
 	n, err := encoding.Decode(buf, enc)
 	if err != nil {
 		return nil, errors.New("jwt: malformed payload: " + err.Error())
@@ -217,18 +217,15 @@ func parseClaims(enc, buf []byte, header *header) (*Claims, error) {
 
 	if f, ok := m[expires].(float64); ok {
 		delete(m, expires)
-		t := NumericTime(f)
-		c.Expires = &t
+		c.Expires = (*NumericTime)(&f)
 	}
 	if f, ok := m[notBefore].(float64); ok {
 		delete(m, notBefore)
-		t := NumericTime(f)
-		c.NotBefore = &t
+		c.NotBefore = (*NumericTime)(&f)
 	}
 	if f, ok := m[issued].(float64); ok {
 		delete(m, issued)
-		t := NumericTime(f)
-		c.Issued = &t
+		c.Issued = (*NumericTime)(&f)
 	}
 	if s, ok := m[id].(string); ok {
 		delete(m, id)

@@ -55,7 +55,7 @@ var (
 	}
 )
 
-// ErrAlgUnk signals an unsupported "alg" value (for the respective method).
+// ErrAlgUnk means that the specified "alg" is not in use.
 var ErrAlgUnk = errors.New("jwt: algorithm unknown")
 
 // See crypto.Hash.Available.
@@ -119,6 +119,7 @@ type Claims struct {
 	//	[]interface{}, for JSON arrays
 	//	map[string]interface{}, for JSON objects
 	//	nil for JSON null
+	//
 	Set map[string]interface{}
 
 	// “The "kid" (key ID) Header Parameter is a hint indicating which key
@@ -274,5 +275,5 @@ func (n *NumericTime) String() string {
 	if n == nil {
 		return ""
 	}
-	return n.Time().Format("2006-01-02T15:04:05.999999999Z")
+	return n.Time().Format(time.RFC3339Nano)
 }

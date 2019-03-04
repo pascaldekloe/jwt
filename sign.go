@@ -29,7 +29,7 @@ func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey) (token []byte, err
 		return nil, err
 	}
 	digest := hash.New()
-	token = c.newUnsignedToken(encHeader, encSigLen, digest)
+	token = c.newTokenNoSig(encHeader, encSigLen, digest)
 
 	// create signature
 	r, s, err := ecdsa.Sign(rand.Reader, key, digest.Sum(nil))
@@ -61,7 +61,7 @@ func (c *Claims) HMACSign(alg string, secret []byte) (token []byte, err error) {
 	}
 	digest := hmac.New(hash.New, secret)
 	encSigLen := encoding.EncodedLen(digest.Size())
-	token = c.newUnsignedToken(encHeader, encSigLen, digest)
+	token = c.newTokenNoSig(encHeader, encSigLen, digest)
 
 	// append signature
 	encoding.Encode(token[len(token)-encSigLen:], digest.Sum(nil))
@@ -82,7 +82,7 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err err
 	}
 	digest := hash.New()
 	encSigLen := encoding.EncodedLen(key.Size())
-	token = c.newUnsignedToken(encHeader, encSigLen, digest)
+	token = c.newTokenNoSig(encHeader, encSigLen, digest)
 
 	// append signature
 	var sig []byte
@@ -98,7 +98,8 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err err
 	return token, nil
 }
 
-func (c *Claims) newUnsignedToken(encHeader string, encSigLen int, digest hash.Hash) []byte {
+// NewTokenNoSig returns a new JWT with the signature bytes still unset.
+func (c *Claims) newTokenNoSig(encHeader string, encSigLen int, digest hash.Hash) []byte {
 	encClaimsLen := encoding.EncodedLen(len(c.Raw))
 	token := make([]byte, len(encHeader)+encClaimsLen+encSigLen+2)
 
