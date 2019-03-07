@@ -130,7 +130,7 @@ type Handler struct {
 	// ContextKey places the validated Claims in the context of
 	// each respective request passed to Target when set. See
 	// http.Request.Context and context.Context.Value.
-	ContextKey string
+	ContextKey interface{}
 
 	// When not nil, then Func is called after the JWT validation
 	// succeeds and before any header bindings. Target is skipped
@@ -194,7 +194,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// place claims in request context
-	if h.ContextKey != "" {
+	if h.ContextKey != nil {
 		r = r.WithContext(context.WithValue(r.Context(), h.ContextKey, claims))
 	}
 
