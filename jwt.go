@@ -105,13 +105,14 @@ type Claims struct {
 	// Registered field values take precedence.
 	Registered
 
-	// Raw has the JSON payload. This field is read-only.
+	// Raw encoding as is within the token. This field is read-only.
 	Raw json.RawMessage
 
 	// Set has the claims set mapped by name for non-standard usecases.
-	// Use Registered fields where possible. Note that JSON/JavaScript
+	// Use Registered fields where possible. The Sign methods copy each
+	// non-zero Registered field into this map when not nil. JavaScript
 	// numbers are always of the double precision floating-point type.
-	// Non-standard claims are read as follows.
+	// Non-standard claims are read conform the encoding/json package.
 	//
 	//	bool, for JSON booleans
 	//	float64, for JSON numbers
@@ -133,7 +134,7 @@ type Claims struct {
 
 // Sync updates the Raw field. When the Set field is not nil,
 // then all non-zero Registered values are copied into the map.
-func (c *Claims) Sync() error {
+func (c *Claims) sync() error {
 	var payload interface{}
 
 	if c.Set == nil {

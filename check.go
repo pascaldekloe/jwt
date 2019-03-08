@@ -22,9 +22,9 @@ var ErrUnsecured = errors.New("jwt: unsecured—no signature")
 
 var errPart = errors.New("jwt: missing base64 part")
 
-// ECDSACheck parses a JWT and returns the claims set if, and only if, the
-// signature checks out. Note that this excludes unsecured JWTs [ErrUnsecured].
-// When the algorithm is not in ECDSAAlgs, then the error is ErrAlgUnk.
+// ECDSACheck parses a JWT if, and only if, the signature checks out.
+// Note that this excludes unsecured JWTs [ErrUnsecured]. When the
+// algorithm is not in ECDSAAlgs, then the error is ErrAlgUnk.
 // See Valid to complete the verification.
 func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
 	firstDot, lastDot, sig, header, err := scan(token)
@@ -48,9 +48,9 @@ func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
 	return parseClaims(token[firstDot+1:lastDot], sig, header)
 }
 
-// HMACCheck parses a JWT and returns the claims set if, and only if, the
-// signature checks out. Note that this excludes unsecured JWTs [ErrUnsecured].
-// When the algorithm is not in HMACAlgs, then the error is ErrAlgUnk.
+// HMACCheck parses a JWT if, and only if, the signature checks out.
+// Note that this excludes unsecured JWTs [ErrUnsecured]. When the
+// algorithm is not in HMACAlgs, then the error is ErrAlgUnk.
 // See Valid to complete the verification.
 func HMACCheck(token, secret []byte) (*Claims, error) {
 	firstDot, lastDot, sig, header, err := scan(token)
@@ -72,9 +72,9 @@ func HMACCheck(token, secret []byte) (*Claims, error) {
 	return parseClaims(token[firstDot+1:lastDot], sig, header)
 }
 
-// RSACheck parses a JWT and returns the claims set if, and only if, the
-// signature checks out. Note that this excludes unsecured JWTs [ErrUnsecured].
-// When the algorithm is not in RSAAlgs, then the error is ErrAlgUnk.
+// RSACheck parses a JWT if, and only if, the signature checks out.
+// Note that this excludes unsecured JWTs [ErrUnsecured]. When the
+// algorithm is not in RSAAlgs, then the error is ErrAlgUnk.
 // See Valid to complete the verification.
 func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
 	firstDot, lastDot, sig, header, err := scan(token)

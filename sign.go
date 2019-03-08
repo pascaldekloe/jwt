@@ -10,12 +10,12 @@ import (
 	"strconv"
 )
 
-// ECDSASign calls Sync and returns a new JWT.
+// ECDSASign updates the Raw field and returns a new JWT.
 // When the algorithm is not in ECDSAAlgs, then the error is ErrAlgUnk.
 // The caller must use the correct key for the respective algorithm (P-256 for
 // ES256, P-384 for ES384 and P-521 for ES512) or risk malformed token production.
 func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey) (token []byte, err error) {
-	if err := c.Sync(); err != nil {
+	if err := c.sync(); err != nil {
 		return nil, err
 	}
 
@@ -47,10 +47,10 @@ func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey) (token []byte, err
 	return token, nil
 }
 
-// HMACSign calls Sync and returns a new JWT.
+// HMACSign updates the Raw field and returns a new JWT.
 // When the algorithm is not in HMACAlgs, then the error is ErrAlgUnk.
 func (c *Claims) HMACSign(alg string, secret []byte) (token []byte, err error) {
-	if err := c.Sync(); err != nil {
+	if err := c.sync(); err != nil {
 		return nil, err
 	}
 
@@ -68,10 +68,10 @@ func (c *Claims) HMACSign(alg string, secret []byte) (token []byte, err error) {
 	return token, nil
 }
 
-// RSASign calls Sync and returns a new JWT.
+// RSASign updates the Raw field and returns a new JWT.
 // When the algorithm is not in RSAAlgs, then the error is ErrAlgUnk.
 func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err error) {
-	if err := c.Sync(); err != nil {
+	if err := c.sync(); err != nil {
 		return nil, err
 	}
 

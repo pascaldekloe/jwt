@@ -34,6 +34,7 @@ func TestNumericTimeMapping(t *testing.T) {
 	}
 }
 
+// Copy Registered into claims set map.
 func TestClaimsSync(t *testing.T) {
 	offset := time.Unix(1537622794, 0)
 	c := Claims{
@@ -50,8 +51,8 @@ func TestClaimsSync(t *testing.T) {
 		Set: make(map[string]interface{}),
 	}
 
-	if err := c.Sync(); err != nil {
-		t.Fatal("sync error: ", err)
+	if err := c.sync(); err != nil {
+		t.Fatal("sync error:", err)
 	}
 	const want = `{"aud":"c","exp":1537622854,"iat":1537622794,"iss":"a","jti":"d","nbf":1537622793,"sub":"b"}`
 	if got := string(c.Raw); got != want {
@@ -62,6 +63,7 @@ func TestClaimsSync(t *testing.T) {
 	}
 }
 
+// Merge Registered into claims set map.
 func TestClaimsSyncMerge(t *testing.T) {
 	c := Claims{
 		Registered: Registered{
@@ -76,11 +78,11 @@ func TestClaimsSyncMerge(t *testing.T) {
 	}
 
 	if s, ok := c.String("aud"); ok {
-		t.Errorf(`got audience string %q for 2 element array value`, s)
+		t.Errorf("got audience string %q for 2 element array value", s)
 	}
 
-	if err := c.Sync(); err != nil {
-		t.Fatal("sync error: ", err)
+	if err := c.sync(); err != nil {
+		t.Fatal("sync error:", err)
 	}
 	const want = `{"aud":["KGB","RU"],"iss":null,"sub":"kkazanova"}`
 	if got := string(c.Raw); got != want {
@@ -90,14 +92,14 @@ func TestClaimsSyncMerge(t *testing.T) {
 
 func TestClaimsSyncNone(t *testing.T) {
 	var c Claims
-	if err := c.Sync(); err != nil {
-		t.Fatal("sync error: ", err)
+	if err := c.sync(); err != nil {
+		t.Fatal("sync error:", err)
 	}
 	if string(c.Raw) != "{}" {
 		t.Errorf(`got JSON %q, want "{}"`, c.Raw)
 	}
 	if c.Set != nil {
-		t.Error("claims set map not nil after Sync")
+		t.Error("claims set map not nil after sync")
 	}
 }
 
