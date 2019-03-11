@@ -110,6 +110,10 @@ func (keys *KeyRegister) LoadPEM(data, password []byte) (n int, err error) {
 			return n, errUnencryptedPEM
 		}
 
+		var key interface{}
+		var err error
+
+		// See RFC 7468, section 4.
 		switch block.Type {
 		case "CERTIFICATE":
 			certs, err := x509.ParseCertificates(block.Bytes)
@@ -120,33 +124,30 @@ func (keys *KeyRegister) LoadPEM(data, password []byte) (n int, err error) {
 				if err := keys.add(c.PublicKey); err != nil {
 					return n, err
 				}
+				n++
 			}
+			continue
 
 		case "PUBLIC KEY":
-			key, err := x509.ParsePKIXPublicKey(block.Bytes)
-			if err != nil {
-				return n, err
-			}
-			if err := keys.add(key); err != nil {
-				return n, err
-			}
+			key, err = x509.ParsePKIXPublicKey(block.Bytes)
+
+		case "PRIVATE KEY":
+			key, err = x509.ParsePKCS8PrivateKey(block.Bytes)
 
 		case "EC PRIVATE KEY":
-			key, err := x509.ParseECPrivateKey(block.Bytes)
-			if err != nil {
-				return n, err
-			}
-			keys.ECDSAs = append(keys.ECDSAs, &key.PublicKey)
+			key, err = x509.ParseECPrivateKey(block.Bytes)
 
 		case "RSA PRIVATE KEY":
-			key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-			if err != nil {
-				return n, err
-			}
-			keys.RSAs = append(keys.RSAs, &key.PublicKey)
+			key, err = x509.ParsePKCS1PrivateKey(block.Bytes)
 
 		default:
 			return n, fmt.Errorf("jwt: unknown PEM type %q", block.Type)
+		}
+		if err != nil {
+			return n, err
+		}
+		if err := keys.add(key); err != nil {
+			return n, err
 		}
 
 		n++
@@ -157,8 +158,12 @@ func (keys *KeyRegister) add(key interface{}) error {
 	switch t := key.(type) {
 	case *ecdsa.PublicKey:
 		keys.ECDSAs = append(keys.ECDSAs, t)
+	case *ecdsa.PrivateKey:
+		keys.ECDSAs = append(keys.ECDSAs, &t.PublicKey)
 	case *rsa.PublicKey:
 		keys.RSAs = append(keys.RSAs, t)
+	case *rsa.PrivateKey:
+		keys.RSAs = append(keys.RSAs, &t.PublicKey)
 	default:
 		return fmt.Errorf("jwt: unsupported key type %T", t)
 	}

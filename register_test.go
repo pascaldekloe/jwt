@@ -335,7 +335,12 @@ ir0BUYJgm+IXUWj16GksOhzBTTUsNolVPi+qQhYslRqxahmm4W7Qs/TQJEYPMfQe
 r8MMB4MpPBd2mtsm6KdoRQknwSQVnZd/R+G3hZ3R7Eh6+C1+Vq32T6PqrRPYRim6
 T31LD06+mXbG9Cd9IYG05/LuyCBHOorcbSgKW2G+JhV2L75ajLniQdg1ZOrZuBlg
 qsa4IOtmJV3zuw==
------END PUBLIC KEY-----`}
+-----END PUBLIC KEY-----`, `-----BEGIN PRIVATE KEY-----
+MIGEAgEAMBAGByqGSM49AgEGBSuBBAAKBG0wawIBAQQgVcB/UNPxalR9zDYAjQIf
+jojUDiQuGnSJrFEEzZPT/92hRANCAASc7UJtgnF/abqWM60T3XNJEzBv5ez9TdwK
+H0M6xpM2q+53wmsN/eYLdgtjgBd3DBmHtPilCkiFICXyaA8z9LkJ
+-----END PRIVATE KEY-----`,
+	}
 
 	for _, pem := range pems {
 		n, err := new(KeyRegister).LoadPEM([]byte(pem), nil)
