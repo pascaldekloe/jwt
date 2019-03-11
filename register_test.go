@@ -426,3 +426,30 @@ P9j/1Whc92wzd4Osod3U6Tw9g+C1LuHuHOoLJhj5nUQQcP8UQk6jzKPwr4L4uKAc
 		}
 	}
 }
+
+func TestKeyIDMiss(t *testing.T) {
+	var keys KeyRegister
+	// two keys per type
+	keys.ECDSAs = append(keys.ECDSAs, &testKeyEC256.PublicKey, &testKeyEC384.PublicKey)
+	keys.RSAs = append(keys.RSAs, &testKeyRSA1024.PublicKey, &testKeyRSA2048.PublicKey)
+	keys.Secrets = append(keys.Secrets, []byte("secret 1"), []byte("secret 2"))
+
+	// identifier mapping
+	keys.ECDSAIDs = append(keys.ECDSAIDs, "first", "second")
+	keys.RSAIDs = append(keys.RSAIDs, "first", "second")
+	keys.SecretIDs = append(keys.SecretIDs, "first", "second")
+
+	// match second key – sign with first key
+	c := Claims{KeyID: "second"}
+	var tokens [3][]byte
+	tokens[0], _ = c.ECDSASign(ES256, testKeyEC256)
+	tokens[1], _ = c.RSASign(RS256, testKeyRSA1024)
+	tokens[2], _ = c.HMACSign(HS256, []byte("secret 1"))
+
+	for i, token := range tokens {
+		_, err := keys.Check(token)
+		if err != ErrSigMiss {
+			t.Errorf("%d [%s]: got error: %v", i, token, err)
+		}
+	}
+}

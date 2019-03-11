@@ -16,6 +16,12 @@ type KeyRegister struct {
 	ECDSAs  []*ecdsa.PublicKey // ECDSA credentials
 	RSAs    []*rsa.PublicKey   // RSA credentials
 	Secrets [][]byte           // HMAC credentials
+
+	// Optional key identification.
+	// See Claims.KeyID for details.
+	ECDSAIDs  []string // ECDSAs key ID mapping
+	RSAIDs    []string // RSAs key ID mapping
+	SecretIDs []string // Secrets key ID mapping
 }
 
 // Check parses a JWT if, and only if, the signature checks out.
@@ -29,7 +35,17 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 
 	switch hash, err := header.match(HMACAlgs); err {
 	case nil:
-		for _, secret := range keys.Secrets {
+		keyOptions := keys.Secrets
+		if header.Kid != "" {
+			for i, kid := range keys.SecretIDs {
+				if kid == header.Kid && i < len(keyOptions) {
+					keyOptions = keyOptions[i : i+1]
+					break
+				}
+			}
+		}
+
+		for _, secret := range keyOptions {
 			digest := hmac.New(hash.New, secret)
 			digest.Write(token[:lastDot])
 			if hmac.Equal(sig, digest.Sum(sig[len(sig):])) {
@@ -46,10 +62,20 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 
 	switch hash, err := header.match(RSAAlgs); err {
 	case nil:
+		keyOptions := keys.RSAs
+		if header.Kid != "" {
+			for i, kid := range keys.RSAIDs {
+				if kid == header.Kid && i < len(keyOptions) {
+					keyOptions = keyOptions[i : i+1]
+					break
+				}
+			}
+		}
+
 		digest := hash.New()
 		digest.Write(token[:lastDot])
 		digestSum := digest.Sum(sig[len(sig):])
-		for _, key := range keys.RSAs {
+		for _, key := range keyOptions {
 			if header.Alg[0] == 'P' {
 				err = rsa.VerifyPSS(key, hash, digestSum, sig, nil)
 			} else {
@@ -69,13 +95,22 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 
 	switch hash, err := header.match(ECDSAAlgs); err {
 	case nil:
+		keyOptions := keys.ECDSAs
+		if header.Kid != "" {
+			for i, kid := range keys.ECDSAIDs {
+				if kid == header.Kid && i < len(keyOptions) {
+					keyOptions = keyOptions[i : i+1]
+					break
+				}
+			}
+		}
+
 		r := big.NewInt(0).SetBytes(sig[:len(sig)/2])
 		s := big.NewInt(0).SetBytes(sig[len(sig)/2:])
 		digest := hash.New()
 		digest.Write(token[:lastDot])
 		digestSum := digest.Sum(sig[:0])
-
-		for _, key := range keys.ECDSAs {
+		for _, key := range keyOptions {
 			if ecdsa.Verify(key, digestSum, r, s) {
 				return parseClaims(token[firstDot+1:lastDot], sig, header)
 			}
