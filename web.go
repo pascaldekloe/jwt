@@ -144,13 +144,12 @@ type Handler struct {
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// verify claims
 	var claims *Claims
-	var err error
+	err := ErrAlgUnk
 	if h.Keys != nil {
 		claims, err = h.Keys.CheckHeader(r)
-	} else if h.ECDSAKey == nil && h.RSAKey == nil {
+	} else if h.ECDSAKey == nil && h.RSAKey == nil && len(h.Secret) != 0 {
 		claims, err = HMACCheckHeader(r, h.Secret)
 	} else {
-		err = ErrAlgUnk
 		if h.RSAKey != nil {
 			claims, err = RSACheckHeader(r, h.RSAKey)
 		}
