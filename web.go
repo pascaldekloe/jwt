@@ -107,7 +107,7 @@ func (c *Claims) RSASignHeader(r *http.Request, alg string, key *rsa.PrivateKey)
 }
 
 // Handler protects an http.Handler with security enforcements.
-// Requests are passed to Target only when the JWT checks out.
+// Requests are only passed to Target if the JWT checks out.
 type Handler struct {
 	// Target is the secured service.
 	Target http.Handler

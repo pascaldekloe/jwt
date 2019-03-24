@@ -25,7 +25,6 @@ type KeyRegister struct {
 }
 
 // Check parses a JWT if, and only if, the signature checks out.
-// Note that this excludes unsecured JWTs [ErrUnsecured].
 // See Claims.Valid to complete the verification.
 func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 	firstDot, lastDot, sig, header, err := scan(token)

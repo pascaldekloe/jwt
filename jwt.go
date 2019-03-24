@@ -98,13 +98,10 @@ type Registered struct {
 	ID string `json:"jti,omitempty"`
 }
 
-// Claims is JWT payload representation.
+// Claims is the payload representation.
 type Claims struct {
 	// Registered field values take precedence.
 	Registered
-
-	// Raw encoding as is within the token. This field is read-only.
-	Raw json.RawMessage
 
 	// Set has the claims set mapped by name for non-standard usecases.
 	// Use Registered fields where possible. The Sign methods copy each
@@ -120,6 +117,9 @@ type Claims struct {
 	//	nil for JSON null
 	//
 	Set map[string]interface{}
+
+	// Raw encoding as is within the token. This field is read-only.
+	Raw json.RawMessage
 
 	// “The "kid" (key ID) Header Parameter is a hint indicating which key
 	// was used to secure the JWS.  This parameter allows originators to
@@ -254,7 +254,7 @@ func (e AlgError) Error() string {
 	return "jwt: algorithm " + strconv.Quote(string(e)) + " not in use"
 }
 
-// NumericTime, named NumericDate, is “A JSON numeric value representing
+// NumericTime implements NumericDate: “A JSON numeric value representing
 // the number of seconds from 1970-01-01T00:00:00Z UTC until the specified
 // UTC date/time, ignoring leap seconds.”
 type NumericTime float64
@@ -277,7 +277,7 @@ func (n *NumericTime) Time() time.Time {
 	return time.Unix(0, int64(float64(*n)*float64(time.Second))).UTC()
 }
 
-// String returns the ISO representation with the empty string for nil.
+// String returns the ISO representation or the empty string for nil.
 func (n *NumericTime) String() string {
 	if n == nil {
 		return ""

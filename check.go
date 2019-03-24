@@ -20,8 +20,7 @@ var ErrSigMiss = errors.New("jwt: signature mismatch")
 var errPart = errors.New("jwt: missing base64 part")
 
 // ECDSACheck parses a JWT if, and only if, the signature checks out.
-// Note that this excludes unsecured JWTs [ErrUnsecured]. When the
-// algorithm is not in ECDSAAlgs, then the error is ErrAlgUnk.
+// The return is an AlgError when the algorithm is not in ECDSAAlgs.
 // See Valid to complete the verification.
 func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
 	firstDot, lastDot, sig, header, err := scan(token)
@@ -46,8 +45,7 @@ func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
 }
 
 // HMACCheck parses a JWT if, and only if, the signature checks out.
-// Note that this excludes unsecured JWTs [ErrUnsecured]. When the
-// algorithm is not in HMACAlgs, then the error is ErrAlgUnk.
+// The return is an AlgError when the algorithm is not in HMACAlgs.
 // See Valid to complete the verification.
 func HMACCheck(token, secret []byte) (*Claims, error) {
 	firstDot, lastDot, sig, header, err := scan(token)
@@ -70,8 +68,7 @@ func HMACCheck(token, secret []byte) (*Claims, error) {
 }
 
 // RSACheck parses a JWT if, and only if, the signature checks out.
-// Note that this excludes unsecured JWTs [ErrUnsecured]. When the
-// algorithm is not in RSAAlgs, then the error is ErrAlgUnk.
+// The return is an AlgError when the algorithm is not in RSAAlgs.
 // See Valid to complete the verification.
 func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
 	firstDot, lastDot, sig, header, err := scan(token)
