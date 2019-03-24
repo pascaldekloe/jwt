@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestCheckHeaderPass(t *testing.T) {
+func TestCheckHeader(t *testing.T) {
 	req, err := http.NewRequest("GET", "/", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -79,13 +79,33 @@ func TestCheckHeaderSchema(t *testing.T) {
 	}
 }
 
-func TestSignHeaderErrPass(t *testing.T) {
+func TestCheckHeaderError(t *testing.T) {
+	req, err := http.NewRequest("GET", "/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// example from RFC 7519, subsection 6.1.
+	req.Header.Set("Authorization", "Bearer eyJhbGciOiJub25lIn0.eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGFtcGxlLmNvbS9pc19yb290Ijp0cnVlfQ.")
+	want := AlgError("none")
+
+	if _, err := ECDSACheckHeader(req, &testKeyEC256.PublicKey); err != want {
+		t.Errorf("ECDSA got error %v, want %v", err, want)
+	}
+	if _, err := HMACCheckHeader(req, nil); err != want {
+		t.Errorf("HMAC got error %v, want %v", err, want)
+	}
+	if _, err := RSACheckHeader(req, &testKeyRSA1024.PublicKey); err != want {
+		t.Errorf("RSA got error %v, want %v", err, want)
+	}
+}
+
+func TestSignHeaderError(t *testing.T) {
 	req, err := http.NewRequest("GET", "/", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	unknownAlg := "doesnotexist"
-	want := ErrAlgUnk
+	want := AlgError(unknownAlg)
 
 	c := new(Claims)
 	if err := c.ECDSASignHeader(req, unknownAlg, testKeyEC256); err != want {

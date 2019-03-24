@@ -17,9 +17,6 @@ import (
 // ErrSigMiss means the signature check failed.
 var ErrSigMiss = errors.New("jwt: signature mismatch")
 
-// ErrUnsecured signals the "none" algorithm.
-var ErrUnsecured = errors.New("jwt: unsecured—no signature")
-
 var errPart = errors.New("jwt: missing base64 part")
 
 // ECDSACheck parses a JWT if, and only if, the signature checks out.
@@ -146,15 +143,10 @@ type header struct {
 }
 
 func (h *header) match(algs map[string]crypto.Hash) (crypto.Hash, error) {
-	// why would anyone do this?
-	if h.Alg == "none" {
-		return 0, ErrUnsecured
-	}
-
 	// availability check
 	hash, ok := algs[h.Alg]
 	if !ok {
-		return 0, ErrAlgUnk
+		return 0, AlgError(h.Alg)
 	}
 	if !hash.Available() {
 		return 0, errHashLink

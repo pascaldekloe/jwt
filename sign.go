@@ -11,7 +11,7 @@ import (
 )
 
 // ECDSASign updates the Raw field and returns a new JWT.
-// When the algorithm is not in ECDSAAlgs, then the error is ErrAlgUnk.
+// The return is an AlgError when alg is not in ECDSAAlgs.
 // The caller must use the correct key for the respective algorithm (P-256 for
 // ES256, P-384 for ES384 and P-521 for ES512) or risk malformed token production.
 func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey) (token []byte, err error) {
@@ -48,7 +48,7 @@ func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey) (token []byte, err
 }
 
 // HMACSign updates the Raw field and returns a new JWT.
-// When the algorithm is not in HMACAlgs, then the error is ErrAlgUnk.
+// The return is an AlgError when alg is not in HMACAlgs.
 func (c *Claims) HMACSign(alg string, secret []byte) (token []byte, err error) {
 	if err := c.sync(); err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func (c *Claims) HMACSign(alg string, secret []byte) (token []byte, err error) {
 }
 
 // RSASign updates the Raw field and returns a new JWT.
-// When the algorithm is not in RSAAlgs, then the error is ErrAlgUnk.
+// The return is an AlgError when alg is not in RSAAlgs.
 func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err error) {
 	if err := c.sync(); err != nil {
 		return nil, err
@@ -118,7 +118,7 @@ func (c *Claims) newTokenNoSig(encHeader string, encSigLen int, digest hash.Hash
 // FormatHeader encodes the JOSE header and validates the hash.
 func (c *Claims) formatHeader(alg string, hash crypto.Hash) (encHeader string, err error) {
 	if hash == 0 {
-		return "", ErrAlgUnk
+		return "", AlgError(alg)
 	}
 	if !hash.Available() {
 		return "", errHashLink

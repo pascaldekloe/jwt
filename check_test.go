@@ -132,21 +132,6 @@ func TestCheckMiss(t *testing.T) {
 	}
 }
 
-func TestCheckAlgWrong(t *testing.T) {
-	_, err := ECDSACheck([]byte(goldenRSAs[0].token), nil)
-	if err != ErrAlgUnk {
-		t.Errorf("RSA alg for ECDSA got error %v, want %v", err, ErrAlgUnk)
-	}
-	_, err = HMACCheck([]byte(goldenRSAs[0].token), nil)
-	if err != ErrAlgUnk {
-		t.Errorf("RSA alg for HMAC got error %v, want %v", err, ErrAlgUnk)
-	}
-	_, err = RSACheck([]byte(goldenHMACs[0].token), &testKeyRSA1024.PublicKey)
-	if err != ErrAlgUnk {
-		t.Errorf("HMAC alg for RSA got error %v, want %v", err, ErrAlgUnk)
-	}
-}
-
 func TestCheckHashNotLinked(t *testing.T) {
 	alg := "HB2b256"
 	if _, ok := HMACAlgs[alg]; ok {
@@ -189,11 +174,15 @@ func TestErrPart(t *testing.T) {
 	}
 }
 
-func TestErrUnsecured(t *testing.T) {
+func TestRejectNone(t *testing.T) {
 	// example from RFC 7519, subsection 6.1.
 	const token = "eyJhbGciOiJub25lIn0.eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGFtcGxlLmNvbS9pc19yb290Ijp0cnVlfQ."
-	if _, err := HMACCheck([]byte(token), nil); err != ErrUnsecured {
-		t.Errorf("unsecured got error %v", err)
+	_, err := HMACCheck([]byte(token), nil)
+	if err == nil {
+		t.Fatal("no error")
+	}
+	if want := `jwt: algorithm "none" not in use`; err.Error() != want {
+		t.Errorf("got error %v, want %s", err, want)
 	}
 }
 

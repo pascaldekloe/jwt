@@ -3,10 +3,10 @@
 
 A JSON Web Token (JWT) library for the Go programming language.
 
-The API enforces secure use by design. Unsigned tokens are
-[rejected](https://godoc.org/github.com/pascaldekloe/jwt#ErrUnsecured)
-and there is no support for encryption—use wire encryption instead.
+The API enforces secure use by design. Unsigned tokens are rejected
+and no support for encrypted tokens—use wire encryption instead.
 
+* Compact implementation
 * No third party dependencies
 * Full unit test coverage
 
@@ -16,7 +16,7 @@ This is free and unencumbered software released into the
 
 ## Get Started
 
-The package comes with functions to verify and issue claims.
+The package comes with functions to issue and verify claims.
 
 ```go
 // create a JWT
@@ -29,11 +29,7 @@ The register helps with key migrations and fallback scenarios.
 
 ```go
 var keys jwt.KeyRegister
-keyCount, err := keys.LoadPEM(text, nil)
-if err != nil {
-	log.Fatal("JWT key import: ", err)
-}
-log.Print(keyCount, " JWT key(s) ready")
+_, err := keys.LoadPEM(text, nil)
 ```
 
 ```go
@@ -50,13 +46,13 @@ if !claims.Valid(time.Now()) {
 log.Print("hello ", claims.Audiences)
 ```
 
-For server side security an `http.Handler` based setup can be used as well.
+For server side security, an `http.Handler` based setup can be used as well.
 The following example enforces the subject, formatted name and roles to be
-present as a valid JWT in all requests towards the `MyAPI` handler.
+present as a valid JWT in all requests towards `MyAPI`.
 
 ```go
-http.DefaultServeMux.Handle("/api/v1", &jwt.Handler{
-	Target: MyAPI, // the protected service multiplexer
+http.Handle("/api/v1", &jwt.Handler{
+	Target: MyAPI, // the protected handler
 	RSAKey: JWTPublicKey,
 
 	// map some claims to HTTP headers
@@ -67,7 +63,7 @@ http.DefaultServeMux.Handle("/api/v1", &jwt.Handler{
 
 	// customise further with RBAC
 	Func: func(w http.ResponseWriter, req *http.Request, claims *jwt.Claims) (pass bool) {
-		log.Printf("got a valid JWT %q for %q", claims.ID, claims.Audience)
+		log.Printf("got a valid JWT %q for %q", claims.ID, claims.Audiences)
 
 		// map role enumeration
 		s, ok := claims.String("roles")
@@ -93,8 +89,8 @@ func Greeting(w http.ResponseWriter, req *http.Request) {
 }
 ```
 
-Optionally one can use the claims object from the HTTP request as shown in the
-[“context” example](https://godoc.org/github.com/pascaldekloe/jwt#example-Handler--Context).
+The parsed claims are also available from the HTTP
+[request context](https://godoc.org/github.com/pascaldekloe/jwt#example-Handler--Context).
 
 
 ### Performance on a Mac Pro (late 2013)

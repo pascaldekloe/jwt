@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"time"
 )
 
@@ -54,9 +55,6 @@ var (
 		RS512: crypto.SHA512,
 	}
 )
-
-// ErrAlgUnk means that the specified "alg" is not in use.
-var ErrAlgUnk = errors.New("jwt: algorithm unknown")
 
 // See crypto.Hash.Available.
 var errHashLink = errors.New("jwt: hash function not linked into binary")
@@ -246,6 +244,14 @@ func (c *Claims) Number(name string) (value float64, ok bool) {
 	// fallback
 	value, ok = c.Set[name].(float64)
 	return
+}
+
+// AlgError signals that the specified algorithm is not in use.
+type AlgError string
+
+// Error honnors the error interface.
+func (e AlgError) Error() string {
+	return "jwt: algorithm " + strconv.Quote(string(e)) + " not in use"
 }
 
 // NumericTime, named NumericDate, is “A JSON numeric value representing
