@@ -112,13 +112,7 @@ type Handler struct {
 	// Target is the secured service.
 	Target http.Handler
 
-	// Secret is the HMAC key.
-	Secret []byte
-	// ECDSAKey applies ECDSAAlgs and disables HMACAlgs when set.
-	ECDSAKey *ecdsa.PublicKey
-	// RSAKey applies RSAAlgs and disables HMACAlgs when set.
-	RSAKey *rsa.PublicKey
-	// Keys disables Secret, ECDSAKey and RSAKey when set.
+	// Keys defines the trusted credentials.
 	Keys *KeyRegister
 
 	// HeaderBinding maps JWT claim names to HTTP header names.
@@ -143,20 +137,7 @@ type Handler struct {
 // ServeHTTP honors the http.Handler interface.
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// verify claims
-	var claims *Claims
-	err := ErrAlgUnk
-	if h.Keys != nil {
-		claims, err = h.Keys.CheckHeader(r)
-	} else if h.ECDSAKey == nil && h.RSAKey == nil && len(h.Secret) != 0 {
-		claims, err = HMACCheckHeader(r, h.Secret)
-	} else {
-		if h.RSAKey != nil {
-			claims, err = RSACheckHeader(r, h.RSAKey)
-		}
-		if err == ErrAlgUnk && h.ECDSAKey != nil {
-			claims, err = ECDSACheckHeader(r, h.ECDSAKey)
-		}
-	}
+	claims, err := h.Keys.CheckHeader(r)
 	if err != nil {
 		if err == ErrNoHeader {
 			w.Header().Set("WWW-Authenticate", "Bearer")

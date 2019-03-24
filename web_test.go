@@ -9,6 +9,31 @@ import (
 	"testing"
 )
 
+func TestCheckHeaderPass(t *testing.T) {
+	req, err := http.NewRequest("GET", "/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+goldenECDSAs[0].token)
+	_, err = ECDSACheckHeader(req, goldenECDSAs[0].key)
+	if err != nil {
+		t.Error("ECDSA error:", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+goldenHMACs[0].token)
+	_, err = HMACCheckHeader(req, goldenHMACs[0].secret)
+	if err != nil {
+		t.Error("HMAC error:", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+goldenRSAs[0].token)
+	_, err = RSACheckHeader(req, goldenRSAs[0].key)
+	if err != nil {
+		t.Error("RSA error:", err)
+	}
+}
+
 func TestCheckHeaderPresent(t *testing.T) {
 	req, err := http.NewRequest("GET", "/", nil)
 	if err != nil {

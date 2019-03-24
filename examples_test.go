@@ -30,7 +30,7 @@ func init() {
 	}
 }
 
-// Claims with the standard HTTP client + server library.
+// Claims With The Standard HTTP Client & Server Library
 func Example() {
 	// run secured service
 	srv := httptest.NewTLSServer(&jwt.Handler{
@@ -38,7 +38,7 @@ func Example() {
 			fmt.Fprintf(w, "Hello %s!\n", req.Header.Get("X-Verified-Name"))
 			fmt.Fprintf(w, "You are authorized as %s.\n", req.Header.Get("X-Verified-User"))
 		}),
-		RSAKey: &someRSAKey.PublicKey,
+		Keys: &jwt.KeyRegister{RSAs: []*rsa.PublicKey{&someRSAKey.PublicKey}},
 		HeaderBinding: map[string]string{
 			"sub": "X-Verified-User", // registered [standard] claim name
 			"fn":  "X-Verified-Name", // private [custom] claim name
@@ -47,12 +47,12 @@ func Example() {
 	defer srv.Close()
 
 	// build request with claims
-	req, _ := http.NewRequest("GET", srv.URL, nil)
 	var claims jwt.Claims
 	claims.Subject = "lakane"
 	claims.Set = map[string]interface{}{
 		"fn": "Lana Anthony Kane",
 	}
+	req, _ := http.NewRequest("GET", srv.URL, nil)
 	if err := claims.RSASignHeader(req, jwt.RS512, someRSAKey); err != nil {
 		fmt.Println("sign error:", err)
 	}
@@ -67,7 +67,7 @@ func Example() {
 	// You are authorized as lakane.
 }
 
-// Typed claim lookups.
+// Typed Claim Lookups
 func ExampleClaims_byName() {
 	offset := time.Unix(1537622794, 0)
 	c := jwt.Claims{
@@ -101,19 +101,19 @@ func ExampleClaims_byName() {
 	// "jti": "d"
 }
 
-// Full access to the JWT claims.
+// Full Access To The JWT Claims
 func ExampleHandler_context() {
 	h := &jwt.Handler{
 		Target: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			claims := req.Context().Value("verified-jwt").(*jwt.Claims)
 			if n, ok := claims.Number("deadline"); !ok {
-				fmt.Fprintln(w, "you don't have a deadline")
+				fmt.Fprintln(w, "no deadline")
 			} else {
 				t := jwt.NumericTime(n)
 				fmt.Fprintln(w, "deadline at", t.String())
 			}
 		}),
-		Secret:     []byte("killarcherdie"),
+		Keys:       &jwt.KeyRegister{Secrets: [][]byte{[]byte("killarcherdie")}},
 		ContextKey: "verified-jwt",
 	}
 
@@ -128,25 +128,25 @@ func ExampleHandler_context() {
 	// deadline at 1991-04-12T23:59:59Z
 }
 
-// Standard compliant security out-of-the-box.
+// Standard Compliant Security Out-of-the-box
 func ExampleHandler_deny() {
 	h := &jwt.Handler{
-		ECDSAKey: &someECKey.PublicKey,
 		Target: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 			panic("reached target handler")
 		}),
+		Keys: &jwt.KeyRegister{ECDSAs: []*ecdsa.PublicKey{&someECKey.PublicKey}},
 		Func: func(w http.ResponseWriter, req *http.Request, claims *jwt.Claims) (pass bool) {
 			panic("reached JWT-enhanced handler")
 		},
 	}
 	req := httptest.NewRequest("GET", "/had-something-for-this", nil)
 
-	fmt.Print("Try with no authorization… ")
+	fmt.Print("Try without authorization… ")
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
 	fmt.Println("HTTP", resp.Code, resp.Header().Get("WWW-Authenticate"))
 
-	fmt.Print("Try with disabled algorithm… ")
+	fmt.Print("Try another algorithm… ")
 	var c jwt.Claims
 	if err := c.HMACSignHeader(req, jwt.HS512, []byte("guest")); err != nil {
 		fmt.Println("sign error:", err)
@@ -155,7 +155,7 @@ func ExampleHandler_deny() {
 	h.ServeHTTP(resp, req)
 	fmt.Println("HTTP", resp.Code, resp.Header().Get("WWW-Authenticate"))
 
-	fmt.Print("Try with expired token… ")
+	fmt.Print("Try expired token… ")
 	c.Expires = jwt.NewNumericTime(time.Now().Add(-time.Second))
 	if err := c.ECDSASignHeader(req, jwt.ES512, someECKey); err != nil {
 		fmt.Println("sign error:", err)
@@ -165,20 +165,18 @@ func ExampleHandler_deny() {
 	fmt.Println("HTTP", resp.Code, resp.Header().Get("WWW-Authenticate"))
 
 	// Output:
-	// Try with no authorization… HTTP 401 Bearer
-	// Try with disabled algorithm… HTTP 401 Bearer error="invalid_token", error_description="jwt: algorithm unknown"
-	// Try with expired token… HTTP 401 Bearer error="invalid_token", error_description="jwt: time constraints exceeded"
+	// Try without authorization… HTTP 401 Bearer
+	// Try another algorithm… HTTP 401 Bearer error="invalid_token", error_description="jwt: signature mismatch"
+	// Try expired token… HTTP 401 Bearer error="invalid_token", error_description="jwt: time constraints exceeded"
 }
 
-// Use Func as a request filter.
+// Func As A Request Filter
 func ExampleHandler_filter() {
 	h := &jwt.Handler{
-		Keys: &jwt.KeyRegister{
-			RSAs: []*rsa.PublicKey{&someRSAKey.PublicKey},
-		},
 		Target: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("Elaborate voicemail hoax!"))
 		}),
+		Keys: &jwt.KeyRegister{RSAs: []*rsa.PublicKey{&someRSAKey.PublicKey}},
 		Func: func(w http.ResponseWriter, req *http.Request, claims *jwt.Claims) (pass bool) {
 			if claims.Subject != "marcher" {
 				http.Error(w, "Ring, ring!", http.StatusServiceUnavailable)
@@ -203,7 +201,7 @@ func ExampleHandler_filter() {
 	// Output: HTTP 503 Ring, ring!
 }
 
-// PEM with password protection.
+// PEM With Password Protection
 func ExampleKeyRegister_LoadPEM_encrypted() {
 	const pem = `-----BEGIN RSA PRIVATE KEY-----
 Proc-Type: 4,ENCRYPTED
