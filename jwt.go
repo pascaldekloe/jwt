@@ -72,7 +72,8 @@ const (
 	id        = "jti"
 )
 
-// Registered are the IANA registered “JSON Web Token Claims”.
+// Registered has the IANA registered “JSON Web Token Claims”. Each one is
+// optional—there are no required claims. String values are case sensitive.
 type Registered struct {
 	// Issuer identifies the principal that issued the JWT.
 	Issuer string `json:"iss,omitempty"`
@@ -98,7 +99,8 @@ type Registered struct {
 	ID string `json:"jti,omitempty"`
 }
 
-// Claims is the payload representation.
+// Claims are the (signed) statements of a JWT. The specification uses the term
+// "registered" for standardised claim names, and "private" for non-registered.
 type Claims struct {
 	// Registered field values take precedence.
 	Registered
@@ -107,7 +109,7 @@ type Claims struct {
 	// Use Registered fields where possible. The Sign methods copy each
 	// non-zero Registered field into this map when not nil. JavaScript
 	// numbers are always of the double precision floating-point type.
-	// Non-standard claims are read conform the encoding/json package.
+	// Entries are treated conform the encoding/json package.
 	//
 	//	bool, for JSON booleans
 	//	float64, for JSON numbers

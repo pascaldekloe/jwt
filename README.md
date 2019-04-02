@@ -1,6 +1,8 @@
 [![API Documentation](https://godoc.org/github.com/pascaldekloe/jwt?status.svg)](https://godoc.org/github.com/pascaldekloe/jwt)
 [![Build Status](https://travis-ci.org/pascaldekloe/jwt.svg?branch=master)](https://travis-ci.org/pascaldekloe/jwt)
 
+## About
+
 A JSON Web Token (JWT) library for the Go programming language.
 
 The API enforces secure use by design. Unsigned tokens are rejected
@@ -9,59 +11,77 @@ and no support for encrypted tokens—use wire encryption instead.
 * Compact implementation
 * No third party dependencies
 * Full unit test coverage
+* Feature complete
 
 This is free and unencumbered software released into the
 [public domain](https://creativecommons.org/publicdomain/zero/1.0).
 
 
-## Get Started
+## Introduction
 
-The package comes with functions to issue and verify claims.
+Tokens encapsulate signed claims in the form of a printable ASCII sequence like
+“eyJhbGciOiJFUzUxMiJ9.eyJzdWIiOiJha3JpZWdlciIsInByZWZpeCI6IkRyLiJ9.APhisjBsvFDWLojTWUP7uyEiilIOU4KYVEgqFr5GdJbd5ucuejztFUvzRZq8njo2s0jLqwMN6H0IhG9YHDMRKTgQAbEbOT_13tN6Xs4sTtxefuf_jlJTfTLtg9_2A22iGYgSDBTzWpunC-Ofuq4XegptS2NuC6XGTFu41DbQX6EmEb-7”.
 
 ```go
-// create a JWT
 var claims jwt.Claims
 claims.Issuer = "demo"
-token, err := claims.HMACSign(jwt.HS256, []byte("guest"))
+claims.Audiences = []string{"README", "API"}
+// issue a JWT
+token, err := claims.ECDSASign(jwt.ES256, JWTPrivateKey)
 ```
 
-The register helps with key migrations and fallback scenarios.
+Secured resources may use tokens to determine access.
 
 ```go
-var keys jwt.KeyRegister
-_, err := keys.LoadPEM(text, nil)
-```
-
-```go
-// use a JWT
-claims, err := keys.Check(token)
+// verify a JWT
+claims, err := jwt.ECDSACheck(token, JWTPublicKey)
 if err != nil {
-	log.Print("credentials denied")
+	log.Print("credentials denied: ", err)
 	return
 }
 if !claims.Valid(time.Now()) {
-	log.Print("time constraints exceeded")
+	log.Print("credential time constraints exceeded")
 	return
 }
-log.Print("hello ", claims.Audiences)
+log.Print("hello ", claims.Subject)
 ```
 
-For server side security, an `http.Handler` based setup can be used as well.
-The following example enforces the subject, formatted name and roles to be
-present as a valid JWT in all requests towards `MyAPI`.
+JWT allows for security enforcement without the need for a central decision
+point—that is, the enforcement point can make decisions by it self based on
+signed claims. Commonly agents receive a JWT uppon authentication/login and
+then they provide that token with each request to a secured resource/API.
+
+Token access is "eyes only". Time constraints may be used to reduce risk.
+It is recommended to include (and enforce) more details about the client to
+prevent use of hijacked tokens, e.g, the TLS client fingerprint.
+
+
+# High-level API
+
+Server-side security can be applied with a standard `http.Handler` setup.
+The following example denies requests to `MyAPI` when the JWT is not valid,
+or when the JWT does not have a subject, formatted name or roles present.
 
 ```go
-http.Handle("/api/v1", &jwt.Handler{
-	Target: MyAPI, // the protected handler
-	RSAKey: JWTPublicKey,
+// define trusted credentials
+var keys jwt.KeyRegister
+n, err := keys.LoadPEM(text, nil)
+if err != nil {
+	log.Fatal(err)
+}
+log.Print("setup with ", n, " JWT keys")
 
-	// map some claims to HTTP headers
+http.Handle("/api/v1", &jwt.Handler{
+	Target: MyAPI, // protected HTTP handler
+	Keys: keys,
+
+	// map two claims to HTTP headers
 	HeaderBinding: map[string]string{
 		"sub": "X-Verified-User", // registered [standard] claim
 		"fn":  "X-Verified-Name", // private [custom] claim
 	},
 
-	// customise further with RBAC
+	// customise with RBAC
 	Func: func(w http.ResponseWriter, req *http.Request, claims *jwt.Claims) (pass bool) {
 		log.Printf("got a valid JWT %q for %q", claims.ID, claims.Audiences)
 
@@ -89,11 +109,14 @@ func Greeting(w http.ResponseWriter, req *http.Request) {
 }
 ```
 
-The parsed claims are also available from the HTTP
+Alternatively, claims can be propagated through the
 [request context](https://godoc.org/github.com/pascaldekloe/jwt#example-Handler--Context).
 
 
-### Performance on a Mac Pro (late 2013)
+### Performance
+
+Choose your algorithm wisely. The following results were measured on a 3.5 GHz
+Xeon E5-1650 v2 (Ivy Bridge-EP).
 
 ```
 name                   time/op
