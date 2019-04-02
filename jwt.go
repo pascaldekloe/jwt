@@ -100,7 +100,7 @@ type Registered struct {
 }
 
 // AcceptAudience verifies the applicability of the audience identified with
-// stringOrURI. Any stringOrURI is accepted on absense of the audience claim.
+// stringOrURI. Any stringOrURI is accepted on absence of the audience claim.
 func (r *Registered) AcceptAudience(stringOrURI string) bool {
 	for _, a := range r.Audiences {
 		if stringOrURI == a {
