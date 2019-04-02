@@ -99,6 +99,17 @@ type Registered struct {
 	ID string `json:"jti,omitempty"`
 }
 
+// AcceptAudience verifies the applicability of the audience identified with
+// stringOrURI. Any stringOrURI is accepted on absense of the audience claim.
+func (r *Registered) AcceptAudience(stringOrURI string) bool {
+	for _, a := range r.Audiences {
+		if stringOrURI == a {
+			return true
+		}
+	}
+	return len(r.Audiences) == 0
+}
+
 // Claims are the (signed) statements of a JWT. The specification uses the term
 // "registered" for standardised claim names, and "private" for non-registered.
 type Claims struct {

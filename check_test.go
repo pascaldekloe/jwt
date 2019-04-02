@@ -112,8 +112,18 @@ func TestCheckAudiences(t *testing.T) {
 		t.Errorf("got JSON %q, want %q", claims.Raw, payload)
 	}
 
-	if a := claims.Audiences; len(a) != 2 || a[0] != "Other Barry" || a[1] != "Desert Eagle" {
-		t.Errorf(`got audiences %q, want ["Other Barry" "Desert Eagle"]`, claims.Audiences)
+	if !claims.AcceptAudience("Other Barry") {
+		t.Error("Other Barry not accepted")
+	}
+	if !claims.AcceptAudience("Desert Eagle") {
+		t.Error("Desert Eagle not accepted")
+	}
+	if claims.AcceptAudience("") {
+		t.Error("no audience accepted")
+	}
+
+	if got, want := len(claims.Audiences), 2; got != want {
+		t.Errorf(`got %d audiences, want %d`, got, want)
 	}
 }
 
