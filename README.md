@@ -19,18 +19,21 @@ This is free and unencumbered software released into the
 
 ## Introduction
 
-Tokens encapsulate signed claims in the form of a printable ASCII sequence like
-“eyJhbGciOiJFUzUxMiJ9.eyJzdWIiOiJha3JpZWdlciIsInByZWZpeCI6IkRyLiJ9.APhisjBsvFDWLojTWUP7uyEiilIOU4KYVEgqFr5GdJbd5ucuejztFUvzRZq8njo2s0jLqwMN6H0IhG9YHDMRKTgQAbEbOT_13tN6Xs4sTtxefuf_jlJTfTLtg9_2A22iGYgSDBTzWpunC-Ofuq4XegptS2NuC6XGTFu41DbQX6EmEb-7”.
+Tokens encapsulate signed statements called claims. A claim is identified by its
+name (string). The specification defines 7
+[standard claims](https://godoc.org/github.com/pascaldekloe/jwt#Registered).
+Tokens serialise as printable ASCII sequences, like
+“eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiJha3JpZWdlciIsInByZWZpeCI6IkRyLiJ9.RTOboYsLW7zXFJyXtIypOmXfuRGVT_FpDUTs2TOuK73qZKm56JcESfsl_etnBsl7W80TXE5l5qecrMizh3XYmw”.
 
 ```go
 var claims jwt.Claims
 claims.Issuer = "demo"
-claims.Audiences = []string{"README", "API"}
+claims.Audiences = []string{"README"}
 // issue a JWT
 token, err := claims.ECDSASign(jwt.ES256, JWTPrivateKey)
 ```
 
-Secured resources may use tokens to determine access.
+Secured resources can use tokens to determine access.
 
 ```go
 // verify a JWT
@@ -46,17 +49,14 @@ if !claims.Valid(time.Now()) {
 log.Print("hello ", claims.Subject)
 ```
 
-JWT allows for security enforcement without the need for a central decision
-point—that is, the enforcement point can make decisions by it self based on
-signed claims. Commonly agents receive a JWT uppon authentication/login and
-then they provide that token with each request to a secured resource/API.
-
-Token access is "eyes only". Time constraints may be used to reduce risk.
-It is recommended to include (and enforce) more details about the client to
-prevent use of hijacked tokens, e.g, the TLS client fingerprint.
+Commonly, agents receive a JWT uppon authentication/login. Then, that token is
+supplied with each request to a secured resource/API, as a proof of authority.
+Token access is "eyes only". Time constraints may be used to reduce risk. It is
+recommended to include (and enforce) more details about the client, e.g., a TLS
+client fingerprint, to prevent use of hijacked tokens.
 
 
-# High-level API
+# High-Level API
 
 Server-side security can be applied with a standard `http.Handler` setup.
 The following example denies requests to `MyAPI` when the JWT is not valid,
@@ -81,7 +81,7 @@ http.Handle("/api/v1", &jwt.Handler{
 		"fn":  "X-Verified-Name", // private [custom] claim
 	},
 
-	// customise with RBAC
+	// map another claim with custom logic
 	Func: func(w http.ResponseWriter, req *http.Request, claims *jwt.Claims) (pass bool) {
 		log.Printf("got a valid JWT %q for %q", claims.ID, claims.Audiences)
 
@@ -109,7 +109,7 @@ func Greeting(w http.ResponseWriter, req *http.Request) {
 }
 ```
 
-Alternatively, claims can be propagated through the
+The validated claims struct is also propagated through the
 [request context](https://godoc.org/github.com/pascaldekloe/jwt#example-Handler--Context).
 
 
