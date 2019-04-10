@@ -2,7 +2,6 @@ package jwt
 
 import (
 	"bytes"
-	"crypto"
 	"crypto/ecdsa"
 	"crypto/hmac"
 	"crypto/rsa"
@@ -28,7 +27,7 @@ func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
 		return nil, err
 	}
 
-	hash, err := header.match(ECDSAAlgs)
+	hash, err := hashLookup(header.Alg, ECDSAAlgs)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +52,7 @@ func HMACCheck(token, secret []byte) (*Claims, error) {
 		return nil, err
 	}
 
-	hash, err := header.match(HMACAlgs)
+	hash, err := hashLookup(header.Alg, HMACAlgs)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +75,7 @@ func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
 		return nil, err
 	}
 
-	hash, err := header.match(RSAAlgs)
+	hash, err := hashLookup(header.Alg, RSAAlgs)
 	if err != nil {
 		return nil, err
 	}
@@ -137,18 +136,6 @@ type header struct {
 	Alg  string   // algorithm
 	Kid  string   // key identifier
 	Crit []string // extensions which must be understood and processed
-}
-
-func (h *header) match(algs map[string]crypto.Hash) (crypto.Hash, error) {
-	// availability check
-	hash, ok := algs[h.Alg]
-	if !ok {
-		return 0, AlgError(h.Alg)
-	}
-	if !hash.Available() {
-		return 0, errHashLink
-	}
-	return hash, nil
 }
 
 // Buf remains in use as the Raw field.

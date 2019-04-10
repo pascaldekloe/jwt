@@ -32,7 +32,7 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 		return nil, err
 	}
 
-	switch hash, err := header.match(HMACAlgs); err.(type) {
+	switch hash, err := hashLookup(header.Alg, HMACAlgs); err.(type) {
 	case nil:
 		keyOptions := keys.Secrets
 		if header.Kid != "" {
@@ -59,7 +59,7 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 		return nil, err
 	}
 
-	switch hash, err := header.match(RSAAlgs); err.(type) {
+	switch hash, err := hashLookup(header.Alg, RSAAlgs); err.(type) {
 	case nil:
 		keyOptions := keys.RSAs
 		if header.Kid != "" {
@@ -92,7 +92,7 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 		return nil, err
 	}
 
-	switch hash, err := header.match(ECDSAAlgs); err {
+	switch hash, err := hashLookup(header.Alg, ECDSAAlgs); err {
 	case nil:
 		keyOptions := keys.ECDSAs
 		if header.Kid != "" {

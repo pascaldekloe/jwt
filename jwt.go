@@ -27,25 +27,18 @@ const (
 	RS512 = "RS512" // RSASSA-PKCS1-v1_5 using SHA-512
 )
 
-// When adding additional entries you also need to
-// import the respective packages to link the hash
-// function into the binary [crypto.Hash.Available].
+// Algorithm support is configured with hash registrations.
 var (
-	// ECDSAAlgs is the ECDSA hash algorithm registration.
 	ECDSAAlgs = map[string]crypto.Hash{
 		ES256: crypto.SHA256,
 		ES384: crypto.SHA384,
 		ES512: crypto.SHA512,
 	}
-
-	// HMACAlgs is the HMAC hash algorithm registration.
 	HMACAlgs = map[string]crypto.Hash{
 		HS256: crypto.SHA256,
 		HS384: crypto.SHA384,
 		HS512: crypto.SHA512,
 	}
-
-	// RSAAlgs is the RSA hash algorithm registration.
 	RSAAlgs = map[string]crypto.Hash{
 		PS256: crypto.SHA256,
 		PS384: crypto.SHA384,
@@ -58,6 +51,26 @@ var (
 
 // See crypto.Hash.Available.
 var errHashLink = errors.New("jwt: hash function not linked into binary")
+
+func hashLookup(alg string, algs map[string]crypto.Hash) (crypto.Hash, error) {
+	// availability check
+	hash, ok := algs[alg]
+	if !ok {
+		return 0, AlgError(alg)
+	}
+	if !hash.Available() {
+		return 0, errHashLink
+	}
+	return hash, nil
+}
+
+// AlgError signals that the specified algorithm is not in use.
+type AlgError string
+
+// Error honnors the error interface.
+func (e AlgError) Error() string {
+	return "jwt: algorithm " + strconv.Quote(string(e)) + " not in use"
+}
 
 var encoding = base64.RawURLEncoding
 
@@ -257,14 +270,6 @@ func (c *Claims) Number(name string) (value float64, ok bool) {
 	// fallback
 	value, ok = c.Set[name].(float64)
 	return
-}
-
-// AlgError signals that the specified algorithm is not in use.
-type AlgError string
-
-// Error honnors the error interface.
-func (e AlgError) Error() string {
-	return "jwt: algorithm " + strconv.Quote(string(e)) + " not in use"
 }
 
 // NumericTime implements NumericDate: “A JSON numeric value representing

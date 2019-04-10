@@ -1,7 +1,6 @@
 package jwt
 
 import (
-	"crypto"
 	"crypto/ecdsa"
 	"crypto/hmac"
 	"crypto/rand"
@@ -19,17 +18,16 @@ func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey) (token []byte, err
 		return nil, err
 	}
 
-	// signature contains pair (r, s) as per RFC 7518 section 3.4
-	sig := make([]byte, 2*((key.Curve.Params().BitSize+7)/8))
-	encSigLen := encoding.EncodedLen(len(sig))
-
-	hash := ECDSAAlgs[alg]
-	encHeader, err := c.formatHeader(alg, hash)
+	hash, err := hashLookup(alg, ECDSAAlgs)
 	if err != nil {
 		return nil, err
 	}
 	digest := hash.New()
-	token = c.newTokenNoSig(encHeader, encSigLen, digest)
+
+	// signature contains pair (r, s) as per RFC 7518 section 3.4
+	sigLen := 2 * ((key.Curve.Params().BitSize + 7) / 8)
+	encSigLen := encoding.EncodedLen(sigLen)
+	token = c.newToken(alg, encSigLen, digest)
 
 	// create signature
 	r, s, err := ecdsa.Sign(rand.Reader, key, digest.Sum(nil))
@@ -37,12 +35,12 @@ func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey) (token []byte, err
 		return nil, err
 	}
 
+	// append signature
+	sig := make([]byte, sigLen)
 	// algin right with big-endian order
 	rBytes, sBytes := r.Bytes(), s.Bytes()
 	copy(sig[(len(sig)/2)-len(rBytes):], rBytes)
 	copy(sig[len(sig)-len(sBytes):], sBytes)
-
-	// append signature
 	encoding.Encode(token[len(token)-encSigLen:], sig)
 	return token, nil
 }
@@ -54,14 +52,14 @@ func (c *Claims) HMACSign(alg string, secret []byte) (token []byte, err error) {
 		return nil, err
 	}
 
-	hash := HMACAlgs[alg]
-	encHeader, err := c.formatHeader(alg, hash)
+	hash, err := hashLookup(alg, HMACAlgs)
 	if err != nil {
 		return nil, err
 	}
 	digest := hmac.New(hash.New, secret)
+
 	encSigLen := encoding.EncodedLen(digest.Size())
-	token = c.newTokenNoSig(encHeader, encSigLen, digest)
+	token = c.newToken(alg, encSigLen, digest)
 
 	// append signature
 	encoding.Encode(token[len(token)-encSigLen:], digest.Sum(nil))
@@ -75,14 +73,14 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err err
 		return nil, err
 	}
 
-	hash := RSAAlgs[alg]
-	encHeader, err := c.formatHeader(alg, hash)
+	hash, err := hashLookup(alg, RSAAlgs)
 	if err != nil {
 		return nil, err
 	}
 	digest := hash.New()
+
 	encSigLen := encoding.EncodedLen(key.Size())
-	token = c.newTokenNoSig(encHeader, encSigLen, digest)
+	token = c.newToken(alg, encSigLen, digest)
 
 	// append signature
 	var sig []byte
@@ -98,8 +96,10 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err err
 	return token, nil
 }
 
-// NewTokenNoSig returns a new JWT with the signature bytes still unset.
-func (c *Claims) newTokenNoSig(encHeader string, encSigLen int, digest hash.Hash) []byte {
+// NewToken returns a new JWT with the signature bytes still unset.
+func (c *Claims) newToken(alg string, encSigLen int, digest hash.Hash) []byte {
+	encHeader := c.formatHeader(alg)
+
 	encClaimsLen := encoding.EncodedLen(len(c.Raw))
 	token := make([]byte, len(encHeader)+encClaimsLen+encSigLen+2)
 
@@ -115,15 +115,8 @@ func (c *Claims) newTokenNoSig(encHeader string, encSigLen int, digest hash.Hash
 	return token
 }
 
-// FormatHeader encodes the JOSE header and validates the hash.
-func (c *Claims) formatHeader(alg string, hash crypto.Hash) (encHeader string, err error) {
-	if hash == 0 {
-		return "", AlgError(alg)
-	}
-	if !hash.Available() {
-		return "", errHashLink
-	}
-
+// FormatHeader encodes the JOSE header.
+func (c *Claims) formatHeader(alg string) string {
 	if kid := c.KeyID; kid != "" {
 		buf := make([]byte, 7, 24+len(kid))
 		copy(buf, `{"alg":`)
@@ -132,40 +125,40 @@ func (c *Claims) formatHeader(alg string, hash crypto.Hash) (encHeader string, e
 		buf = strconv.AppendQuote(buf, kid)
 		buf = append(buf, '}')
 
-		return encoding.EncodeToString(buf), nil
+		return encoding.EncodeToString(buf)
 	}
 
 	switch alg {
 	case ES256:
-		return "eyJhbGciOiJFUzI1NiJ9", nil
+		return "eyJhbGciOiJFUzI1NiJ9"
 	case ES384:
-		return "eyJhbGciOiJFUzM4NCJ9", nil
+		return "eyJhbGciOiJFUzM4NCJ9"
 	case ES512:
-		return "eyJhbGciOiJFUzUxMiJ9", nil
+		return "eyJhbGciOiJFUzUxMiJ9"
 	case HS256:
-		return "eyJhbGciOiJIUzI1NiJ9", nil
+		return "eyJhbGciOiJIUzI1NiJ9"
 	case HS384:
-		return "eyJhbGciOiJIUzM4NCJ9", nil
+		return "eyJhbGciOiJIUzM4NCJ9"
 	case HS512:
-		return "eyJhbGciOiJIUzUxMiJ9", nil
+		return "eyJhbGciOiJIUzUxMiJ9"
 	case PS256:
-		return "eyJhbGciOiJQUzI1NiJ9", nil
+		return "eyJhbGciOiJQUzI1NiJ9"
 	case PS384:
-		return "eyJhbGciOiJQUzM4NCJ9", nil
+		return "eyJhbGciOiJQUzM4NCJ9"
 	case PS512:
-		return "eyJhbGciOiJQUzUxMiJ9", nil
+		return "eyJhbGciOiJQUzUxMiJ9"
 	case RS256:
-		return "eyJhbGciOiJSUzI1NiJ9", nil
+		return "eyJhbGciOiJSUzI1NiJ9"
 	case RS384:
-		return "eyJhbGciOiJSUzM4NCJ9", nil
+		return "eyJhbGciOiJSUzM4NCJ9"
 	case RS512:
-		return "eyJhbGciOiJSUzUxMiJ9", nil
+		return "eyJhbGciOiJSUzUxMiJ9"
 	default:
 		buf := make([]byte, 7, 14)
 		copy(buf, `{"alg":`)
 		buf = strconv.AppendQuote(buf, alg)
 		buf = append(buf, '}')
 
-		return encoding.EncodeToString(buf), nil
+		return encoding.EncodeToString(buf)
 	}
 }

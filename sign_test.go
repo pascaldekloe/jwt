@@ -144,23 +144,19 @@ uRVZaJLTfpQ+n88IcdG4WPKnRZqxGnrq3DjtIvFrBlM=
 
 func TestFormatHeader(t *testing.T) {
 	/// test all standard algorithms
-	algs := make(map[string]crypto.Hash)
-	for alg, hash := range ECDSAAlgs {
-		algs[alg] = hash
+	algs := make(map[string]struct{})
+	for alg := range ECDSAAlgs {
+		algs[alg] = struct{}{}
 	}
-	for alg, hash := range HMACAlgs {
-		algs[alg] = hash
+	for alg := range HMACAlgs {
+		algs[alg] = struct{}{}
 	}
-	for alg, hash := range RSAAlgs {
-		algs[alg] = hash
+	for alg := range RSAAlgs {
+		algs[alg] = struct{}{}
 	}
 
-	for alg, hash := range algs {
-		header, err := new(Claims).formatHeader(alg, hash)
-		if err != nil {
-			t.Errorf("error for %q: %s", alg, err)
-			continue
-		}
+	for alg := range algs {
+		header := new(Claims).formatHeader(alg)
 
 		headerJSON, err := encoding.DecodeString(header)
 		if err != nil {
