@@ -24,25 +24,38 @@ func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey) (token []byte, err
 	}
 	digest := hash.New()
 
-	// signature contains pair (r, s) as per RFC 7518 section 3.4
-	sigLen := 2 * ((key.Curve.Params().BitSize + 7) / 8)
-	encSigLen := encoding.EncodedLen(sigLen)
-	token = c.newToken(alg, encSigLen, digest)
+	// signature contains pair (r, s) as per RFC 7518, subsection 3.4
+	paramLen := (key.Curve.Params().BitSize + 7) / 8
+	token = c.newToken(alg, encoding.EncodedLen(paramLen*2), digest)
 
-	// create signature
 	r, s, err := ecdsa.Sign(rand.Reader, key, digest.Sum(nil))
 	if err != nil {
 		return nil, err
 	}
 
-	// append signature
-	sig := make([]byte, sigLen)
-	// algin right with big-endian order
-	rBytes, sBytes := r.Bytes(), s.Bytes()
-	copy(sig[(len(sig)/2)-len(rBytes):], rBytes)
-	copy(sig[len(sig)-len(sBytes):], sBytes)
-	encoding.Encode(token[len(token)-encSigLen:], sig)
-	return token, nil
+	sig := token[len(token):cap(token)]
+	i := len(sig)
+	for _, word := range s.Bits() {
+		for bitCount := strconv.IntSize; bitCount > 0; bitCount -= 8 {
+			i--
+			sig[i] = byte(word)
+			word >>= 8
+		}
+	}
+	// i might have exceeded paramLen due to the word size
+	i = len(sig) - paramLen
+	for _, word := range r.Bits() {
+		for bitCount := strconv.IntSize; bitCount > 0; bitCount -= 8 {
+			i--
+			sig[i] = byte(word)
+			word >>= 8
+		}
+	}
+
+	// encoder won't overhaul source space
+	encoding.Encode(sig, sig[len(sig)-2*paramLen:])
+
+	return token[:cap(token)], nil
 }
 
 // HMACSign updates the Raw field and returns a new JWT.
@@ -58,12 +71,13 @@ func (c *Claims) HMACSign(alg string, secret []byte) (token []byte, err error) {
 	}
 	digest := hmac.New(hash.New, secret)
 
-	encSigLen := encoding.EncodedLen(digest.Size())
-	token = c.newToken(alg, encSigLen, digest)
+	token = c.newToken(alg, encoding.EncodedLen(digest.Size()), digest)
 
-	// append signature
-	encoding.Encode(token[len(token)-encSigLen:], digest.Sum(nil))
-	return token, nil
+	// use tail as a buffer; encoder won't overhaul source space
+	bufOffset := cap(token) - digest.Size()
+	encoding.Encode(token[len(token):cap(token)], digest.Sum(token[bufOffset:bufOffset]))
+
+	return token[:cap(token)], nil
 }
 
 // RSASign updates the Raw field and returns a new JWT.
@@ -79,21 +93,23 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err err
 	}
 	digest := hash.New()
 
-	encSigLen := encoding.EncodedLen(key.Size())
-	token = c.newToken(alg, encSigLen, digest)
+	token = c.newToken(alg, encoding.EncodedLen(key.Size()), digest)
 
-	// append signature
+	// use signature space as a buffer while not set
+	buf := token[len(token):]
+
 	var sig []byte
 	if alg[0] == 'P' {
-		sig, err = rsa.SignPSS(rand.Reader, key, hash, digest.Sum(nil), nil)
+		sig, err = rsa.SignPSS(rand.Reader, key, hash, digest.Sum(buf), nil)
 	} else {
-		sig, err = rsa.SignPKCS1v15(rand.Reader, key, hash, digest.Sum(nil))
+		sig, err = rsa.SignPKCS1v15(rand.Reader, key, hash, digest.Sum(buf))
 	}
 	if err != nil {
 		return nil, err
 	}
-	encoding.Encode(token[len(token)-encSigLen:], sig)
-	return token, nil
+	encoding.Encode(token[len(token):cap(token)], sig)
+
+	return token[:cap(token)], nil
 }
 
 // NewToken returns a new JWT with the signature bytes still unset.
@@ -112,13 +128,13 @@ func (c *Claims) newToken(alg string, encSigLen int, digest hash.Hash) []byte {
 
 	digest.Write(token[:i])
 
-	return token
+	return token[:i+1]
 }
 
 // FormatHeader encodes the JOSE header.
 func (c *Claims) formatHeader(alg string) string {
 	if kid := c.KeyID; kid != "" {
-		buf := make([]byte, 7, 24+len(kid))
+		buf := make([]byte, 7, 19+len(kid)+len(alg))
 		copy(buf, `{"alg":`)
 		buf = strconv.AppendQuote(buf, alg)
 		buf = append(buf, `,"kid":`...)
@@ -154,7 +170,7 @@ func (c *Claims) formatHeader(alg string) string {
 	case RS512:
 		return "eyJhbGciOiJSUzUxMiJ9"
 	default:
-		buf := make([]byte, 7, 14)
+		buf := make([]byte, 7, 10+len(alg))
 		copy(buf, `{"alg":`)
 		buf = strconv.AppendQuote(buf, alg)
 		buf = append(buf, '}')
