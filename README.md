@@ -3,7 +3,7 @@
 
 ## About
 
-A JSON Web Token (JWT) library for the Go programming language.
+… a JSON Web Token (JWT) library for the Go programming language.
 
 The API enforces secure use by design. Unsigned tokens are rejected
 and no support for encrypted tokens—use wire encryption instead.
@@ -56,7 +56,7 @@ recommended to include (and enforce) more details about the client, e.g., a TLS
 client fingerprint, to prevent use of hijacked tokens.
 
 
-# High-Level API
+## High-Level API
 
 Server-side security can be applied with a standard `http.Handler` setup.
 The following example denies requests to `MyAPI` when the JWT is not valid,
@@ -113,7 +113,7 @@ The validated claims struct is also propagated through the
 [request context](https://godoc.org/github.com/pascaldekloe/jwt#example-Handler--Context).
 
 
-### Performance
+## Performance
 
 Choose your algorithm wisely. The following results were measured on a 3.5 GHz
 Xeon E5-1650 v2 (Ivy Bridge-EP).
