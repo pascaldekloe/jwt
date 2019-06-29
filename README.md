@@ -152,7 +152,7 @@ more modern hardware.
 * RFC 7517 “JSON Web Key (JWK)”
 * RFC 7518 “JSON Web Algorithms (JWA)”
 * RFC 7519 “JSON Web Token (JWT)”
-* RFC 8073 “CFRG Elliptic Curve Diffie-Hellman (ECDH) and Signatures in JSON Object Signing and Encryption (JOSE)”
+* RFC 8037 “CFRG Elliptic Curve Diffie-Hellman (ECDH) and Signatures in JSON Object Signing and Encryption (JOSE)”
 
 
 [![JWT.io](https://jwt.io/img/badge.svg)](https://jwt.io/)
