@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/rsa"
 	"crypto/x509"
@@ -13,13 +14,15 @@ import (
 
 // KeyRegister contains recognized credentials.
 type KeyRegister struct {
-	ECDSAs  []*ecdsa.PublicKey // ECDSA credentials
-	RSAs    []*rsa.PublicKey   // RSA credentials
-	Secrets [][]byte           // HMAC credentials
+	ECDSAs  []*ecdsa.PublicKey  // ECDSA credentials
+	EdDSAs  []ed25519.PublicKey // EdDSA credentials
+	RSAs    []*rsa.PublicKey    // RSA credentials
+	Secrets [][]byte            // HMAC credentials
 
 	// Optional key identification.
 	// See Claims.KeyID for details.
 	ECDSAIDs  []string // ECDSAs key ID mapping
+	EdDSAIDs  []string // EdDSA key ID mapping
 	RSAIDs    []string // RSAs key ID mapping
 	SecretIDs []string // Secrets key ID mapping
 }
@@ -30,6 +33,25 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 	firstDot, lastDot, sig, header, err := scan(token)
 	if err != nil {
 		return nil, err
+	}
+
+	if header.Alg == EdDSA {
+		keyOptions := keys.EdDSAs
+		if header.Kid != "" {
+			for i, kid := range keys.EdDSAIDs {
+				if kid == header.Kid && i < len(keyOptions) {
+					keyOptions = keyOptions[i : i+1]
+					break
+				}
+			}
+		}
+
+		for _, key := range keyOptions {
+			if ed25519.Verify(key, token[:lastDot], sig) {
+				return parseClaims(token[firstDot+1:lastDot], sig, header)
+			}
+		}
+		return nil, ErrSigMiss
 	}
 
 	switch hash, err := hashLookup(header.Alg, HMACAlgs); err.(type) {
@@ -194,6 +216,10 @@ func (keys *KeyRegister) add(key interface{}) error {
 		keys.ECDSAs = append(keys.ECDSAs, t)
 	case *ecdsa.PrivateKey:
 		keys.ECDSAs = append(keys.ECDSAs, &t.PublicKey)
+	case ed25519.PublicKey:
+		keys.EdDSAs = append(keys.EdDSAs, t)
+	case ed25519.PrivateKey:
+		keys.EdDSAs = append(keys.EdDSAs, t.Public().(ed25519.PublicKey))
 	case *rsa.PublicKey:
 		keys.RSAs = append(keys.RSAs, t)
 	case *rsa.PrivateKey:

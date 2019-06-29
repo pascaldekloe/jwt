@@ -3,6 +3,7 @@ package x
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rsa"
 	"encoding/base64"
@@ -81,11 +82,11 @@ func addJWK(keys *jwt.KeyRegister, j *jwk) error {
 			return fmt.Errorf("jwt: JWK with unsupported elliptic curve %q", j.Crv)
 		}
 
-		x, err := keyParam(j.X)
+		x, err := intParam(j.X)
 		if err != nil {
 			return err
 		}
-		y, err := keyParam(j.Y)
+		y, err := intParam(j.Y)
 		if err != nil {
 			return err
 		}
@@ -103,11 +104,11 @@ func addJWK(keys *jwt.KeyRegister, j *jwk) error {
 		keys.ECDSAs = append(keys.ECDSAs, &ecdsa.PublicKey{Curve: curve, X: x, Y: y})
 
 	case "RSA":
-		n, err := keyParam(j.N)
+		n, err := intParam(j.N)
 		if err != nil {
 			return err
 		}
-		e, err := keyParam(j.E)
+		e, err := intParam(j.E)
 		if err != nil {
 			return err
 		}
@@ -115,30 +116,43 @@ func addJWK(keys *jwt.KeyRegister, j *jwk) error {
 		keys.RSAs = append(keys.RSAs, &rsa.PublicKey{N: n, E: int(e.Int64())})
 
 	case "oct":
-		if j.K == nil {
-			return errJWKParam
-		}
-
-		bytes, err := encoding.DecodeString(*j.K)
+		bytes, err := dataParam(j.K)
 		if err != nil {
 			return err
 		}
-
 		keys.Secrets = append(keys.Secrets, bytes)
+
+	case "OKP":
+		switch j.Crv {
+		case "Ed25519":
+			bytes, err := dataParam(j.X)
+			if err != nil {
+				return err
+			}
+			keys.EdDSAs = append(keys.EdDSAs, ed25519.PublicKey(bytes))
+		default:
+			return fmt.Errorf("jwt: JWK with unsupported EdDSA variant %q", j.Crv)
+		}
 	}
 
 	return nil
 }
 
-func keyParam(p *string) (*big.Int, error) {
+func dataParam(p *string) ([]byte, error) {
 	if p == nil {
 		return nil, errJWKParam
 	}
-
 	bytes, err := encoding.DecodeString(*p)
 	if err != nil {
 		return nil, fmt.Errorf("jwt: JWK with malformed key–parameter field: %s", err)
 	}
+	return bytes, nil
+}
 
+func intParam(p *string) (*big.Int, error) {
+	bytes, err := dataParam(p)
+	if err != nil {
+		return nil, err
+	}
 	return new(big.Int).SetBytes(bytes), nil
 }

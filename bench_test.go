@@ -52,6 +52,30 @@ func BenchmarkECDSA(b *testing.B) {
 	}
 }
 
+func BenchmarkEdDSA(b *testing.B) {
+	b.Run("sign-Ed25519", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, err := benchClaims.EdDSASign(testKeyEd25519Private)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+
+	b.Run("check-Ed25519", func(b *testing.B) {
+		token, err := benchClaims.EdDSASign(testKeyEd25519Private)
+		if err != nil {
+			b.Fatal(err)
+		}
+		for i := 0; i < b.N; i++ {
+			_, err := EdDSACheck(token, testKeyEd25519Public)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+}
+
 func BenchmarkHMAC(b *testing.B) {
 	// 512-bit key
 	secret := make([]byte, 64)

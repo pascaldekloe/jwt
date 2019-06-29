@@ -17,7 +17,7 @@ func TestNumericTimeMapping(t *testing.T) {
 	}
 
 	n := NumericTime(1234567890.12)
-	d := time.Date(2009, 2, 13, 23, 31, 30, 12E7, time.UTC)
+	d := time.Date(2009, 2, 13, 23, 31, 30, 12e7, time.UTC)
 
 	if got := NewNumericTime(d); got == nil {
 		t.Error("NewNumericTime from non-zero value got nil")

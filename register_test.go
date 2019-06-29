@@ -3,6 +3,8 @@ package jwt
 import (
 	"bytes"
 	"crypto"
+	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/x509"
 	"testing"
 )
@@ -31,6 +33,14 @@ Lx6rKQXWdWQR581uw9dTuV8zjmkSpLZ3k0qLHVlOqt00AfEL4NO+E7fxh4SuAZPb
 RDMu2lx4lWOM2EyFvgFIyu8xlA9lEg5GKq+A7+y5r99RLughiDd52vGnudMspHEy
 x6IpwXzTZR/T8TkluL3jDWtVNFxGBf/aEErnpeLfRQ==
 -----END EC PRIVATE KEY-----
+
+-----BEGIN PRIVATE KEY-----
+MC4CAQAwBQYDK2VwBCIEIJ1hsZ3v/VpguoRK9JLsLMREScVpezJpGXA7rAMcrn9g
+-----END PRIVATE KEY-----
+        
+-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=
+-----END PUBLIC KEY-----
 
 -----BEGIN RSA PRIVATE KEY-----
 MIICXAIBAAKBgQDCzQ4MMppUkCXTi/BjPWO2gLnaVmPhyMdo7rnccfoBnH5lCTdY
@@ -156,7 +166,7 @@ EUTC5n7n+Qeyo3rL3iLhC/jn3rouX1FA5J7baL17KzDSiF5eQVlLOIfy
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n != 7 {
+	if n != 9 {
 		t.Errorf("extracted %d keys, want 7", n)
 	}
 
@@ -184,6 +194,17 @@ EUTC5n7n+Qeyo3rL3iLhC/jn3rouX1FA5J7baL17KzDSiF5eQVlLOIfy
 		}
 		if !bytes.Equal([]byte(claims.Raw), []byte(gold.claims)) {
 			t.Errorf("ECDSA %d: got claims JSON %q, want %q", i, claims.Raw, gold.claims)
+		}
+	}
+
+	for i, gold := range goldenEdDSAs {
+		claims, err := keys.Check([]byte(gold.token))
+		if err != nil {
+			t.Errorf("EdDSA %d: check error: %s", i, err)
+			continue
+		}
+		if !bytes.Equal([]byte(claims.Raw), []byte(gold.claims)) {
+			t.Errorf("EdDSA %d: got claims JSON %q, want %q", i, claims.Raw, gold.claims)
 		}
 	}
 
@@ -431,20 +452,27 @@ func TestKeyIDMiss(t *testing.T) {
 	var keys KeyRegister
 	// two keys per type
 	keys.ECDSAs = append(keys.ECDSAs, &testKeyEC256.PublicKey, &testKeyEC384.PublicKey)
+	randEdKey, _, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys.EdDSAs = append(keys.EdDSAs, testKeyEd25519Public, randEdKey)
 	keys.RSAs = append(keys.RSAs, &testKeyRSA1024.PublicKey, &testKeyRSA2048.PublicKey)
 	keys.Secrets = append(keys.Secrets, []byte("secret 1"), []byte("secret 2"))
 
 	// identifier mapping
 	keys.ECDSAIDs = append(keys.ECDSAIDs, "first", "second")
+	keys.EdDSAIDs = append(keys.EdDSAIDs, "first", "second")
 	keys.RSAIDs = append(keys.RSAIDs, "first", "second")
 	keys.SecretIDs = append(keys.SecretIDs, "first", "second")
 
-	// match second key – sign with first key
+	// match second key–sign with first key
 	c := Claims{KeyID: "second"}
-	var tokens [3][]byte
+	var tokens [4][]byte
 	tokens[0], _ = c.ECDSASign(ES256, testKeyEC256)
-	tokens[1], _ = c.RSASign(RS256, testKeyRSA1024)
-	tokens[2], _ = c.HMACSign(HS256, []byte("secret 1"))
+	tokens[1], _ = c.EdDSASign(testKeyEd25519Private)
+	tokens[2], _ = c.RSASign(RS256, testKeyRSA1024)
+	tokens[3], _ = c.HMACSign(HS256, []byte("secret 1"))
 
 	for i, token := range tokens {
 		_, err := keys.Check(token)

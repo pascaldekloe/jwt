@@ -13,6 +13,7 @@ import (
 
 // Algorithm Identification Tokens
 const (
+	EdDSA = "EdDSA" // EdDSA signature algorithms
 	ES256 = "ES256" // ECDSA using P-256 and SHA-256
 	ES384 = "ES384" // ECDSA using P-384 and SHA-384
 	ES512 = "ES512" // ECDSA using P-521 and SHA-512
@@ -283,7 +284,7 @@ func NewNumericTime(t time.Time) *NumericTime {
 	if t.IsZero() {
 		return nil
 	}
-	n := NumericTime(float64(t.UnixNano()) / 1E9)
+	n := NumericTime(float64(t.UnixNano()) / 1e9)
 	return &n
 }
 

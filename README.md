@@ -22,22 +22,22 @@ This is free and unencumbered software released into the
 Tokens encapsulate signed statements called claims. A claim is identified by its
 name (string). The specification defines 7
 [standard claims](https://godoc.org/github.com/pascaldekloe/jwt#Registered).
-Tokens serialise as printable ASCII sequences, like
-“eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiJha3JpZWdlciIsInByZWZpeCI6IkRyLiJ9.RTOboYsLW7zXFJyXtIypOmXfuRGVT_FpDUTs2TOuK73qZKm56JcESfsl_etnBsl7W80TXE5l5qecrMizh3XYmw”.
+Tokens serialise as printable ASCII sequences, e.g.
+`eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiJha3JpZWdlciIsInByZWZpeCI6IkRyLiJ9.RTOboYsLW7zXFJyXtIypOmXfuRGVT_FpDUTs2TOuK73qZKm56JcESfsl_etnBsl7W80TXE5l5qecrMizh3XYmw`.
 
 ```go
 var claims jwt.Claims
-claims.Issuer = "demo"
-claims.Audiences = []string{"README"}
+claims.Subject = "alice@example.com"
+claims.Expires = jwt.NewNumericTime(time.Now().Add(time.Hour))
 // issue a JWT
-token, err := claims.ECDSASign(jwt.ES256, JWTPrivateKey)
+token, err := claims.EdDSASign(JWTPrivateKey)
 ```
 
 Secured resources can use tokens to determine access.
 
 ```go
 // verify a JWT
-claims, err := jwt.ECDSACheck(token, JWTPublicKey)
+claims, err := jwt.EdDSACheck(token, JWTPublicKey)
 if err != nil {
 	log.Print("credentials denied: ", err)
 	return
@@ -52,7 +52,7 @@ log.Print("hello ", claims.Subject)
 Commonly, agents receive a JWT uppon authentication/login. Then, that token is
 supplied with each request to a secured resource/API, as a proof of authority.
 Token access is "eyes only". Time constraints may be used to reduce risk. It is
-recommended to include (and enforce) more details about the client, e.g., a TLS
+recommended to include (and enforce) more details about the client, like a TLS
 client fingerprint, to prevent use of hijacked tokens.
 
 
@@ -109,35 +109,50 @@ func Greeting(w http.ResponseWriter, req *http.Request) {
 }
 ```
 
-The validated claims struct is also propagated through the
+The validated claims struct can also be propagated through the
 [request context](https://godoc.org/github.com/pascaldekloe/jwt#example-Handler--Context).
 
 
 ## Performance
 
-Choose your algorithm wisely. The following results were measured on a 3.5 GHz
-Xeon E5-1650 v2 (Ivy Bridge-EP).
+The following results were measured on a 3.5 GHz Xeon E5-1650 v2 (Ivy Bridge-EP).
 
 ```
-name                   time/op
-ECDSA/sign-ES256-12    37.3µs ± 0%
-ECDSA/sign-ES384-12    4.23ms ± 0%
-ECDSA/sign-ES512-12    7.70ms ± 0%
-ECDSA/check-ES256-12    105µs ± 1%
-ECDSA/check-ES384-12   8.25ms ± 0%
-ECDSA/check-ES512-12   14.7ms ± 0%
-HMAC/sign-HS256-12     3.29µs ± 0%
-HMAC/sign-HS384-12     3.83µs ± 0%
-HMAC/sign-HS512-12     3.90µs ± 0%
-HMAC/check-HS256-12    6.55µs ± 0%
-HMAC/check-HS384-12    7.07µs ± 0%
-HMAC/check-HS512-12    7.27µs ± 0%
-RSA/sign-1024-bit-12    422µs ± 0%
-RSA/sign-2048-bit-12   2.11ms ± 0%
-RSA/sign-4096-bit-12   12.9ms ± 0%
-RSA/check-1024-bit-12  33.6µs ± 0%
-RSA/check-2048-bit-12  74.4µs ± 0%
-RSA/check-4096-bit-12   203µs ± 0%
+name                    time/op
+ECDSA/sign-ES256-12     37.9µs ± 0%
+ECDSA/sign-ES384-12     4.53ms ± 1%
+ECDSA/sign-ES512-12     8.16ms ± 1%
+ECDSA/check-ES256-12     105µs ± 1%
+ECDSA/check-ES384-12    8.83ms ± 0%
+ECDSA/check-ES512-12    16.0ms ± 1%
+EdDSA/sign-Ed25519-12   60.0µs ± 1%
+EdDSA/check-Ed25519-12   153µs ± 0%
+HMAC/sign-HS256-12      3.29µs ± 1%
+HMAC/sign-HS384-12      3.87µs ± 1%
+HMAC/sign-HS512-12      3.91µs ± 0%
+HMAC/check-HS256-12     6.74µs ± 0%
+HMAC/check-HS384-12     7.36µs ± 0%
+HMAC/check-HS512-12     7.55µs ± 1%
+RSA/sign-1024-bit-12     427µs ± 1%
+RSA/sign-2048-bit-12    2.12ms ± 1%
+RSA/sign-4096-bit-12    12.9ms ± 0%
+RSA/check-1024-bit-12   34.6µs ± 0%
+RSA/check-2048-bit-12   75.9µs ± 0%
+RSA/check-4096-bit-12    206µs ± 1%
 ```
+
+EdDSA [Ed25519] produces small signatures and it performs well, especially on
+more modern hardware.
+
+
+## Standard Compliance
+
+* RFC 7468 “Textual Encodings of PKIX, PKCS, and CMS Structures”
+* RFC 7515 “JSON Web Signature (JWS)”
+* RFC 7517 “JSON Web Key (JWK)”
+* RFC 7518 “JSON Web Algorithms (JWA)”
+* RFC 7519 “JSON Web Token (JWT)”
+* RFC 8073 “CFRG Elliptic Curve Diffie-Hellman (ECDH) and Signatures in JSON Object Signing and Encryption (JOSE)”
+
 
 [![JWT.io](https://jwt.io/img/badge.svg)](https://jwt.io/)

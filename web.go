@@ -3,6 +3,7 @@ package jwt
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/rsa"
 	"errors"
 	"net/http"
@@ -30,6 +31,16 @@ func ECDSACheckHeader(r *http.Request, key *ecdsa.PublicKey) (*Claims, error) {
 		return nil, err
 	}
 	return ECDSACheck(token, key)
+}
+
+// EdDSACheckHeader applies EdDSACheck on a HTTP request.
+// Specifically it looks for a bearer token in the Authorization header.
+func EdDSACheckHeader(r *http.Request, key ed25519.PublicKey) (*Claims, error) {
+	token, err := tokenFromHeader(r)
+	if err != nil {
+		return nil, err
+	}
+	return EdDSACheck(token, key)
 }
 
 // HMACCheckHeader applies HMACCheck on a HTTP request.

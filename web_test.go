@@ -21,6 +21,12 @@ func TestCheckHeader(t *testing.T) {
 		t.Error("ECDSA error:", err)
 	}
 
+	req.Header.Set("Authorization", "Bearer "+goldenEdDSAs[0].token)
+	_, err = EdDSACheckHeader(req, goldenEdDSAs[0].key)
+	if err != nil {
+		t.Error("EdDSA error:", err)
+	}
+
 	req.Header.Set("Authorization", "Bearer "+goldenHMACs[0].token)
 	_, err = HMACCheckHeader(req, goldenHMACs[0].secret)
 	if err != nil {
@@ -43,6 +49,10 @@ func TestCheckHeaderPresent(t *testing.T) {
 	_, err = ECDSACheckHeader(req, &testKeyEC256.PublicKey)
 	if err != ErrNoHeader {
 		t.Errorf("ECDSA check got %v, want %v", err, ErrNoHeader)
+	}
+	_, err = EdDSACheckHeader(req, testKeyEd25519Public)
+	if err != ErrNoHeader {
+		t.Errorf("EdDSA check got %v, want %v", err, ErrNoHeader)
 	}
 	_, err = HMACCheckHeader(req, nil)
 	if err != ErrNoHeader {
@@ -69,6 +79,10 @@ func TestCheckHeaderSchema(t *testing.T) {
 	if err != errAuthSchema {
 		t.Errorf("ECDSA check got %v, want %v", err, errAuthSchema)
 	}
+	_, err = EdDSACheckHeader(req, testKeyEd25519Public)
+	if err != errAuthSchema {
+		t.Errorf("EdDSA check got %v, want %v", err, errAuthSchema)
+	}
 	_, err = HMACCheckHeader(req, nil)
 	if err != errAuthSchema {
 		t.Errorf("HMAC check got %v, want %v", err, errAuthSchema)
@@ -89,6 +103,9 @@ func TestCheckHeaderError(t *testing.T) {
 	want := AlgError("none")
 
 	if _, err := ECDSACheckHeader(req, &testKeyEC256.PublicKey); err != want {
+		t.Errorf("ECDSA got error %v, want %v", err, want)
+	}
+	if _, err := EdDSACheckHeader(req, testKeyEd25519Public); err != want {
 		t.Errorf("ECDSA got error %v, want %v", err, want)
 	}
 	if _, err := HMACCheckHeader(req, nil); err != want {

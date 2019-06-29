@@ -3,6 +3,8 @@ package jwt
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/rsa"
 	"strings"
 	"testing"
@@ -33,6 +35,31 @@ var goldenECDSAs = []struct {
 func TestECDSACheck(t *testing.T) {
 	for i, gold := range goldenECDSAs {
 		claims, err := ECDSACheck([]byte(gold.token), gold.key)
+		if err != nil {
+			t.Errorf("%d: check error: %s", i, err)
+			continue
+		}
+		if string(claims.Raw) != gold.claims {
+			t.Errorf("%d: got claims JSON %q, want %q", i, claims.Raw, gold.claims)
+		}
+	}
+}
+
+var goldenEdDSAs = []struct {
+	key    ed25519.PublicKey
+	token  string
+	claims string
+}{
+	0: {
+		key:    testKeyEd25519Public,
+		token:  "eyJhbGciOiJFZERTQSJ9.eyAiYXVkIjogIkppbGxldHRlIiwgImp0aSI6ICJjcmlzaXMtdmVzdCIgfQ.HWhMmi3DO74IOYujxYdbSqrNta9IjQsY3QB8JI2vHhwkGTXXwl_gCK93nbROlR4aW37a8EKpBfnqMc7HAhVkBg",
+		claims: `{ "aud": "Jillette", "jti": "crisis-vest" }`,
+	},
+}
+
+func TestEdDSACheck(t *testing.T) {
+	for i, gold := range goldenEdDSAs {
+		claims, err := EdDSACheck([]byte(gold.token), gold.key)
 		if err != nil {
 			t.Errorf("%d: check error: %s", i, err)
 			continue
@@ -132,10 +159,21 @@ func TestCheckMiss(t *testing.T) {
 	if err != ErrSigMiss {
 		t.Errorf("ECDSA check got error %v, want %v", err, ErrSigMiss)
 	}
+
+	randEdKey, _, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = EdDSACheck([]byte(goldenEdDSAs[0].token), randEdKey)
+	if err != ErrSigMiss {
+		t.Errorf("ECDSA check got error %v, want %v", err, ErrSigMiss)
+	}
+
 	_, err = HMACCheck([]byte(goldenHMACs[0].token), nil)
 	if err != ErrSigMiss {
 		t.Errorf("HMAC check got error %v, want %v", err, ErrSigMiss)
 	}
+
 	_, err = RSACheck([]byte(goldenRSAs[0].token), &testKeyRSA4096.PublicKey)
 	if err != ErrSigMiss {
 		t.Errorf("RSA check got error %v, want %v", err, ErrSigMiss)
@@ -226,13 +264,15 @@ func TestCheckBrokenBase64(t *testing.T) {
 
 func TestCheckBrokenJSON(t *testing.T) {
 	want := "jwt: malformed header: "
-	_, err := HMACCheck([]byte("YnJva2Vu.e30."), nil)
+	_, err := EdDSACheck([]byte("YnJva2Vu.e30."), testKeyEd25519Public)
 	if err == nil || !strings.HasPrefix(err.Error(), want) {
 		t.Errorf("corrupt JSON in header got error %v, want %s…", err, want)
 	}
 
+	// example from RFC 8037, appendix A.4 (and A.5)
+	brokenPayload := "eyJhbGciOiJFZERTQSJ9.RXhhbXBsZSBvZiBFZDI1NTE5IHNpZ25pbmc.hgyY0il_MGCjP0JzlnLWG1PPOt7-09PGcvMg3AIbQR6dWbhijcNR4ki4iylGjg5BhVsPt9g7sVvpAr_MuM0KAg"
 	want = "jwt: malformed payload: "
-	_, err = HMACCheck([]byte("eyJhbGciOiJIUzI1NiJ9.YnJva2Vu.5YbD-zSDmv7JQMNGAyVHIFF-2-_eBbqsV5XOZOoaO2c"), nil)
+	_, err = EdDSACheck([]byte(brokenPayload), testKeyEd25519Public)
 	if err == nil || !strings.HasPrefix(err.Error(), want) {
 		t.Errorf("corrupt JSON in payload got error %v, want %s…", err, want)
 	}

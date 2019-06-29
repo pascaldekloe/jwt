@@ -2,10 +2,10 @@ package jwt
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
-	"hash"
 	"strconv"
 )
 
@@ -26,7 +26,9 @@ func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey) (token []byte, err
 
 	// signature contains pair (r, s) as per RFC 7518, subsection 3.4
 	paramLen := (key.Curve.Params().BitSize + 7) / 8
-	token = c.newToken(alg, encoding.EncodedLen(paramLen*2), digest)
+	token = c.newToken(alg, encoding.EncodedLen(paramLen*2))
+	digest.Write(token)
+	token = append(token, '.')
 
 	r, s, err := ecdsa.Sign(rand.Reader, key, digest.Sum(nil))
 	if err != nil {
@@ -58,6 +60,24 @@ func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey) (token []byte, err
 	return token[:cap(token)], nil
 }
 
+// EdDSASign updates the Raw field and returns a new JWT.
+func (c *Claims) EdDSASign(key ed25519.PrivateKey) (token []byte, err error) {
+	if err := c.sync(); err != nil {
+		return nil, err
+	}
+
+	token = c.newToken(EdDSA, encoding.EncodedLen(ed25519.SignatureSize))
+	sig := ed25519.Sign(key, token)
+
+	i := len(token)
+	token = token[:cap(token)]
+	token[i] = '.'
+
+	encoding.Encode(token[i+1:], sig)
+
+	return token, nil
+}
+
 // HMACSign updates the Raw field and returns a new JWT.
 // The return is an AlgError when alg is not in HMACAlgs.
 func (c *Claims) HMACSign(alg string, secret []byte) (token []byte, err error) {
@@ -71,7 +91,9 @@ func (c *Claims) HMACSign(alg string, secret []byte) (token []byte, err error) {
 	}
 	digest := hmac.New(hash.New, secret)
 
-	token = c.newToken(alg, encoding.EncodedLen(digest.Size()), digest)
+	token = c.newToken(alg, encoding.EncodedLen(digest.Size()))
+	digest.Write(token)
+	token = append(token, '.')
 
 	// use tail as a buffer; encoder won't overhaul source space
 	bufOffset := cap(token) - digest.Size()
@@ -93,7 +115,8 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err err
 	}
 	digest := hash.New()
 
-	token = c.newToken(alg, encoding.EncodedLen(key.Size()), digest)
+	token = c.newToken(alg, encoding.EncodedLen(key.Size()))
+	digest.Write(token)
 
 	// use signature space as a buffer while not set
 	buf := token[len(token):]
@@ -107,28 +130,28 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err err
 	if err != nil {
 		return nil, err
 	}
-	encoding.Encode(token[len(token):cap(token)], sig)
 
-	return token[:cap(token)], nil
+	i := len(token)
+	token = token[:cap(token)]
+	token[i] = '.'
+	encoding.Encode(token[i+1:], sig)
+
+	return token, nil
 }
 
-// NewToken returns a new JWT with the signature bytes still unset.
-func (c *Claims) newToken(alg string, encSigLen int, digest hash.Hash) []byte {
+// NewToken returns a new JWT with the signature bytes all zero.
+func (c *Claims) newToken(alg string, encSigLen int) []byte {
 	encHeader := c.formatHeader(alg)
 
-	encClaimsLen := encoding.EncodedLen(len(c.Raw))
-	token := make([]byte, len(encHeader)+encClaimsLen+encSigLen+2)
+	l := len(encHeader) + 1 + encoding.EncodedLen(len(c.Raw))
+	token := make([]byte, l, l+1+encSigLen)
 
 	i := copy(token, encHeader)
 	token[i] = '.'
 	i++
 	encoding.Encode(token[i:], c.Raw)
-	i += encClaimsLen
-	token[i] = '.'
 
-	digest.Write(token[:i])
-
-	return token[:i+1]
+	return token[:l]
 }
 
 // FormatHeader encodes the JOSE header.
@@ -145,6 +168,8 @@ func (c *Claims) formatHeader(alg string) string {
 	}
 
 	switch alg {
+	case EdDSA:
+		return "eyJhbGciOiJFZERTQSJ9"
 	case ES256:
 		return "eyJhbGciOiJFUzI1NiJ9"
 	case ES384:

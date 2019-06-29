@@ -3,6 +3,7 @@ package jwt
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/rsa"
 	_ "crypto/sha256" // link binary
@@ -37,6 +38,26 @@ func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
 	digest := hash.New()
 	digest.Write(token[:lastDot])
 	if !ecdsa.Verify(key, digest.Sum(sig[:0]), r, s) {
+		return nil, ErrSigMiss
+	}
+
+	return parseClaims(token[firstDot+1:lastDot], sig, header)
+}
+
+// EdDSACheck parses a JWT if, and only if, the signature checks out.
+// The return is an AlgError when the algorithm is not EdDSA.
+// See Valid to complete the verification.
+func EdDSACheck(token []byte, key ed25519.PublicKey) (*Claims, error) {
+	firstDot, lastDot, sig, header, err := scan(token)
+	if err != nil {
+		return nil, err
+	}
+
+	if header.Alg != EdDSA {
+		return nil, AlgError(header.Alg)
+	}
+
+	if !ed25519.Verify(key, token[:lastDot], sig) {
 		return nil, ErrSigMiss
 	}
 

@@ -1,13 +1,17 @@
 package x
 
 import (
+	"crypto/ed25519"
 	"testing"
+
+	"github.com/pascaldekloe/goe/verify"
 
 	"github.com/pascaldekloe/jwt"
 )
 
 var GoldenJWKs = []struct {
 	Serial string
+	Keys   *jwt.KeyRegister
 }{
 	// RFC 7517, appendix A.1
 	{
@@ -99,15 +103,35 @@ var GoldenJWKs = []struct {
 			"qi":"lSQi-w9CpyUReMErP1RsBLk7wNtOvs5EQpPqmuMvqW57NBUczScEoPwmUqqabu9V0-Py4dQ57_bapoKRu1R90bvuFnU63SHWEFglZQvJDMeAvmj4sm-Fp0oYu_neotgQ0hzbI5gry7ajdYy9-2lNx_76aBZoOUu9HCJ-UsfSOI8"
 		}`,
 	},
+	// RFC 8037, appendix A.1
+	{
+		Serial: `{"kty":"OKP","crv":"Ed25519",
+   "d":"nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A",
+   "x":"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"}`,
+		Keys: &jwt.KeyRegister{
+			EdDSAs: []ed25519.PublicKey{
+				{
+					0xd7, 0x5a, 0x98, 0x01, 0x82, 0xb1, 0x0a, 0xb7,
+					0xd5, 0x4b, 0xfe, 0xd3, 0xc9, 0x64, 0x07, 0x3a,
+					0x0e, 0xe1, 0x72, 0xf3, 0xda, 0xa6, 0x23, 0x25,
+					0xaf, 0x02, 0x1a, 0x68, 0xf7, 0x07, 0x51, 0x1a,
+				},
+			},
+		},
+	},
 }
 
 func Test(t *testing.T) {
 	for _, gold := range GoldenJWKs {
-		var keys jwt.KeyRegister
-		_, err := LoadJWK(&keys, []byte(gold.Serial))
+		keys := new(jwt.KeyRegister)
+		_, err := LoadJWK(keys, []byte(gold.Serial))
 		if err != nil {
 			t.Errorf("got error %q for serial: %s", err, gold.Serial)
 			continue
+		}
+
+		if gold.Keys != nil {
+			verify.Values(t, gold.Serial, keys, gold.Keys)
 		}
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"math"
 	"math/big"
+	"reflect"
 	"testing"
 )
 
@@ -28,6 +29,25 @@ func TestECDSASign(t *testing.T) {
 	}
 	if got.KeyID != want {
 		t.Errorf("got key ID %q, want %q", got.KeyID, want)
+	}
+}
+
+func TestEdDSASign(t *testing.T) {
+	want := []string{"The Idiots"}
+
+	var c Claims
+	c.Audiences = want
+	token, err := c.EdDSASign(testKeyEd25519Private)
+	if err != nil {
+		t.Fatal("sign error:", err)
+	}
+
+	got, err := EdDSACheck(token, testKeyEd25519Public)
+	if err != nil {
+		t.Fatal("check error:", err)
+	}
+	if !reflect.DeepEqual(got.Audiences, want) {
+		t.Errorf("got audience %q, want %q", got.Audiences, want)
 	}
 }
 
@@ -97,7 +117,11 @@ func TestSignBrokenClaims(t *testing.T) {
 	c.Issued = &n
 	_, err := c.ECDSASign(ES256, testKeyEC256)
 	if _, ok := err.(*json.UnsupportedValueError); !ok {
-		t.Errorf("HMAC got error %#v, want json.UnsupportedValueError", err)
+		t.Errorf("ECDSA got error %#v, want json.UnsupportedValueError", err)
+	}
+	_, err = c.EdDSASign(testKeyEd25519Private)
+	if _, ok := err.(*json.UnsupportedValueError); !ok {
+		t.Errorf("EdDSA got error %#v, want json.UnsupportedValueError", err)
 	}
 	_, err = c.HMACSign(HS256, nil)
 	if _, ok := err.(*json.UnsupportedValueError); !ok {
@@ -144,7 +168,9 @@ uRVZaJLTfpQ+n88IcdG4WPKnRZqxGnrq3DjtIvFrBlM=
 
 func TestFormatHeader(t *testing.T) {
 	/// test all standard algorithms
-	algs := make(map[string]struct{})
+	algs := map[string]struct{}{
+		EdDSA: struct{}{},
+	}
 	for alg := range ECDSAAlgs {
 		algs[alg] = struct{}{}
 	}
