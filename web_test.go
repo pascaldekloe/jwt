@@ -2,7 +2,9 @@ package jwt
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"math"
 	"net/http"
@@ -140,6 +142,58 @@ func TestSignHeaderError(t *testing.T) {
 	err = c.RSASignHeader(req, RS256, testKeyRSA1024)
 	if _, ok := err.(*json.UnsupportedValueError); !ok {
 		t.Errorf("RSA got error %#v, want json.UnsupportedValueError", err)
+	}
+}
+
+func TestHandlerHeaders(t *testing.T) {
+	req, err := http.NewRequest("GET", "/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Verified-Injection", "attempt to pollute namespace")
+	var claims Claims
+	claims.ID = "test"
+	claims.Subject = "test"
+	if err := claims.EdDSASignHeader(req, testKeyEd25519Private); err != nil {
+		t.Fatal(err)
+	}
+
+	handler := Handler{
+		HeaderPrefix: "Verified-",
+		HeaderBinding: map[string]string{
+			"jti": "Verified-Header",
+			"sub": "Unverified-Header", // prefix doesn't match
+		},
+		Func: func(w http.ResponseWriter, req *http.Request, claims *Claims) (pass bool) {
+			if req.Header.Get("Verified-Injection") != "" {
+				t.Error("header injection present at JWT Handler Func")
+			}
+			if req.Header.Get("Verified-Header") != "" || req.Header.Get("Unverified-Header") != "" {
+				t.Error("header binding present at JWT Handler Func")
+			}
+			fmt.Fprintln(w, "✓ func")
+			return true
+		},
+		Target: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			if req.Header.Get("Verified-Injection") != "" {
+				t.Error("header injection present at HTTP Handler")
+			}
+			if req.Header.Get("Verified-Header") == "" {
+				t.Error("header match absent at HTTP Handler")
+			}
+			if req.Header.Get("Unverified-Header") != "" {
+				t.Error("header mismatch present at HTTP Handler")
+			}
+			fmt.Fprintln(w, "✓ handler")
+		}),
+		Keys: &KeyRegister{EdDSAs: []ed25519.PublicKey{testKeyEd25519Public}},
+	}
+
+	const want = "✓ func\n✓ handler\n"
+	resp := httptest.NewRecorder()
+	handler.ServeHTTP(resp, req)
+	if got := fmt.Sprint(resp.Body); got != want {
+		t.Errorf("got HTTP body %q, want %q", got, want)
 	}
 }
 

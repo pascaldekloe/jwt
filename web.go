@@ -143,6 +143,12 @@ type Handler struct {
 	// 401 (Unauthorized) and a description.
 	HeaderBinding map[string]string
 
+	// HeaderPrefix is an optional constraint for JWT claim binding.
+	// Any client headers that match the prefix are removed from the
+	// request. HeaderBinding entries that don't match the prefix
+	// are ignored.
+	HeaderPrefix string
+
 	// ContextKey places the validated Claims in the context of
 	// each respective request passed to Target when set. See
 	// http.Request.Context and context.Context.Value.
@@ -177,6 +183,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// filter request headers
+	if h.HeaderPrefix != "" {
+		for name := range r.Header {
+			if strings.HasPrefix(name, h.HeaderPrefix) {
+				delete(r.Header, name)
+			}
+		}
+	}
+
 	// apply the custom function when set
 	if h.Func != nil && !h.Func(w, r, claims) {
 		return
@@ -184,6 +199,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// claim propagation
 	for claimName, headerName := range h.HeaderBinding {
+		if !strings.HasPrefix(headerName, h.HeaderPrefix) {
+			continue // silent ignore
+		}
+
 		s, ok := claims.String(claimName)
 		if !ok {
 			msg := "jwt: want string for claim " + claimName

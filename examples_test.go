@@ -31,7 +31,7 @@ func init() {
 	}
 }
 
-// Claims With The Standard HTTP Client & Server Library
+// Claims With The Standard HTTP Library
 func Example() {
 	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -39,13 +39,17 @@ func Example() {
 		return
 	}
 
-	// run secured service
+	// standard HTTP handler
+	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		fmt.Fprintf(w, "Hello %s!\n", req.Header.Get("X-Verified-Name"))
+		fmt.Fprintf(w, "You are authorized as %s.\n", req.Header.Get("X-Verified-User"))
+	})
+
+	// secure service configuration
 	srv := httptest.NewTLSServer(&jwt.Handler{
-		Target: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			fmt.Fprintf(w, "Hello %s!\n", req.Header.Get("X-Verified-Name"))
-			fmt.Fprintf(w, "You are authorized as %s.\n", req.Header.Get("X-Verified-User"))
-		}),
+		Target: http.DefaultServeMux,
 		Keys: &jwt.KeyRegister{EdDSAs: []ed25519.PublicKey{publicKey}},
+		HeaderPrefix: "X-Verified-",
 		HeaderBinding: map[string]string{
 			"sub": "X-Verified-User", // registered [standard] claim name
 			"fn":  "X-Verified-Name", // private [custom] claim name
@@ -53,7 +57,7 @@ func Example() {
 	})
 	defer srv.Close()
 
-	// build request with claims
+	// self-signed request
 	var claims jwt.Claims
 	claims.Subject = "lakane"
 	claims.Set = map[string]interface{}{
@@ -68,7 +72,6 @@ func Example() {
 	resp, _ := srv.Client().Do(req)
 	fmt.Println("HTTP", resp.Status)
 	io.Copy(os.Stdout, resp.Body)
-
 	// Output: HTTP 200 OK
 	// Hello Lana Anthony Kane!
 	// You are authorized as lakane.
@@ -97,7 +100,6 @@ func ExampleClaims_byName() {
 			fmt.Printf("%q: %0.f\n", name, n)
 		}
 	}
-
 	// Output:
 	// "iss": "a"
 	// "sub": "b"
@@ -130,7 +132,6 @@ func ExampleHandler_context() {
 	h.ServeHTTP(resp, req)
 	fmt.Println("HTTP", resp.Code)
 	fmt.Println(resp.Body)
-
 	// Output: HTTP 200
 	// deadline at 1991-04-12T23:59:59Z
 }
@@ -170,7 +171,6 @@ func ExampleHandler_deny() {
 	resp = httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
 	fmt.Println("HTTP", resp.Code, resp.Header().Get("WWW-Authenticate"))
-
 	// Output:
 	// Try without authorization… HTTP 401 Bearer
 	// Try another algorithm… HTTP 401 Bearer error="invalid_token", error_description="jwt: signature mismatch"
@@ -204,7 +204,6 @@ func ExampleHandler_filter() {
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
 	fmt.Println("HTTP", resp.Code, resp.Body)
-
 	// Output: HTTP 503 Ring, ring!
 }
 
