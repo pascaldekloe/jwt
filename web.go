@@ -95,6 +95,17 @@ func (c *Claims) ECDSASignHeader(r *http.Request, alg string, key *ecdsa.Private
 	return nil
 }
 
+// EdDSASignHeader applies ECDSASign on a HTTP request.
+// Specifically it sets a bearer token in the Authorization header.
+func (c *Claims) EdDSASignHeader(r *http.Request, key ed25519.PrivateKey) error {
+	token, err := c.EdDSASign(key)
+	if err != nil {
+		return err
+	}
+	r.Header.Set("Authorization", "Bearer "+string(token))
+	return nil
+}
+
 // HMACSignHeader applies HMACSign on a HTTP request.
 // Specifically it sets a bearer token in the Authorization header.
 func (c *Claims) HMACSignHeader(r *http.Request, alg string, secret []byte) error {

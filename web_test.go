@@ -2,7 +2,9 @@ package jwt
 
 import (
 	"crypto/ecdsa"
+	"encoding/json"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -117,22 +119,27 @@ func TestCheckHeaderError(t *testing.T) {
 }
 
 func TestSignHeaderError(t *testing.T) {
-	req, err := http.NewRequest("GET", "/", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	unknownAlg := "doesnotexist"
-	want := AlgError(unknownAlg)
+	// JSON does not allow NaN
+	n := NumericTime(math.NaN())
+	var c Claims
+	c.Issued = &n
+	req := httptest.NewRequest("GET", "/", nil)
 
-	c := new(Claims)
-	if err := c.ECDSASignHeader(req, unknownAlg, testKeyEC256); err != want {
-		t.Errorf("ECDSA got error %v, want %v", err, want)
+	err := c.ECDSASignHeader(req, ES256, testKeyEC256)
+	if _, ok := err.(*json.UnsupportedValueError); !ok {
+		t.Errorf("ECDSA got error %#v, want json.UnsupportedValueError", err)
 	}
-	if err := c.HMACSignHeader(req, unknownAlg, nil); err != want {
-		t.Errorf("HMAC got error %v, want %v", err, want)
+	err = c.EdDSASignHeader(req, testKeyEd25519Private)
+	if _, ok := err.(*json.UnsupportedValueError); !ok {
+		t.Errorf("EdDSA got error %#v, want json.UnsupportedValueError", err)
 	}
-	if err := c.RSASignHeader(req, unknownAlg, testKeyRSA1024); err != want {
-		t.Errorf("RSA got error %v, want %v", err, want)
+	err = c.HMACSignHeader(req, HS256, nil)
+	if _, ok := err.(*json.UnsupportedValueError); !ok {
+		t.Errorf("HMAC got error %#v, want json.UnsupportedValueError", err)
+	}
+	err = c.RSASignHeader(req, RS256, testKeyRSA1024)
+	if _, ok := err.(*json.UnsupportedValueError); !ok {
+		t.Errorf("RSA got error %#v, want json.UnsupportedValueError", err)
 	}
 }
 

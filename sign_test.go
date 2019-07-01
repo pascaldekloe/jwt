@@ -7,7 +7,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
-	"math"
 	"math/big"
 	"reflect"
 	"testing"
@@ -109,30 +108,19 @@ func TestSignHashNotLinked(t *testing.T) {
 	}
 }
 
-func TestSignBrokenClaims(t *testing.T) {
-	// JSON does not allow NaN
-	n := NumericTime(math.NaN())
+func TestSignAlgError(t *testing.T) {
+	unknownAlg := "doesntexist"
+	want := AlgError("doesntexist")
 
 	c := new(Claims)
-	c.Issued = &n
-	_, err := c.ECDSASign(ES256, testKeyEC256)
-	if _, ok := err.(*json.UnsupportedValueError); !ok {
-		t.Errorf("ECDSA got error %#v, want json.UnsupportedValueError", err)
+	if _, err := c.ECDSASign(unknownAlg, testKeyEC256); err != want {
+		t.Errorf("ECDSA got error %v, want %v", err, want)
 	}
-	_, err = c.EdDSASign(testKeyEd25519Private)
-	if _, ok := err.(*json.UnsupportedValueError); !ok {
-		t.Errorf("EdDSA got error %#v, want json.UnsupportedValueError", err)
+	if _, err := c.HMACSign(unknownAlg, nil); err != want {
+		t.Errorf("HMAC got error %v, want %v", err, want)
 	}
-	_, err = c.HMACSign(HS256, nil)
-	if _, ok := err.(*json.UnsupportedValueError); !ok {
-		t.Errorf("HMAC got error %#v, want json.UnsupportedValueError", err)
-	}
-
-	c = new(Claims)
-	c.Set = map[string]interface{}{"iss": n}
-	_, err = c.RSASign(RS256, testKeyRSA1024)
-	if _, ok := err.(*json.UnsupportedValueError); !ok {
-		t.Errorf("RSA got error %#v, want json.UnsupportedValueError", err)
+	if _, err := c.RSASign(unknownAlg, testKeyRSA1024); err != want {
+		t.Errorf("RSA got error %v, want %v", err, want)
 	}
 }
 

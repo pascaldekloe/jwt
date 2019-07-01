@@ -2,6 +2,7 @@ package jwt_test
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
@@ -32,13 +33,19 @@ func init() {
 
 // Claims With The Standard HTTP Client & Server Library
 func Example() {
+	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		fmt.Println("key generation error:", err)
+		return
+	}
+
 	// run secured service
 	srv := httptest.NewTLSServer(&jwt.Handler{
 		Target: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			fmt.Fprintf(w, "Hello %s!\n", req.Header.Get("X-Verified-Name"))
 			fmt.Fprintf(w, "You are authorized as %s.\n", req.Header.Get("X-Verified-User"))
 		}),
-		Keys: &jwt.KeyRegister{RSAs: []*rsa.PublicKey{&someRSAKey.PublicKey}},
+		Keys: &jwt.KeyRegister{EdDSAs: []ed25519.PublicKey{publicKey}},
 		HeaderBinding: map[string]string{
 			"sub": "X-Verified-User", // registered [standard] claim name
 			"fn":  "X-Verified-Name", // private [custom] claim name
@@ -53,7 +60,7 @@ func Example() {
 		"fn": "Lana Anthony Kane",
 	}
 	req, _ := http.NewRequest("GET", srv.URL, nil)
-	if err := claims.RSASignHeader(req, jwt.RS512, someRSAKey); err != nil {
+	if err := claims.EdDSASignHeader(req, privateKey); err != nil {
 		fmt.Println("sign error:", err)
 	}
 
