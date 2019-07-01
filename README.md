@@ -19,10 +19,10 @@ This is free and unencumbered software released into the
 
 ## Introduction
 
-Tokens encapsulate signed statements called claims. A claim is identified by its
-name (string). The specification defines 7
-[standard claims](https://godoc.org/github.com/pascaldekloe/jwt#Registered).
-Tokens serialise as printable ASCII sequences, e.g.
+Tokens encapsulate signed statements called claims. A claim is JSON value,
+identified by its name. The specification includes 7
+[standardised claims](https://godoc.org/github.com/pascaldekloe/jwt#Registered).
+Tokens consists of printable ASCII characters, e.g.
 `eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiJha3JpZWdlciIsInByZWZpeCI6IkRyLiJ9.RTOboYsLW7zXFJyXtIypOmXfuRGVT_FpDUTs2TOuK73qZKm56JcESfsl_etnBsl7W80TXE5l5qecrMizh3XYmw`.
 
 ```go
@@ -109,7 +109,8 @@ func Greeting(w http.ResponseWriter, req *http.Request) {
 }
 ```
 
-The validated claims struct can also be propagated through the
+The validated [Claims](https://godoc.org/github.com/pascaldekloe/jwt#Claims)
+can also be propagated through the
 [request context](https://godoc.org/github.com/pascaldekloe/jwt#example-Handler--Context).
 
 
@@ -147,12 +148,12 @@ more modern hardware.
 
 ## Standard Compliance
 
-* RFC 7468 “Textual Encodings of PKIX, PKCS, and CMS Structures”
-* RFC 7515 “JSON Web Signature (JWS)”
-* RFC 7517 “JSON Web Key (JWK)”
-* RFC 7518 “JSON Web Algorithms (JWA)”
-* RFC 7519 “JSON Web Token (JWT)”
-* RFC 8037 “CFRG Elliptic Curve Diffie-Hellman (ECDH) and Signatures in JSON Object Signing and Encryption (JOSE)”
+* RFC 7468: “Textual Encodings of PKIX, PKCS, and CMS Structures”
+* RFC 7515: “JSON Web Signature (JWS)”
+* RFC 7517: “JSON Web Key (JWK)”
+* RFC 7518: “JSON Web Algorithms (JWA)”
+* RFC 7519: “JSON Web Token (JWT)”
+* RFC 8037: “CFRG Elliptic Curve Diffie-Hellman (ECDH) and Signatures in JSON Object Signing and Encryption (JOSE)”
 
 
 [![JWT.io](https://jwt.io/img/badge.svg)](https://jwt.io/)

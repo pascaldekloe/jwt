@@ -86,8 +86,11 @@ const (
 	id        = "jti"
 )
 
-// Registered has the IANA registered “JSON Web Token Claims”. Each one is
-// optional—there are no required claims. String values are case sensitive.
+// Registered “JSON Web Token Claims” is a subset of the IANA registration.
+// See <https://www.iana.org/assignments/jwt/claims.csv> for the full listing.
+//
+// Each field is optional—there are no required claims. The string values are
+// case sensitive.
 type Registered struct {
 	// Issuer identifies the principal that issued the JWT.
 	Issuer string `json:"iss,omitempty"`
@@ -124,16 +127,15 @@ func (r *Registered) AcceptAudience(stringOrURI string) bool {
 	return len(r.Audiences) == 0
 }
 
-// Claims are the (signed) statements of a JWT. The specification uses the term
-// "registered" for standardised claim names, and "private" for non-registered.
+// Claims are the (signed) statements of a JWT.
 type Claims struct {
 	// Registered field values take precedence.
 	Registered
 
-	// Set has the claims set mapped by name for non-standard usecases.
-	// Use Registered fields where possible. The Sign methods copy each
-	// non-zero Registered field into this map when not nil. JavaScript
-	// numbers are always of the double precision floating-point type.
+	// Set maps claims by name, for usecases beyond the Registered fields.
+	// The Sign methods copy each non-zero Registered value into Set when
+	// the map is not nil. The Check methods map claims in Set if the name
+	// doesn't match any of the Registered, or if the data type won't fit.
 	// Entries are treated conform the encoding/json package.
 	//
 	//	bool, for JSON booleans
@@ -176,14 +178,14 @@ func (c *Claims) sync() error {
 		switch len(c.Audiences) {
 		case 0:
 			break
-		case 1:
+		case 1: // single string
 			c.Set[audience] = c.Audiences[0]
 		default:
-			a := make([]interface{}, len(c.Audiences))
+			array := make([]interface{}, len(c.Audiences))
 			for i, s := range c.Audiences {
-				a[i] = s
+				array[i] = s
 			}
-			c.Set[audience] = a
+			c.Set[audience] = array
 		}
 		if c.Expires != nil {
 			c.Set[expires] = float64(*c.Expires)
@@ -207,15 +209,15 @@ func (c *Claims) sync() error {
 	return nil
 }
 
-// Valid returns whether the claims set may be accepted
-// for processing at the given moment in time.
+// Valid returns whether the claims set may be accepted for processing at the
+// given moment in time. If time is zero, then Valid returns whether there are
+// any time constraints at all.
 func (c *Claims) Valid(t time.Time) bool {
 	exp, expOK := c.Number(expires)
 	nbf, nbfOK := c.Number(notBefore)
 
 	n := NewNumericTime(t)
 	if n == nil {
-		// if there are time limits then can't be sure.
 		return !expOK && !nbfOK
 	}
 
