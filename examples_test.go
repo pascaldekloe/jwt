@@ -48,7 +48,8 @@ func Example() {
 	// secure service configuration
 	srv := httptest.NewTLSServer(&jwt.Handler{
 		Target: http.DefaultServeMux,
-		Keys: &jwt.KeyRegister{EdDSAs: []ed25519.PublicKey{publicKey}},
+		Keys:   &jwt.KeyRegister{EdDSAs: []ed25519.PublicKey{publicKey}},
+
 		HeaderPrefix: "X-Verified-",
 		HeaderBinding: map[string]string{
 			"sub": "X-Verified-User", // registered [standard] claim name
