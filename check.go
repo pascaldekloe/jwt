@@ -45,7 +45,6 @@ func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
 }
 
 // EdDSACheck parses a JWT if, and only if, the signature checks out.
-// The return is an AlgError when the algorithm is not EdDSA.
 // See Valid to complete the verification.
 func EdDSACheck(token []byte, key ed25519.PublicKey) (*Claims, error) {
 	firstDot, lastDot, sig, header, err := scan(token)

@@ -19,8 +19,8 @@ type KeyRegister struct {
 	RSAs    []*rsa.PublicKey    // RSA credentials
 	Secrets [][]byte            // HMAC credentials
 
-	// Optional key identification.
-	// See Claims.KeyID for details.
+	// Optional key identification. See Claims.KeyID for details.
+	// Non-empty values match the respective keys (or secrets).
 	ECDSAIDs  []string // ECDSAs key ID mapping
 	EdDSAIDs  []string // EdDSA key ID mapping
 	RSAIDs    []string // RSAs key ID mapping

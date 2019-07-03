@@ -68,7 +68,7 @@ func hashLookup(alg string, algs map[string]crypto.Hash) (crypto.Hash, error) {
 // AlgError signals that the specified algorithm is not in use.
 type AlgError string
 
-// Error honnors the error interface.
+// Error honors the error interface.
 func (e AlgError) Error() string {
 	return "jwt: algorithm " + strconv.Quote(string(e)) + " not in use"
 }
