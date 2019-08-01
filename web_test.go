@@ -135,7 +135,7 @@ func TestSignHeaderError(t *testing.T) {
 	if _, ok := err.(*json.UnsupportedValueError); !ok {
 		t.Errorf("EdDSA got error %#v, want json.UnsupportedValueError", err)
 	}
-	err = c.HMACSignHeader(req, HS256, nil)
+	err = c.HMACSignHeader(req, HS256, []byte("guest"))
 	if _, ok := err.(*json.UnsupportedValueError); !ok {
 		t.Errorf("HMAC got error %#v, want json.UnsupportedValueError", err)
 	}

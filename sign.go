@@ -6,8 +6,12 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
+	"errors"
 	"strconv"
 )
+
+// ErrNoSecret protects against programming and configuration mistakes.
+var errNoSecret = errors.New("jwt: empty secret rejected")
 
 // ECDSASign updates the Raw field and returns a new JWT.
 // The return is an AlgError when alg is not in ECDSAAlgs.
@@ -81,6 +85,10 @@ func (c *Claims) EdDSASign(key ed25519.PrivateKey) (token []byte, err error) {
 // HMACSign updates the Raw field and returns a new JWT.
 // The return is an AlgError when alg is not in HMACAlgs.
 func (c *Claims) HMACSign(alg string, secret []byte) (token []byte, err error) {
+	if len(secret) == 0 {
+		return nil, errNoSecret
+	}
+
 	if err := c.sync(); err != nil {
 		return nil, err
 	}

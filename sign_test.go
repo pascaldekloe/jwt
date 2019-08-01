@@ -94,6 +94,13 @@ func TestRSA(t *testing.T) {
 	}
 }
 
+func TestNoSecret(t *testing.T) {
+	_, err := new(Claims).HMACSign(HS512, []byte{})
+	if err != errNoSecret {
+		t.Errorf("got error %v, want %v", err, errNoSecret)
+	}
+}
+
 func TestSignHashNotLinked(t *testing.T) {
 	alg := "HB2b256"
 	if _, ok := HMACAlgs[alg]; ok {
@@ -102,7 +109,7 @@ func TestSignHashNotLinked(t *testing.T) {
 	HMACAlgs[alg] = crypto.BLAKE2b_256
 	defer delete(HMACAlgs, alg)
 
-	_, err := new(Claims).HMACSign(alg, nil)
+	_, err := new(Claims).HMACSign(alg, []byte("guest"))
 	if err != errHashLink {
 		t.Errorf("got error %v, want %v", err, errHashLink)
 	}
@@ -116,7 +123,7 @@ func TestSignAlgError(t *testing.T) {
 	if _, err := c.ECDSASign(unknownAlg, testKeyEC256); err != want {
 		t.Errorf("ECDSA got error %v, want %v", err, want)
 	}
-	if _, err := c.HMACSign(unknownAlg, nil); err != want {
+	if _, err := c.HMACSign(unknownAlg, []byte("guest")); err != want {
 		t.Errorf("HMAC got error %v, want %v", err, want)
 	}
 	if _, err := c.RSASign(unknownAlg, testKeyRSA1024); err != want {
