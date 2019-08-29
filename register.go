@@ -246,6 +246,8 @@ func (keys *KeyRegister) PEM() ([]byte, error) {
 		}
 	}
 	for _, key := range keys.EdDSAs {
+		// There is no error case for EdDSA at the moment.
+		// Still want check for future stability.
 		if err := encodePEM(buf, key); err != nil {
 			return nil, err
 		}
