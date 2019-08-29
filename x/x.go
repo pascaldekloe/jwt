@@ -131,7 +131,7 @@ func addJWK(keys *jwt.KeyRegister, j *jwk) error {
 			}
 			keys.EdDSAs = append(keys.EdDSAs, ed25519.PublicKey(bytes))
 		default:
-			return fmt.Errorf("jwt: JWK with unsupported EdDSA variant %q", j.Crv)
+			return fmt.Errorf("jwt: JWK with unsupported elliptic curve %q", j.Crv)
 		}
 	}
 
