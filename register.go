@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/hmac"
@@ -228,4 +229,40 @@ func (keys *KeyRegister) add(key interface{}) error {
 		return fmt.Errorf("jwt: unsupported key type %T", t)
 	}
 	return nil
+}
+
+// PEM exports keys as PEM-encoded PKIX. An error is raised on .Secret entries.
+func (keys *KeyRegister) PEM() ([]byte, error) {
+	if len(keys.Secrets) != 0 {
+		return nil, errors.New("jwt: won't encode secrets to PEM")
+	}
+
+	buf := new(bytes.Buffer)
+	for _, key := range keys.ECDSAs {
+		if err := encodePEM(buf, key); err != nil {
+			return nil, err
+		}
+	}
+	for _, key := range keys.EdDSAs {
+		if err := encodePEM(buf, key); err != nil {
+			return nil, err
+		}
+	}
+	for _, key := range keys.RSAs {
+		if err := encodePEM(buf, key); err != nil {
+			return nil, err
+		}
+	}
+	return buf.Bytes(), nil
+}
+
+func encodePEM(buf *bytes.Buffer, key interface{}) error {
+	der, err := x509.MarshalPKIXPublicKey(key)
+	if err != nil {
+		return err
+	}
+	return pem.Encode(buf, &pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: der,
+	})
 }
