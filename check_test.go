@@ -169,7 +169,7 @@ func TestCheckMiss(t *testing.T) {
 		t.Errorf("ECDSA check got error %v, want %v", err, ErrSigMiss)
 	}
 
-	_, err = HMACCheck([]byte(goldenHMACs[0].token), nil)
+	_, err = HMACCheck([]byte(goldenHMACs[0].token), []byte("guest"))
 	if err != ErrSigMiss {
 		t.Errorf("HMAC check got error %v, want %v", err, ErrSigMiss)
 	}
@@ -177,6 +177,13 @@ func TestCheckMiss(t *testing.T) {
 	_, err = RSACheck([]byte(goldenRSAs[0].token), &testKeyRSA4096.PublicKey)
 	if err != ErrSigMiss {
 		t.Errorf("RSA check got error %v, want %v", err, ErrSigMiss)
+	}
+}
+
+func TestCheckNoSecret(t *testing.T) {
+	_, err := HMACCheck(nil, nil)
+	if err != errNoSecret {
+		t.Errorf("got error %v, want %v", err, errNoSecret)
 	}
 }
 
@@ -188,14 +195,14 @@ func TestCheckHashNotLinked(t *testing.T) {
 	HMACAlgs[alg] = crypto.BLAKE2b_256
 	defer delete(HMACAlgs, alg)
 
-	_, err := HMACCheck([]byte("eyJhbGciOiJIQjJiMjU2In0.e30.e30"), nil)
+	_, err := HMACCheck([]byte("eyJhbGciOiJIQjJiMjU2In0.e30.e30"), []byte("guest"))
 	if err != errHashLink {
 		t.Errorf("got error %v, want %v", err, errHashLink)
 	}
 }
 
 func TestJOSEExtension(t *testing.T) {
-	_, err := HMACCheck([]byte("eyJhbGciOiJIUzI1NiIsImNyaXQiOlsiZXhwIl0sImV4cCI6MTM2MzI4NDAwMH0.e30.8Ep7gVUA49twmE6NYAiEwVwwtn_UmJEkOH1uQSPPYr0"), nil)
+	_, err := HMACCheck([]byte("eyJhbGciOiJIUzI1NiIsImNyaXQiOlsiZXhwIl0sImV4cCI6MTM2MzI4NDAwMH0.e30.8Ep7gVUA49twmE6NYAiEwVwwtn_UmJEkOH1uQSPPYr0"), []byte("guest"))
 	const want = "jwt: unsupported critical extension in JOSE header: [\"exp\"]"
 	if err == nil || err.Error() != want {
 		t.Errorf("got error %q, want %q", err, want)
@@ -216,7 +223,7 @@ func TestErrPart(t *testing.T) {
 	if err != errPart {
 		t.Errorf("one dot got error %v", err)
 	}
-	_, err = HMACCheck([]byte("eyJhbGciOiJub25lIn0.e30"), nil)
+	_, err = HMACCheck([]byte("eyJhbGciOiJub25lIn0.e30"), []byte("guest"))
 	if err != errPart {
 		t.Errorf("unsecured one dot got error %v", err)
 	}
@@ -225,7 +232,7 @@ func TestErrPart(t *testing.T) {
 func TestRejectNone(t *testing.T) {
 	// example from RFC 7519, subsection 6.1.
 	const token = "eyJhbGciOiJub25lIn0.eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGFtcGxlLmNvbS9pc19yb290Ijp0cnVlfQ."
-	_, err := HMACCheck([]byte(token), nil)
+	_, err := HMACCheck([]byte(token), []byte("guest"))
 	if err == nil {
 		t.Fatal("no error")
 	}
@@ -236,13 +243,13 @@ func TestRejectNone(t *testing.T) {
 
 func TestCheckBrokenBase64(t *testing.T) {
 	want := "jwt: malformed header: "
-	_, err := HMACCheck([]byte("*yJhbGciOiJIUzI1NiJ9.e30.4E_Bsx-pJi3kOW9wVXN8CgbATwP09D9V5gxh9-9zSZ0"), nil)
+	_, err := HMACCheck([]byte("*yJhbGciOiJIUzI1NiJ9.e30.4E_Bsx-pJi3kOW9wVXN8CgbATwP09D9V5gxh9-9zSZ0"), []byte("guest"))
 	if err == nil || !strings.HasPrefix(err.Error(), want) {
 		t.Errorf("corrupt base64 in header got error %v, want %s…", err, want)
 	}
 
 	want = "jwt: malformed payload: "
-	_, err = HMACCheck([]byte("eyJhbGciOiJIUzI1NiJ9.#.hjZNKOxutvgwMhfCSZ4KXcIjuqi8lTA96fmo_6jwtZM"), nil)
+	_, err = HMACCheck([]byte("eyJhbGciOiJIUzI1NiJ9.#.yuPeHF3zFJaCselXdCR23yxl5Don3rD3ABnzcO_460M"), []byte("guest"))
 	if err == nil || !strings.HasPrefix(err.Error(), want) {
 		t.Errorf("corrupt base64 in payload got error %v, want %s…", err, want)
 	}
@@ -252,7 +259,7 @@ func TestCheckBrokenBase64(t *testing.T) {
 	if err == nil || !strings.HasPrefix(err.Error(), want) {
 		t.Errorf("corrupt base64 in ECDSA signature got error %v, want %s…", err, want)
 	}
-	_, err = HMACCheck([]byte("eyJhbGciOiJIUzI1NiJ9.e30.*"), nil)
+	_, err = HMACCheck([]byte("eyJhbGciOiJIUzI1NiJ9.e30.*"), []byte("guest"))
 	if err == nil || !strings.HasPrefix(err.Error(), want) {
 		t.Errorf("corrupt base64 in HMAC signature got error %v, want %s…", err, want)
 	}

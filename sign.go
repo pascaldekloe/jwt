@@ -6,12 +6,8 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
-	"errors"
 	"strconv"
 )
-
-// ErrNoSecret protects against programming and configuration mistakes.
-var errNoSecret = errors.New("jwt: empty secret rejected")
 
 // ECDSASign updates the Raw field and returns a new JWT.
 // The return is an AlgError when alg is not in ECDSAAlgs.

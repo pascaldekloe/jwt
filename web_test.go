@@ -112,7 +112,7 @@ func TestCheckHeaderError(t *testing.T) {
 	if _, err := EdDSACheckHeader(req, testKeyEd25519Public); err != want {
 		t.Errorf("ECDSA got error %v, want %v", err, want)
 	}
-	if _, err := HMACCheckHeader(req, nil); err != want {
+	if _, err := HMACCheckHeader(req, []byte("guest")); err != want {
 		t.Errorf("HMAC got error %v, want %v", err, want)
 	}
 	if _, err := RSACheckHeader(req, &testKeyRSA1024.PublicKey); err != want {

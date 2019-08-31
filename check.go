@@ -67,6 +67,10 @@ func EdDSACheck(token []byte, key ed25519.PublicKey) (*Claims, error) {
 // The return is an AlgError when the algorithm is not in HMACAlgs.
 // See Valid to complete the verification.
 func HMACCheck(token, secret []byte) (*Claims, error) {
+	if len(secret) == 0 {
+		return nil, errNoSecret
+	}
+
 	firstDot, lastDot, sig, header, err := scan(token)
 	if err != nil {
 		return nil, err

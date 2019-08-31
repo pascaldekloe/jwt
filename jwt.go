@@ -73,6 +73,9 @@ func (e AlgError) Error() string {
 	return "jwt: algorithm " + strconv.Quote(string(e)) + " not in use"
 }
 
+// ErrNoSecret protects against programming and configuration mistakes.
+var errNoSecret = errors.New("jwt: empty secret rejected")
+
 var encoding = base64.RawURLEncoding
 
 // Standard (IANA registered) claim names.

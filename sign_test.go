@@ -94,7 +94,7 @@ func TestRSA(t *testing.T) {
 	}
 }
 
-func TestNoSecret(t *testing.T) {
+func TestSignNoSecret(t *testing.T) {
 	_, err := new(Claims).HMACSign(HS512, []byte{})
 	if err != errNoSecret {
 		t.Errorf("got error %v, want %v", err, errNoSecret)
