@@ -119,6 +119,15 @@ func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
 	return parseClaims(token[firstDot+1:lastDot], sig, header)
 }
 
+// ParseWithoutCheck skips the signature validation.
+func ParseWithoutCheck(token []byte) (*Claims, error) {
+	firstDot, lastDot, sig, header, err := scan(token)
+	if err != nil {
+		return nil, err
+	}
+	return parseClaims(token[firstDot+1:lastDot], sig, header)
+}
+
 func scan(token []byte) (firstDot, lastDot int, sig []byte, h *header, err error) {
 	firstDot = bytes.IndexByte(token, '.')
 	lastDot = bytes.LastIndexByte(token, '.')

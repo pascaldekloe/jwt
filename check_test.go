@@ -128,7 +128,7 @@ func TestRSACheck(t *testing.T) {
 
 func TestCheckAudiences(t *testing.T) {
 	const token = "eyJhbGciOiJSUzUxMiJ9.eyJhdWQiOlsiT3RoZXIgQmFycnkiLCJEZXNlcnQgRWFnbGUiLG51bGxdfQ.TtztyCP1yhNcr6DfwuHul9pBNlIXiNNvEC-lob4feS6M6TxbBu0gdhM70vtbMX7eMRPvyd1_4upq01hbGKl50WTpFPtEyb-nGG0jBjgin2gLp8rugKSZHepipOVeKcLl7ruwk40AV-wc_8RbApyT2Bsl8p90MW6tMDobAZEEVt4"
-	claims, err := RSACheck([]byte(token), &testKeyRSA1024.PublicKey)
+	claims, err := ParseWithoutCheck([]byte(token))
 	if err != nil {
 		t.Fatal("check error:", err)
 	}
@@ -266,6 +266,10 @@ func TestCheckBrokenBase64(t *testing.T) {
 	_, err = RSACheck([]byte("eyJhbGciOiJSUzI1NiJ9.e30.*"), nil)
 	if err == nil || !strings.HasPrefix(err.Error(), want) {
 		t.Errorf("corrupt base64 in RSA signature got error %v, want %s…", err, want)
+	}
+	_, err = ParseWithoutCheck([]byte("eyJhbGciOiJSUzI1NiJ9.e30.*"))
+	if err == nil || !strings.HasPrefix(err.Error(), want) {
+		t.Errorf("corrupt base64 in skipped signature got error %v, want %s…", err, want)
 	}
 }
 
