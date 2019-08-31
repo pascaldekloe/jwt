@@ -26,12 +26,15 @@ func BenchmarkECDSA(b *testing.B) {
 	}
 	for _, test := range tests {
 		b.Run("sign-"+test.alg, func(b *testing.B) {
+			var tokenLen int
 			for i := 0; i < b.N; i++ {
-				_, err := benchClaims.ECDSASign(test.alg, test.key)
+				token, err := benchClaims.ECDSASign(test.alg, test.key)
 				if err != nil {
 					b.Fatal(err)
 				}
+				tokenLen += len(token)
 			}
+			b.ReportMetric(float64(tokenLen)/float64(b.N), "B/token")
 		})
 	}
 
@@ -54,12 +57,15 @@ func BenchmarkECDSA(b *testing.B) {
 
 func BenchmarkEdDSA(b *testing.B) {
 	b.Run("sign-Ed25519", func(b *testing.B) {
+		var tokenLen int
 		for i := 0; i < b.N; i++ {
-			_, err := benchClaims.EdDSASign(testKeyEd25519Private)
+			token, err := benchClaims.EdDSASign(testKeyEd25519Private)
 			if err != nil {
 				b.Fatal(err)
 			}
+			tokenLen += len(token)
 		}
+		b.ReportMetric(float64(tokenLen)/float64(b.N), "B/token")
 	})
 
 	b.Run("check-Ed25519", func(b *testing.B) {
@@ -85,12 +91,15 @@ func BenchmarkHMAC(b *testing.B) {
 
 	for _, alg := range algs {
 		b.Run("sign-"+alg, func(b *testing.B) {
+			var tokenLen int
 			for i := 0; i < b.N; i++ {
-				_, err := benchClaims.HMACSign(alg, secret)
+				token, err := benchClaims.HMACSign(alg, secret)
 				if err != nil {
 					b.Fatal(err)
 				}
+				tokenLen += len(token)
 			}
+			b.ReportMetric(float64(tokenLen)/float64(b.N), "B/token")
 		})
 	}
 
@@ -116,12 +125,15 @@ func BenchmarkRSA(b *testing.B) {
 
 	for _, key := range keys {
 		b.Run(fmt.Sprintf("sign-%d-bit", key.Size()*8), func(b *testing.B) {
+			var tokenLen int
 			for i := 0; i < b.N; i++ {
-				_, err := benchClaims.RSASign(RS384, key)
+				token, err := benchClaims.RSASign(RS384, key)
 				if err != nil {
 					b.Fatal(err)
 				}
+				tokenLen += len(token)
 			}
+			b.ReportMetric(float64(tokenLen)/float64(b.N), "B/token")
 		})
 	}
 
