@@ -1,5 +1,5 @@
 [![API Documentation](https://godoc.org/github.com/pascaldekloe/jwt?status.svg)](https://godoc.org/github.com/pascaldekloe/jwt)
-[![Build Status](https://travis-ci.org/pascaldekloe/jwt.svg?branch=master)](https://travis-ci.org/pascaldekloe/jwt)
+[![Build Status](https://circleci.com/gh/pascaldekloe/jwt.svg?style=svg)](https://circleci.com/gh/pascaldekloe/jwt)
 
 ## About
 
