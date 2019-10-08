@@ -74,7 +74,7 @@ func (client *KeyVaultClient) Sign(claims *jwt.Claims, alg, keyName, keyVersion 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", client.authorization)
 
-	resp, err := HTTPClient.Post(resource, "application/json", strings.NewReader(signRequest))
+	resp, err := HTTPClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("azure: sign request: %w", err)
 	}
