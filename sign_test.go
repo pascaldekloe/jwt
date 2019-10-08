@@ -7,10 +7,33 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
+	"errors"
+	"math"
 	"math/big"
 	"reflect"
 	"testing"
 )
+
+func TestFormatWithoutSign(t *testing.T) {
+	var claims Claims
+	token, err := claims.FormatWithoutSign("none")
+	if err != nil {
+		t.Fatal("sign error:", err)
+	}
+	const want = "eyJhbGciOiJub25lIn0.e30"
+	if string(token) != want {
+		t.Errorf("got token %q, want %q", token, want)
+	}
+
+	claims.Set = map[string]interface{}{
+		"notAllowedInJSON": math.NaN(),
+	}
+	_, err = claims.FormatWithoutSign("X")
+	var wantErr error = new(json.UnsupportedValueError)
+	if !errors.As(err, &wantErr) {
+		t.Errorf("got error %#v, want a %T", err, wantErr)
+	}
+}
 
 func TestECDSASign(t *testing.T) {
 	const want = "sweet-44 tender-9 hot-juicy porkchops"

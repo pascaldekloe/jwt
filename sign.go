@@ -9,6 +9,15 @@ import (
 	"strconv"
 )
 
+// FormatWithoutSign updates the Raw field and returns a new and incomplete JWT.
+func (c *Claims) FormatWithoutSign(alg string) (tokenWithoutSignature []byte, err error) {
+	if err := c.sync(); err != nil {
+		return nil, err
+	}
+
+	return c.newToken(alg, 0), nil
+}
+
 // ECDSASign updates the Raw field and returns a new JWT.
 // The return is an AlgError when alg is not in ECDSAAlgs.
 // The caller must use the correct key for the respective algorithm (P-256 for
