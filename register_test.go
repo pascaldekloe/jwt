@@ -11,7 +11,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"math/big"
-	"strings"
 	"testing"
 )
 
@@ -489,11 +488,13 @@ func TestKeyIDMiss(t *testing.T) {
 }
 
 var GoldenJWKs = []struct {
+	Count  int
 	Serial string
 	PEM    string
 }{
 	// RFC 7517, appendix A.1
 	{
+		Count: 2,
 		Serial: `{
 			"keys": [{
 				"kty":"EC",
@@ -528,6 +529,7 @@ gwIDAQAB
 
 	// RFC 7517, appendix A.2
 	{
+		Count: 2,
 		Serial: `{
 			"keys": [{
 				"kty":"EC",
@@ -569,6 +571,7 @@ gwIDAQAB
 
 	// RFC 7517, appendix A.3
 	{
+		Count: 2,
 		Serial: `{
 			"keys": [{
 				"kty":"oct",
@@ -580,11 +583,12 @@ gwIDAQAB
 				"kid":"HMAC key used in JWS spec Appendix A.1 example"
 			}]
 		}`,
-		PEM: "jwt: won't encode secrets to PEM",
+		PEM: "",
 	},
 
 	// RFC 7517, appendix B
 	{
+		Count: 1,
 		Serial: `{
 			"kty":"RSA",
 			"use":"sig",
@@ -607,6 +611,7 @@ vQIDAQAB
 
 	// RFC 7517, appendix C
 	{
+		Count: 1,
 		Serial: `{
 			"kty":"RSA",
 			"kid":"juliet@capulet.lit",
@@ -633,6 +638,7 @@ ZO+Os6U15/aXrk9Gw8cPUaX1/I8sLGuSiVdt3C/Fn2PZ3Z8i744FPFGGcG1qs2Wz
 	},
 	// RFC 8037, appendix A.1
 	{
+		Count: 1,
 		Serial: `{"kty":"OKP","crv":"Ed25519",
    "d":"nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A",
    "x":"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"}`,
@@ -685,20 +691,15 @@ func TestKeyRegisterLoadJWKs(t *testing.T) {
 	for _, gold := range GoldenJWKs {
 		keys := new(KeyRegister)
 		n, err := keys.LoadJWK([]byte(gold.Serial))
-		if err != nil {
-			t.Errorf("got error %q for serial: %s", err, gold.Serial)
+		if n != gold.Count || err != nil {
+			t.Errorf("got (%d, %#v) for serial %s", n, err, gold.Serial)
 			continue
 		}
 
 		pem, err := keys.PEM()
 		if err != nil {
-			if err.Error() != gold.PEM {
-				t.Error("PEM encoding error:", err)
-			}
+			t.Error("PEM encoding error:", err)
 			continue
-		}
-		if strings.Count(gold.PEM, "BEGIN PUBLIC KEY") != n {
-			t.Errorf("loaded %d public keys, want %q", n, gold.PEM)
 		}
 		if string(pem) != gold.PEM {
 			t.Errorf("got PEM %q,\nwant %q", pem, gold.PEM)
