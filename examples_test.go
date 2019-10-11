@@ -210,7 +210,9 @@ func ExampleHandler_filter() {
 
 // PEM With Password Protection
 func ExampleKeyRegister_LoadPEM_encrypted() {
-	const pem = `-----BEGIN RSA PRIVATE KEY-----
+	const pem = `Keep it private! ✨
+
+-----BEGIN RSA PRIVATE KEY-----
 Proc-Type: 4,ENCRYPTED
 DEK-Info: AES-128-CBC,65789712555A3E9FECD1D5E235B97B0C
 
@@ -234,6 +236,29 @@ SRcADdHh3NgrjDjalhLDB95ho5omG39l7qBKBTlBAYJhDuAk9rIk1FCfCB8upztt
 	if err != nil {
 		fmt.Println("load error:", err)
 	}
-	fmt.Println("got", n, "keys")
-	// Output: got 1 keys
+	fmt.Println(n, "keys added")
+	// Output: 1 keys added
+}
+
+// JWKS With Key IDs
+func ExampleKeyRegister_LoadJWK() {
+	const json = `{
+  "keys": [
+    {"kty": "OKP", "crv":"Ed25519", "kid": "kazak",
+      "d":"nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A",
+      "x":"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"},
+    {"kty":"oct", "k":"a29mdGE", "kid": "good old"}
+  ]
+}`
+
+	var keys jwt.KeyRegister
+	n, err := keys.LoadJWK([]byte(json))
+	if err != nil {
+		fmt.Println("load error:", err)
+	}
+	fmt.Printf("%d keys added: ", n)
+	fmt.Printf("%d EdDSA %s & ", len(keys.EdDSAs), keys.EdDSAIDs)
+	fmt.Printf("%d secret %s: %s", len(keys.Secrets), keys.SecretIDs, keys.Secrets)
+	// Output:
+	// 2 keys added: 1 EdDSA [kazak] & 1 secret [good old]: [kofta]
 }

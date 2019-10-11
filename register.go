@@ -15,7 +15,7 @@ import (
 	"math/big"
 )
 
-// KeyRegister contains recognized credentials.
+// KeyRegister contains the recognized credentials.
 type KeyRegister struct {
 	ECDSAs  []*ecdsa.PublicKey  // ECDSA credentials
 	EdDSAs  []ed25519.PublicKey // EdDSA credentials
@@ -148,25 +148,25 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 
 var errUnencryptedPEM = errors.New("jwt: unencrypted PEM rejected due password expectation")
 
-// LoadPEM adds keys from PEM-encoded data and returns the count. PEM encryption
-// is enforced for non-empty password values. The source may be certificates,
-// public keys, private keys, or a combination of any of the previous. Private
-// keys are discared after the (automatic) public key extraction completes.
-func (keys *KeyRegister) LoadPEM(data, password []byte) (n int, err error) {
+// LoadPEM scans text for PEM-encoded keys. Each occurrence found is then added
+// to the register. Extraction works with certificates, public keys and private
+// keys. PEM encryption is enforced with a non-empty password to ensure security
+// when ordered.
+func (keys *KeyRegister) LoadPEM(text, password []byte) (keysAdded int, err error) {
 	for {
-		block, remainder := pem.Decode(data)
+		block, remainder := pem.Decode(text)
 		if block == nil {
 			return
 		}
-		data = remainder
+		text = remainder
 
 		if x509.IsEncryptedPEMBlock(block) {
 			block.Bytes, err = x509.DecryptPEMBlock(block, password)
 			if err != nil {
-				return
+				return keysAdded, err
 			}
 		} else if len(password) != 0 {
-			return n, errUnencryptedPEM
+			return keysAdded, errUnencryptedPEM
 		}
 
 		var key interface{}
@@ -177,13 +177,13 @@ func (keys *KeyRegister) LoadPEM(data, password []byte) (n int, err error) {
 		case "CERTIFICATE":
 			certs, err := x509.ParseCertificates(block.Bytes)
 			if err != nil {
-				return n, err
+				return keysAdded, err
 			}
 			for _, c := range certs {
-				if err := keys.add(c.PublicKey); err != nil {
-					return n, err
+				if err := keys.add(c.PublicKey, ""); err != nil {
+					return keysAdded, err
 				}
-				n++
+				keysAdded++
 			}
 			continue
 
@@ -200,36 +200,63 @@ func (keys *KeyRegister) LoadPEM(data, password []byte) (n int, err error) {
 			key, err = x509.ParsePKCS1PrivateKey(block.Bytes)
 
 		default:
-			return n, fmt.Errorf("jwt: unknown PEM type %q", block.Type)
+			return keysAdded, fmt.Errorf("jwt: unknown PEM type %q", block.Type)
 		}
 		if err != nil {
-			return n, err
+			return keysAdded, err
 		}
-		if err := keys.add(key); err != nil {
-			return n, err
+		if err := keys.add(key, ""); err != nil {
+			return keysAdded, err
 		}
 
-		n++
+		keysAdded++
 	}
 }
 
-func (keys *KeyRegister) add(key interface{}) error {
+func (keys *KeyRegister) add(key interface{}, kid string) error {
+	var i int
+	var ids *[]string
+
 	switch t := key.(type) {
 	case *ecdsa.PublicKey:
+		i = len(keys.ECDSAs)
 		keys.ECDSAs = append(keys.ECDSAs, t)
+		ids = &keys.ECDSAIDs
 	case *ecdsa.PrivateKey:
+		i = len(keys.ECDSAs)
 		keys.ECDSAs = append(keys.ECDSAs, &t.PublicKey)
+		ids = &keys.ECDSAIDs
 	case ed25519.PublicKey:
+		i = len(keys.EdDSAs)
 		keys.EdDSAs = append(keys.EdDSAs, t)
+		ids = &keys.EdDSAIDs
 	case ed25519.PrivateKey:
+		i = len(keys.EdDSAs)
 		keys.EdDSAs = append(keys.EdDSAs, t.Public().(ed25519.PublicKey))
+		ids = &keys.EdDSAIDs
 	case *rsa.PublicKey:
+		i = len(keys.RSAs)
 		keys.RSAs = append(keys.RSAs, t)
+		ids = &keys.RSAIDs
 	case *rsa.PrivateKey:
+		i = len(keys.RSAs)
 		keys.RSAs = append(keys.RSAs, &t.PublicKey)
+		ids = &keys.RSAIDs
+	case []byte:
+		i = len(keys.Secrets)
+		keys.Secrets = append(keys.Secrets, t)
+		ids = &keys.SecretIDs
 	default:
 		return fmt.Errorf("jwt: unsupported key type %T", t)
 	}
+
+	if kid != "" {
+		for len(*ids) <= i {
+			*ids = append(*ids, "")
+		}
+		(*ids)[i] = kid
+	}
+
 	return nil
 }
 
@@ -271,29 +298,29 @@ func encodePEM(buf *bytes.Buffer, key interface{}) error {
 type jwk struct {
 	Keys []*jwk
 
+	Kid string
 	Kty *string
 	Crv string
 
 	K, X, Y, N, E *string
 }
 
-// LoadJWK adds keys from a JWK or a JWK Set, and returns the count.
-// Both private and public keys can be used.
-func (keys *KeyRegister) LoadJWK(data []byte) (n int, err error) {
+// LoadJWK adds keys from the JSON data to the register. If the object has a
+// "keys" attribute, then data is read as a JWKS (JSON Web Key Set). Otherwise,
+// the object is read as a single JWK.
+func (keys *KeyRegister) LoadJWK(data []byte) (keysAdded int, err error) {
 	j := new(jwk)
 	if err := json.Unmarshal(data, j); err != nil {
 		return 0, err
 	}
 
 	if j.Keys == nil {
-		// single key
 		if err := keys.addJWK(j); err != nil {
 			return 0, err
 		}
 		return 1, nil
 	}
 
-	// key set
 	for i, k := range j.Keys {
 		if err := keys.addJWK(k); err != nil {
 			return i, err
@@ -352,7 +379,7 @@ func (keys *KeyRegister) addJWK(j *jwk) error {
 			return errJWKCurveMiss
 		}
 
-		keys.ECDSAs = append(keys.ECDSAs, &ecdsa.PublicKey{Curve: curve, X: x, Y: y})
+		keys.add(&ecdsa.PublicKey{Curve: curve, X: x, Y: y}, j.Kid)
 
 	case "RSA":
 		n, err := intParam(j.N)
@@ -364,14 +391,14 @@ func (keys *KeyRegister) addJWK(j *jwk) error {
 			return err
 		}
 
-		keys.RSAs = append(keys.RSAs, &rsa.PublicKey{N: n, E: int(e.Int64())})
+		keys.add(&rsa.PublicKey{N: n, E: int(e.Int64())}, j.Kid)
 
 	case "oct":
 		bytes, err := dataParam(j.K)
 		if err != nil {
 			return err
 		}
-		keys.Secrets = append(keys.Secrets, bytes)
+		keys.add(bytes, j.Kid)
 
 	case "OKP":
 		switch j.Crv {
@@ -380,7 +407,7 @@ func (keys *KeyRegister) addJWK(j *jwk) error {
 			if err != nil {
 				return err
 			}
-			keys.EdDSAs = append(keys.EdDSAs, ed25519.PublicKey(bytes))
+			keys.add(ed25519.PublicKey(bytes), j.Kid)
 		default:
 			return fmt.Errorf("jwt: JWK with unsupported elliptic curve %q", j.Crv)
 		}
