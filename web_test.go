@@ -241,7 +241,7 @@ func testUnauthorized(t *testing.T, reqHeader string) (body, header string) {
 func TestHandleNoHeader(t *testing.T) {
 	body, header := testUnauthorized(t, "")
 
-	if want := "jwt: no HTTP Authorization\n"; body != want {
+	if want := "jwt: no HTTP authorization header\n"; body != want {
 		t.Errorf("got body %q, want %q", body, want)
 	}
 	if want := "Bearer"; header != want {

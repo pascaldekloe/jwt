@@ -18,8 +18,8 @@ const MIMEType = "application/jwt"
 // OAuthURN is the IANA registered OAuth URI.
 const OAuthURN = "urn:ietf:params:oauth:token-type:jwt"
 
-// ErrNoHeader signals an HTTP request without Authorization.
-var ErrNoHeader = errors.New("jwt: no HTTP Authorization")
+// ErrNoHeader signals an HTTP request without authorization.
+var ErrNoHeader = errors.New("jwt: no HTTP authorization header")
 
 var errAuthSchema = errors.New("jwt: want Bearer schema")
 
@@ -74,14 +74,22 @@ func (keys *KeyRegister) CheckHeader(r *http.Request) (*Claims, error) {
 }
 
 func tokenFromHeader(r *http.Request) ([]byte, error) {
-	auth := r.Header.Get("Authorization")
-	if auth == "" {
+	h := r.Header["Authorization"]
+	if h == nil {
 		return nil, ErrNoHeader
 	}
-	if !strings.HasPrefix(auth, "Bearer ") {
+
+	// “Multiple message-header fields with the same field-name MAY be
+	// present in a message if and only if the entire field-value for that
+	//  header field is defined as a comma-separated list.”
+	// — “Hypertext Transfer Protocol” RFC 2616, subsection 4.2
+	auth := strings.Join(h, ", ")
+
+	const prefix = "Bearer "
+	if !strings.HasPrefix(auth, prefix) {
 		return nil, errAuthSchema
 	}
-	return []byte(auth[7:]), nil
+	return []byte(auth[len(prefix):]), nil
 }
 
 // ECDSASignHeader applies ECDSASign on a HTTP request.
