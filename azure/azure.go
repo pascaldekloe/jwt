@@ -3,6 +3,8 @@
 package azure
 
 import (
+	"bytes"
+	"crypto"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,7 +12,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 	"unicode/utf8"
 
 	"github.com/pascaldekloe/jwt"
@@ -19,6 +20,37 @@ import (
 // HTTPClient is used to connect to the Azure REST.
 var HTTPClient = http.DefaultClient
 
+// Algorithm support is configured with hash registrations.
+// For a full list of options, see the REST documentation at
+// <https://docs.microsoft.com/en-us/rest/api/keyvault/sign/sign#jsonwebkeysignaturealgorithm>.
+var KeyVaultAlgs = map[string]crypto.Hash{
+	jwt.ES256: crypto.SHA256,
+	jwt.ES384: crypto.SHA384,
+	jwt.ES512: crypto.SHA512,
+	jwt.HS256: crypto.SHA256,
+	jwt.HS384: crypto.SHA384,
+	jwt.HS512: crypto.SHA512,
+	jwt.PS256: crypto.SHA256,
+	jwt.PS384: crypto.SHA384,
+	jwt.PS512: crypto.SHA512,
+	jwt.RS256: crypto.SHA256,
+	jwt.RS384: crypto.SHA384,
+	jwt.RS512: crypto.SHA512,
+}
+
+func hashLookup(alg string) (crypto.Hash, error) {
+	hash, ok := KeyVaultAlgs[alg]
+	if !ok {
+		return 0, jwt.AlgError(alg)
+	}
+	if !hash.Available() {
+		return 0, errors.New("azure: hash function not linked into binary")
+
+	}
+	return hash, nil
+}
+
+// Credentials represent the hosting account.
 type Credentials struct {
 	// The application ID that's assigned to your app. You can find
 	// this  information in the portal where you registered your app.
@@ -41,36 +73,51 @@ type KeyVaultClient struct {
 	authorization string
 }
 
-// NewKeyVaultClient launches a managed connection to an Azure Key Vault.
+// NewKeyVaultClient launches a connection to an Azure Key Vault.
 // The base URL configures the vault name, e.g. "https://myvault.vault.azure.net".
 func NewKeyVaultClient(baseURL string, creds Credentials) *KeyVaultClient {
-	c := &KeyVaultClient{
+	client := &KeyVaultClient{
 		baseURL: baseURL,
 		creds:   creds,
 	}
 
 	// BUG(pascaldekloe): Token management & renewal not in place.
-	authorization, _, err := c.getAuthorization()
-	if err != nil {
-		panic(err)
-	}
-	c.authorization = authorization
+	client.auth()
 
-	return c
+	return client
 }
 
 // Sign updates the Claims.Raw field and returns a new JWT.
-// The algorithm options are listed on the REST documentation page at
-// <https://docs.microsoft.com/en-us/rest/api/keyvault/sign/sign#jsonwebkeysignaturealgorithm>.
+// The return is an jwt.AlgError when alg is not in KeyVaultAlgs.
 func (client *KeyVaultClient) Sign(claims *jwt.Claims, alg, keyName, keyVersion string) (token []byte, err error) {
+	if keyName == "" || keyVersion == "" {
+		return nil, errors.New("azure: key name and version required")
+	}
+
+	hash, err := hashLookup(alg)
+	if err != nil {
+		return nil, err
+	}
 	tokenWithoutSignature, err := claims.FormatWithoutSign(alg)
 	if err != nil {
 		return nil, err
 	}
 
-	signRequest := fmt.Sprintf(`{"alg": %q, "value": "%s"}`, alg, tokenWithoutSignature)
+	digest := hash.New()
+	digest.Write(tokenWithoutSignature)
+	signRequest, err := json.Marshal(&struct {
+		Alg   string `json:"alg"`
+		Value []byte `json:"value"`
+	}{alg, digest.Sum(nil)})
+	if err != nil {
+		return nil, fmt.Errorf("azure: sign request compose: %w", err)
+	}
+
 	resource := fmt.Sprintf("%s/keys/%s/%s/sign?api-version=7.0", client.baseURL, url.PathEscape(keyName), url.PathEscape(keyVersion))
-	req, err := http.NewRequest("POST", resource, strings.NewReader(signRequest))
+	req, err := http.NewRequest("POST", resource, bytes.NewReader(signRequest))
+	if err != nil {
+		return nil, fmt.Errorf("azure: sign request: %w", err)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", client.authorization)
 
@@ -81,12 +128,11 @@ func (client *KeyVaultClient) Sign(claims *jwt.Claims, alg, keyName, keyVersion 
 	defer resp.Body.Close()
 
 	if resp.StatusCode/100 != 2 {
-		errorResponse := new(KeyVaultError)
+		errorResponse := new(keyVaultErrorResponse)
 		if err := json.NewDecoder(resp.Body).Decode(errorResponse); err != nil {
 			return nil, fmt.Errorf("azure: sign status %q followed by %w", resp.Status, err)
 		}
-		// BUG(pascaldekloe): jwt.AlgError mapping not implemented.
-		return nil, fmt.Errorf("azure: sign status %q: %w", resp.Status, errorResponse)
+		return nil, fmt.Errorf("azure: sign status %q: %w", resp.Status, &errorResponse.Error)
 	}
 
 	var signResponse struct{ Value string }
@@ -102,17 +148,32 @@ func (client *KeyVaultClient) Sign(claims *jwt.Claims, alg, keyName, keyVersion 
 	return token, nil
 }
 
-func (c *KeyVaultClient) getAuthorization() (header string, expire time.Duration, err error) {
-	values := make(url.Values, 4)
-	values.Set("grant_type", "client_credentials")
-	values.Set("resource", "https://management.azure.com/")
-	values.Set("client_id", c.creds.AppID)
-	values.Set("client_secret", c.creds.Secret)
-	values.Set("scope", "https://vault.azure.net/.default")
-
-	resp, err := HTTPClient.PostForm(fmt.Sprintf("https://login.microsoftonline.com/%s/oauth2/token", url.PathEscape(c.creds.Tenant)), values)
+func (client *KeyVaultClient) auth() {
+	accessToken, err := client.getAccessToken()
 	if err != nil {
-		return "", 0, fmt.Errorf("azure: OAuth2 request: %w", err)
+		panic(err)
+	}
+	claims, err := jwt.ParseWithoutCheck([]byte(accessToken))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("access token expires on ", claims.Expires)
+
+	client.authorization = "Bearer " + accessToken
+}
+
+func (client *KeyVaultClient) getAccessToken() (string, error) {
+	values := url.Values{
+		"grant_type":    []string{"client_credentials"},
+		"resource":      []string{"https://vault.azure.net"},
+		"scope":         []string{"https://vault.azure.net/.default"},
+		"client_id":     []string{client.creds.AppID},
+		"client_secret": []string{client.creds.Secret},
+	}
+
+	resp, err := HTTPClient.PostForm(fmt.Sprintf("https://login.microsoftonline.com/%s/oauth2/token", url.PathEscape(client.creds.Tenant)), values)
+	if err != nil {
+		return "", fmt.Errorf("azure: OAuth2 request: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -120,7 +181,7 @@ func (c *KeyVaultClient) getAuthorization() (header string, expire time.Duration
 		var buf [256]byte
 		n, err := io.ReadFull(resp.Body, buf[:])
 		if err != nil {
-			return "", 0, fmt.Errorf("azure: OAuth2 status %q followed by %w", resp.Status, err)
+			return "", fmt.Errorf("azure: OAuth2 status %q followed by %w", resp.Status, err)
 		}
 		for i, r := range string(buf[:n]) {
 			const truncateMarker = "…"
@@ -129,28 +190,28 @@ func (c *KeyVaultClient) getAuthorization() (header string, expire time.Duration
 				break
 			}
 		}
-		return "", 0, fmt.Errorf("azure: OAuth2 status %q: %s", resp.Status, buf[:n])
+		return "", fmt.Errorf("azure: OAuth2 status %q: %s", resp.Status, buf[:n])
 	}
 
 	var authResponse struct {
-		TokenType   string  `json:"token_type"`
-		AccessToken string  `json:"access_token"`
-		ExpiresIn   float64 `json:"expires_in"`
+		TokenType   string `json:"token_type"`
+		AccessToken string `json:"access_token"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&authResponse); err != nil {
-		return "", 0, fmt.Errorf("azure: OAuth2 response: %w", err)
+		return "", fmt.Errorf("azure: OAuth2 response: %w", err)
 	}
-	if authResponse.TokenType == "" {
-		return "", 0, errors.New("azure: OAuth2 response without token_type")
+	if authResponse.TokenType != "Bearer" {
+		return "", fmt.Errorf("azure: unsupporetd OAuth2 token_type %q", authResponse.TokenType)
 	}
 	if authResponse.AccessToken == "" {
-		return "", 0, errors.New("azure: OAuth2 response without access_token")
-	}
-	if authResponse.ExpiresIn == 0 {
-		return "", 0, errors.New("azure: OAuth2 response without expires_in")
+		return "", errors.New("azure: OAuth2 response without access_token")
 	}
 
-	return authResponse.TokenType + " " + authResponse.AccessToken, time.Duration(authResponse.ExpiresIn) * time.Second, nil
+	return authResponse.AccessToken, nil
+}
+
+type keyVaultErrorResponse struct {
+	Error KeyVaultError
 }
 
 // KeyVaultError is a server error response (JSON).
