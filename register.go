@@ -15,7 +15,7 @@ import (
 	"math/big"
 )
 
-// KeyRegister contains the recognized credentials.
+// KeyRegister is a collection of recognized credentials.
 type KeyRegister struct {
 	ECDSAs  []*ecdsa.PublicKey  // ECDSA credentials
 	EdDSAs  []ed25519.PublicKey // EdDSA credentials
@@ -23,7 +23,7 @@ type KeyRegister struct {
 	Secrets [][]byte            // HMAC credentials
 
 	// Optional key identification. See Claims.KeyID for details.
-	// Non-empty values match the respective keys (or secrets).
+	// Non-empty strings match the respective key or secret by index.
 	ECDSAIDs  []string // ECDSAs key ID mapping
 	EdDSAIDs  []string // EdDSA key ID mapping
 	RSAIDs    []string // RSAs key ID mapping
@@ -305,9 +305,9 @@ type jwk struct {
 	K, X, Y, N, E *string
 }
 
-// LoadJWK adds keys from the JSON data to the register. If the object has a
-// "keys" attribute, then data is read as a JWKS (JSON Web Key Set). Otherwise,
-// the object is read as a single JWK.
+// LoadJWK adds keys from the JSON data to the register, including the key ID,
+// a.k.a "kid", when present. If the object has a "keys" attribute, then data is
+// read as a JWKS (JSON Web Key Set). Otherwise, data is read as a single JWK.
 func (keys *KeyRegister) LoadJWK(data []byte) (keysAdded int, err error) {
 	j := new(jwk)
 	if err := json.Unmarshal(data, j); err != nil {
