@@ -7,7 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"strconv"
+	"fmt"
 	"time"
 )
 
@@ -70,7 +70,7 @@ type AlgError string
 
 // Error honors the error interface.
 func (e AlgError) Error() string {
-	return "jwt: algorithm " + strconv.Quote(string(e)) + " not in use"
+	return fmt.Sprintf("jwt: algorithm %q not in use", string(e))
 }
 
 // ErrNoSecret protects against programming and configuration mistakes.
