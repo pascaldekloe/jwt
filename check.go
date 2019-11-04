@@ -140,11 +140,11 @@ func scan(token []byte) (firstDot, lastDot int, sig []byte, h *header, err error
 	buf := make([]byte, encoding.DecodedLen(len(token)))
 	n, err := encoding.Decode(buf, token[:firstDot])
 	if err != nil {
-		return 0, 0, nil, nil, errors.New("jwt: malformed header: " + err.Error())
+		return 0, 0, nil, nil, fmt.Errorf("jwt: malformed header: %w", err)
 	}
 	h = new(header)
 	if err := json.Unmarshal(buf[:n], h); err != nil {
-		return 0, 0, nil, nil, errors.New("jwt: malformed header: " + err.Error())
+		return 0, 0, nil, nil, fmt.Errorf("jwt: malformed header: %w", err)
 	}
 
 	// “If any of the listed extension Header Parameters are not understood
@@ -157,7 +157,7 @@ func scan(token []byte) (firstDot, lastDot int, sig []byte, h *header, err error
 	// signature
 	n, err = encoding.Decode(buf, token[lastDot+1:])
 	if err != nil {
-		return 0, 0, nil, nil, errors.New("jwt: malformed signature: " + err.Error())
+		return 0, 0, nil, nil, fmt.Errorf("jwt: malformed signature: %w", err)
 	}
 	sig = buf[:n]
 
@@ -176,7 +176,7 @@ func parseClaims(enc, buf []byte, header *header) (*Claims, error) {
 	buf = buf[:cap(buf)]
 	n, err := encoding.Decode(buf, enc)
 	if err != nil {
-		return nil, errors.New("jwt: malformed payload: " + err.Error())
+		return nil, fmt.Errorf("jwt: malformed payload: %w", err)
 	}
 	buf = buf[:n]
 
@@ -187,7 +187,7 @@ func parseClaims(enc, buf []byte, header *header) (*Claims, error) {
 		KeyID: header.Kid,
 	}
 	if err = json.Unmarshal(buf, &c.Set); err != nil {
-		return nil, errors.New("jwt: malformed payload: " + err.Error())
+		return nil, fmt.Errorf("jwt: malformed payload: %w", err)
 	}
 
 	// move from Set to Registered on type match

@@ -422,7 +422,7 @@ func dataParam(p *string) ([]byte, error) {
 	}
 	bytes, err := encoding.DecodeString(*p)
 	if err != nil {
-		return nil, fmt.Errorf("jwt: JWK with malformed key–parameter field: %s", err)
+		return nil, fmt.Errorf("jwt: JWK with malformed key–parameter field: %w", err)
 	}
 	return bytes, nil
 }
