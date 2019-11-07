@@ -51,7 +51,7 @@ func TestClaimsSync(t *testing.T) {
 		Set: make(map[string]interface{}),
 	}
 
-	if err := c.sync(); err != nil {
+	if _, err := c.sync(""); err != nil {
 		t.Fatal("sync error:", err)
 	}
 	const want = `{"aud":"c","exp":1537622854,"iat":1537622794,"iss":"a","jti":"d","nbf":1537622793,"sub":"b"}`
@@ -81,7 +81,7 @@ func TestClaimsSyncMerge(t *testing.T) {
 		t.Errorf("got audience string %q for 2 element array value", s)
 	}
 
-	if err := c.sync(); err != nil {
+	if _, err := c.sync(""); err != nil {
 		t.Fatal("sync error:", err)
 	}
 	const want = `{"aud":["KGB","RU"],"iss":null,"sub":"kkazanova"}`
@@ -92,7 +92,7 @@ func TestClaimsSyncMerge(t *testing.T) {
 
 func TestClaimsSyncNone(t *testing.T) {
 	var c Claims
-	if err := c.sync(); err != nil {
+	if _, err := c.sync(""); err != nil {
 		t.Fatal("sync error:", err)
 	}
 	if string(c.Raw) != "{}" {

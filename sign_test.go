@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -14,24 +15,24 @@ import (
 	"testing"
 )
 
-func TestFormatWithoutSign(t *testing.T) {
-	var claims Claims
+func TestHeaderFormat(t *testing.T) {
+	claims := &Claims{
+		KeyID:        "№1",
+		ExtraHeaders: map[string]interface{}{"typ": "JWT"},
+	}
 	token, err := claims.FormatWithoutSign("none")
 	if err != nil {
 		t.Fatal("sign error:", err)
 	}
-	const want = "eyJhbGciOiJub25lIn0.e30"
+	const want = "eyJhbGciOiJub25lIiwia2lkIjoi4oSWMSIsInR5cCI6IkpXVCJ9.e30"
 	if string(token) != want {
 		t.Errorf("got token %q, want %q", token, want)
 	}
 
-	claims.Set = map[string]interface{}{
-		"notAllowedInJSON": math.NaN(),
-	}
+	claims.ExtraHeaders["notAllowedInJSON"] = math.NaN()
 	_, err = claims.FormatWithoutSign("X")
-	var wantErr error = new(json.UnsupportedValueError)
-	if !errors.As(err, &wantErr) {
-		t.Errorf("got error %#v, want a %T", err, wantErr)
+	if !errors.As(err, new(*json.UnsupportedValueError)) {
+		t.Errorf("got error %#v, want a json.UnsupportedValueError", err)
 	}
 }
 
@@ -200,9 +201,17 @@ func TestFormatHeader(t *testing.T) {
 	}
 
 	for alg := range algs {
-		header := new(Claims).formatHeader(alg)
-
-		headerJSON, err := encoding.DecodeString(header)
+		token, err := new(Claims).FormatWithoutSign(alg)
+		if err != nil {
+			t.Errorf("error for %q: %s", alg, err)
+			continue
+		}
+		i := bytes.IndexByte(token, '.')
+		if i < 0 {
+			t.Errorf("malformed token for %q: %q", alg, token)
+			continue
+		}
+		headerJSON, err := encoding.DecodeString(string(token[:i]))
 		if err != nil {
 			t.Errorf("malformed header for %q: %s", alg, err)
 			continue

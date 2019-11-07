@@ -33,16 +33,17 @@ type KeyRegister struct {
 // Check parses a JWT if, and only if, the signature checks out.
 // See Claims.Valid to complete the verification.
 func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
-	firstDot, lastDot, sig, header, err := scan(token)
+	var c Claims
+	firstDot, lastDot, sig, alg, err := c.scan(token)
 	if err != nil {
 		return nil, err
 	}
 
-	if header.Alg == EdDSA {
+	if alg == EdDSA {
 		keyOptions := keys.EdDSAs
-		if header.Kid != "" {
+		if c.KeyID != "" {
 			for i, kid := range keys.EdDSAIDs {
-				if kid == header.Kid && i < len(keyOptions) {
+				if kid == c.KeyID && i < len(keyOptions) {
 					keyOptions = keyOptions[i : i+1]
 					break
 				}
@@ -51,18 +52,18 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 
 		for _, key := range keyOptions {
 			if ed25519.Verify(key, token[:lastDot], sig) {
-				return parseClaims(token[firstDot+1:lastDot], sig, header)
+				return &c, c.applyPayload(token[firstDot+1:lastDot], sig)
 			}
 		}
 		return nil, ErrSigMiss
 	}
 
-	switch hash, err := hashLookup(header.Alg, HMACAlgs); err.(type) {
+	switch hash, err := hashLookup(alg, HMACAlgs); err.(type) {
 	case nil:
 		keyOptions := keys.Secrets
-		if header.Kid != "" {
+		if c.KeyID != "" {
 			for i, kid := range keys.SecretIDs {
-				if kid == header.Kid && i < len(keyOptions) {
+				if kid == c.KeyID && i < len(keyOptions) {
 					keyOptions = keyOptions[i : i+1]
 					break
 				}
@@ -73,7 +74,7 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 			digest := hmac.New(hash.New, secret)
 			digest.Write(token[:lastDot])
 			if hmac.Equal(sig, digest.Sum(sig[len(sig):])) {
-				return parseClaims(token[firstDot+1:lastDot], sig, header)
+				return &c, c.applyPayload(token[firstDot+1:lastDot], sig)
 			}
 		}
 		return nil, ErrSigMiss
@@ -84,12 +85,12 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 		return nil, err
 	}
 
-	switch hash, err := hashLookup(header.Alg, RSAAlgs); err.(type) {
+	switch hash, err := hashLookup(alg, RSAAlgs); err.(type) {
 	case nil:
 		keyOptions := keys.RSAs
-		if header.Kid != "" {
+		if c.KeyID != "" {
 			for i, kid := range keys.RSAIDs {
-				if kid == header.Kid && i < len(keyOptions) {
+				if kid == c.KeyID && i < len(keyOptions) {
 					keyOptions = keyOptions[i : i+1]
 					break
 				}
@@ -100,13 +101,13 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 		digest.Write(token[:lastDot])
 		digestSum := digest.Sum(sig[len(sig):])
 		for _, key := range keyOptions {
-			if header.Alg[0] == 'P' {
+			if alg != "" && alg[0] == 'P' {
 				err = rsa.VerifyPSS(key, hash, digestSum, sig, nil)
 			} else {
 				err = rsa.VerifyPKCS1v15(key, hash, digestSum, sig)
 			}
 			if err == nil {
-				return parseClaims(token[firstDot+1:lastDot], sig, header)
+				return &c, c.applyPayload(token[firstDot+1:lastDot], sig)
 			}
 		}
 		return nil, ErrSigMiss
@@ -117,12 +118,12 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 		return nil, err
 	}
 
-	switch hash, err := hashLookup(header.Alg, ECDSAAlgs); err {
+	switch hash, err := hashLookup(alg, ECDSAAlgs); err {
 	case nil:
 		keyOptions := keys.ECDSAs
-		if header.Kid != "" {
+		if c.KeyID != "" {
 			for i, kid := range keys.ECDSAIDs {
-				if kid == header.Kid && i < len(keyOptions) {
+				if kid == c.KeyID && i < len(keyOptions) {
 					keyOptions = keyOptions[i : i+1]
 					break
 				}
@@ -136,7 +137,7 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 		digestSum := digest.Sum(sig[:0])
 		for _, key := range keyOptions {
 			if ecdsa.Verify(key, digestSum, r, s) {
-				return parseClaims(token[firstDot+1:lastDot], sig, header)
+				return &c, c.applyPayload(token[firstDot+1:lastDot], sig)
 			}
 		}
 		return nil, ErrSigMiss

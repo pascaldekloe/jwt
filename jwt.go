@@ -154,17 +154,21 @@ type Claims struct {
 	Raw json.RawMessage
 
 	// “The "kid" (key ID) Header Parameter is a hint indicating which key
-	// was used to secure the JWS.  This parameter allows originators to
-	// explicitly signal a change of key to recipients.  The structure of
-	// the "kid" value is unspecified.  Its value MUST be a case-sensitive
-	// string.  Use of this Header Parameter is OPTIONAL.”
+	// was used to secure the JWS. This parameter allows originators to
+	// explicitly signal a change of key to recipients. The structure of the
+	// "kid" value is unspecified. Its value MUST be a case-sensitive
+	// string. Use of this Header Parameter is OPTIONAL.”
 	// — “JSON Web Signature (JWS)” RFC 7515, subsection 4.1.4
 	KeyID string
+
+	// Additional JOSE header mapping by name used for token production.
+	// The sign methods copy the alg(orithm) and any non-zero KeyID into
+	// ExtraHeaders when the map is not nil.
+	ExtraHeaders map[string]interface{}
 }
 
-// Sync updates the Raw field. When the Set field is not nil,
-// then all non-zero Registered values are copied into the map.
-func (c *Claims) sync() error {
+// Sync updates the Raw and ExtraHeaders fields.
+func (c *Claims) sync(alg string) (headerJSON []byte, err error) {
 	var payload interface{}
 
 	if c.Set == nil {
@@ -206,10 +210,18 @@ func (c *Claims) sync() error {
 
 	bytes, err := json.Marshal(payload)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	c.Raw = json.RawMessage(bytes)
-	return nil
+
+	if c.ExtraHeaders == nil {
+		return nil, nil
+	}
+	c.ExtraHeaders["alg"] = alg
+	if c.KeyID != "" {
+		c.ExtraHeaders["kid"] = c.KeyID
+	}
+	return json.Marshal(c.ExtraHeaders)
 }
 
 // Valid returns whether the claims set may be accepted for processing at the

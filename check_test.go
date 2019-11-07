@@ -242,7 +242,7 @@ func TestRejectNone(t *testing.T) {
 }
 
 func TestCheckBrokenBase64(t *testing.T) {
-	want := "jwt: malformed header: "
+	want := "jwt: malformed JOSE header: "
 	_, err := HMACCheck([]byte("*yJhbGciOiJIUzI1NiJ9.e30.4E_Bsx-pJi3kOW9wVXN8CgbATwP09D9V5gxh9-9zSZ0"), []byte("guest"))
 	if err == nil || !strings.HasPrefix(err.Error(), want) {
 		t.Errorf("corrupt base64 in header got error %v, want %s…", err, want)
@@ -274,7 +274,7 @@ func TestCheckBrokenBase64(t *testing.T) {
 }
 
 func TestCheckBrokenJSON(t *testing.T) {
-	want := "jwt: malformed header: "
+	want := "jwt: malformed JOSE header: "
 	_, err := EdDSACheck([]byte("YnJva2Vu.e30."), testKeyEd25519Public)
 	if err == nil || !strings.HasPrefix(err.Error(), want) {
 		t.Errorf("corrupt JSON in header got error %v, want %s…", err, want)
