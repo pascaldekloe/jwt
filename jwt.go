@@ -213,8 +213,8 @@ func (c *Claims) sync() error {
 }
 
 // Valid returns whether the claims set may be accepted for processing at the
-// given moment in time. If time is zero, then Valid returns whether there are
-// any time constraints at all.
+// given moment in time. If the time is zero, then Valid returns whether there
+// are no time constraints.
 func (c *Claims) Valid(t time.Time) bool {
 	exp, expOK := c.Number(expires)
 	nbf, nbfOK := c.Number(notBefore)
