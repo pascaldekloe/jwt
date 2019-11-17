@@ -6,17 +6,13 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
+	"encoding/json"
 	"strconv"
 )
 
 // FormatWithoutSign updates the Raw field and returns a new and incomplete JWT.
 func (c *Claims) FormatWithoutSign(alg string) (tokenWithoutSignature []byte, err error) {
-	headerJSON, err := c.sync(alg)
-	if err != nil {
-		return nil, err
-	}
-
-	return c.newToken(alg, 0, headerJSON), nil
+	return c.newToken(alg, 0)
 }
 
 // ECDSASign updates the Raw field and returns a new JWT.
@@ -24,11 +20,6 @@ func (c *Claims) FormatWithoutSign(alg string) (tokenWithoutSignature []byte, er
 // The caller must use the correct key for the respective algorithm (P-256 for
 // ES256, P-384 for ES384 and P-521 for ES512) or risk malformed token production.
 func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey) (token []byte, err error) {
-	headerJSON, err := c.sync(alg)
-	if err != nil {
-		return nil, err
-	}
-
 	hash, err := hashLookup(alg, ECDSAAlgs)
 	if err != nil {
 		return nil, err
@@ -37,7 +28,10 @@ func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey) (token []byte, err
 
 	// signature contains pair (r, s) as per RFC 7518, subsection 3.4
 	paramLen := (key.Curve.Params().BitSize + 7) / 8
-	token = c.newToken(alg, encoding.EncodedLen(paramLen*2), headerJSON)
+	token, err = c.newToken(alg, encoding.EncodedLen(paramLen*2))
+	if err != nil {
+		return nil, err
+	}
 	digest.Write(token)
 	token = append(token, '.')
 
@@ -72,12 +66,10 @@ func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey) (token []byte, err
 
 // EdDSASign updates the Raw field and returns a new JWT.
 func (c *Claims) EdDSASign(key ed25519.PrivateKey) (token []byte, err error) {
-	headerJSON, err := c.sync(EdDSA)
+	token, err = c.newToken(EdDSA, encoding.EncodedLen(ed25519.SignatureSize))
 	if err != nil {
 		return nil, err
 	}
-
-	token = c.newToken(EdDSA, encoding.EncodedLen(ed25519.SignatureSize), headerJSON)
 	sig := ed25519.Sign(key, token)
 
 	i := len(token)
@@ -96,18 +88,16 @@ func (c *Claims) HMACSign(alg string, secret []byte) (token []byte, err error) {
 		return nil, errNoSecret
 	}
 
-	headerJSON, err := c.sync(alg)
-	if err != nil {
-		return nil, err
-	}
-
 	hash, err := hashLookup(alg, HMACAlgs)
 	if err != nil {
 		return nil, err
 	}
 	digest := hmac.New(hash.New, secret)
 
-	token = c.newToken(alg, encoding.EncodedLen(digest.Size()), headerJSON)
+	token, err = c.newToken(alg, encoding.EncodedLen(digest.Size()))
+	if err != nil {
+		return nil, err
+	}
 	digest.Write(token)
 
 	token = append(token, '.')
@@ -120,18 +110,16 @@ func (c *Claims) HMACSign(alg string, secret []byte) (token []byte, err error) {
 // RSASign updates the Raw field and returns a new JWT.
 // The return is an AlgError when alg is not in RSAAlgs.
 func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err error) {
-	headerJSON, err := c.sync(alg)
-	if err != nil {
-		return nil, err
-	}
-
 	hash, err := hashLookup(alg, RSAAlgs)
 	if err != nil {
 		return nil, err
 	}
 	digest := hash.New()
 
-	token = c.newToken(alg, encoding.EncodedLen(key.Size()), headerJSON)
+	token, err = c.newToken(alg, encoding.EncodedLen(key.Size()))
+	if err != nil {
+		return nil, err
+	}
 	digest.Write(token)
 
 	// use signature space as a buffer while not set
@@ -155,10 +143,56 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err err
 	return token, nil
 }
 
-// NewToken returns a new JWT with the signature bytes all zero.
-func (c *Claims) newToken(alg string, encSigLen int, headerJSON []byte) []byte {
-	// try optimal fixed headers first
-	if headerJSON == nil && c.KeyID == "" {
+// NewToken returns a new JWT without the signature part.
+func (c *Claims) newToken(alg string, encSigLen int) ([]byte, error) {
+	// define Claims.Raw
+	var payload interface{}
+	if c.Set == nil {
+		payload = &c.Registered
+	} else {
+		payload = c.Set
+
+		// merge Registered
+		if c.Issuer != "" {
+			c.Set[issuer] = c.Issuer
+		}
+		if c.Subject != "" {
+			c.Set[subject] = c.Subject
+		}
+		switch len(c.Audiences) {
+		case 0:
+			break
+		case 1: // single string
+			c.Set[audience] = c.Audiences[0]
+		default:
+			array := make([]interface{}, len(c.Audiences))
+			for i, s := range c.Audiences {
+				array[i] = s
+			}
+			c.Set[audience] = array
+		}
+		if c.Expires != nil {
+			c.Set[expires] = float64(*c.Expires)
+		}
+		if c.NotBefore != nil {
+			c.Set[notBefore] = float64(*c.NotBefore)
+		}
+		if c.Issued != nil {
+			c.Set[issued] = float64(*c.Issued)
+		}
+		if c.ID != "" {
+			c.Set[id] = c.ID
+		}
+	}
+
+	if bytes, err := json.Marshal(payload); err != nil {
+		return nil, err
+	} else {
+		c.Raw = json.RawMessage(bytes)
+	}
+
+	// try fixed headers
+	if c.ExtraHeaders == nil && c.KeyID == "" {
 		var fixed string
 		switch alg {
 		case EdDSA:
@@ -194,11 +228,22 @@ func (c *Claims) newToken(alg string, encSigLen int, headerJSON []byte) []byte {
 			token := make([]byte, l, l+1+encSigLen)
 			copy(token, fixed)
 			encoding.Encode(token[len(fixed):], c.Raw)
-			return token
+			return token, nil
 		}
 	}
 
-	if headerJSON == nil {
+	var headerJSON []byte
+	if c.ExtraHeaders != nil {
+		c.ExtraHeaders["alg"] = alg
+		if c.KeyID != "" {
+			c.ExtraHeaders["kid"] = c.KeyID
+		}
+		var err error
+		headerJSON, err = json.Marshal(c.ExtraHeaders)
+		if err != nil {
+			return nil, err
+		}
+	} else {
 		if c.KeyID == "" {
 			headerJSON = make([]byte, 0, 10+len(alg))
 			headerJSON = append(headerJSON, `{"alg":`...)
@@ -220,5 +265,5 @@ func (c *Claims) newToken(alg string, encSigLen int, headerJSON []byte) []byte {
 	token[headerLen] = '.'
 	encoding.Encode(token[headerLen+1:], c.Raw)
 
-	return token
+	return token, nil
 }

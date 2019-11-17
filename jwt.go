@@ -167,63 +167,6 @@ type Claims struct {
 	ExtraHeaders map[string]interface{}
 }
 
-// Sync updates the Raw and ExtraHeaders fields.
-func (c *Claims) sync(alg string) (headerJSON []byte, err error) {
-	var payload interface{}
-
-	if c.Set == nil {
-		payload = &c.Registered
-	} else {
-		payload = c.Set
-
-		if c.Issuer != "" {
-			c.Set[issuer] = c.Issuer
-		}
-		if c.Subject != "" {
-			c.Set[subject] = c.Subject
-		}
-		switch len(c.Audiences) {
-		case 0:
-			break
-		case 1: // single string
-			c.Set[audience] = c.Audiences[0]
-		default:
-			array := make([]interface{}, len(c.Audiences))
-			for i, s := range c.Audiences {
-				array[i] = s
-			}
-			c.Set[audience] = array
-		}
-		if c.Expires != nil {
-			c.Set[expires] = float64(*c.Expires)
-		}
-		if c.NotBefore != nil {
-			c.Set[notBefore] = float64(*c.NotBefore)
-		}
-		if c.Issued != nil {
-			c.Set[issued] = float64(*c.Issued)
-		}
-		if c.ID != "" {
-			c.Set[id] = c.ID
-		}
-	}
-
-	bytes, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
-	c.Raw = json.RawMessage(bytes)
-
-	if c.ExtraHeaders == nil {
-		return nil, nil
-	}
-	c.ExtraHeaders["alg"] = alg
-	if c.KeyID != "" {
-		c.ExtraHeaders["kid"] = c.KeyID
-	}
-	return json.Marshal(c.ExtraHeaders)
-}
-
 // Valid returns whether the claims set may be accepted for processing at the
 // given moment in time. If the time is zero, then Valid returns whether there
 // are no time constraints.
