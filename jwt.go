@@ -89,7 +89,7 @@ const (
 	id        = "jti"
 )
 
-// Registered “JSON Web Token Claims” is a subset of the IANA registration.
+// Registered “JSON Web Token Claims” has a subset of the IANA registration.
 // See <https://www.iana.org/assignments/jwt/claims.csv> for the full listing.
 //
 // Each field is optional—there are no required claims. The string values are
@@ -161,9 +161,10 @@ type Claims struct {
 	// — “JSON Web Signature (JWS)” RFC 7515, subsection 4.1.4
 	KeyID string
 
-	// Additional JOSE header mapping by name used for token production.
-	// The sign methods copy the alg(orithm) and any non-zero KeyID into
+	// Additional JOSE header mapping by name used with token production.
+	// The Sign methods put the alg(orithm) and any non-zero KeyID into
 	// ExtraHeaders when the map is not nil.
+	// Entries are treated conform the encoding/json package.
 	ExtraHeaders map[string]interface{}
 }
 
