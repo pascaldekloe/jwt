@@ -13,7 +13,77 @@ import (
 	"math/big"
 	"reflect"
 	"testing"
+	"time"
 )
+
+func TestClaimsSyncNothing(t *testing.T) {
+	var c Claims
+	if _, err := c.FormatWithoutSign("none"); err != nil {
+		t.Fatal("format error:", err)
+	}
+	if string(c.Raw) != "{}" {
+		t.Errorf(`got JSON %q, want "{}"`, c.Raw)
+	}
+	if c.Set != nil {
+		t.Errorf("claims set %#v not nil", c.Set)
+	}
+}
+
+// Copy Registered into map.
+func TestClaimsSync(t *testing.T) {
+	offset := time.Unix(1537622794, 0)
+	c := Claims{
+		// cover all registered fields
+		Registered: Registered{
+			Issuer:    "a",
+			Subject:   "b",
+			Audiences: []string{"c"},
+			Expires:   NewNumericTime(offset.Add(time.Minute)),
+			NotBefore: NewNumericTime(offset.Add(-time.Second)),
+			Issued:    NewNumericTime(offset),
+			ID:        "d",
+		},
+		Set: make(map[string]interface{}),
+	}
+
+	if _, err := c.FormatWithoutSign("none"); err != nil {
+		t.Fatal("format error:", err)
+	}
+	const want = `{"aud":"c","exp":1537622854,"iat":1537622794,"iss":"a","jti":"d","nbf":1537622793,"sub":"b"}`
+	if got := string(c.Raw); got != want {
+		t.Errorf("got JSON %q, want %q", got, want)
+	}
+	if len(c.Set) != 7 {
+		t.Errorf("got %d entries in claims set %#v, want 7", len(c.Set), c.Set)
+	}
+}
+
+// Merge Registered into claims set map.
+func TestClaimsSyncMerge(t *testing.T) {
+	c := Claims{
+		Registered: Registered{
+			Subject:   "kkazanova",
+			Audiences: []string{"KGB", "RU"},
+		},
+		Set: map[string]interface{}{
+			"iss": nil,
+			"sub": "karcher",
+			"aud": "ISIS",
+		},
+	}
+
+	if s, ok := c.String("aud"); ok {
+		t.Errorf("got audience string %q for 2 element array value", s)
+	}
+
+	if _, err := c.FormatWithoutSign("none"); err != nil {
+		t.Fatal("format error:", err)
+	}
+	const want = `{"aud":["KGB","RU"],"iss":null,"sub":"kkazanova"}`
+	if got := string(c.Raw); got != want {
+		t.Errorf("got JSON %q, want %q", got, want)
+	}
+}
 
 func TestHeaderFormat(t *testing.T) {
 	claims := &Claims{
@@ -22,7 +92,7 @@ func TestHeaderFormat(t *testing.T) {
 	}
 	token, err := claims.FormatWithoutSign("none")
 	if err != nil {
-		t.Fatal("sign error:", err)
+		t.Fatal("format error:", err)
 	}
 	const want = "eyJhbGciOiJub25lIiwia2lkIjoi4oSWMSIsInR5cCI6IkpXVCJ9.e30"
 	if string(token) != want {

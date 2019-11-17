@@ -10,7 +10,9 @@ import (
 	"strconv"
 )
 
-// FormatWithoutSign updates the Raw field and returns a new and incomplete JWT.
+// FormatWithoutSign updates the Raw field and returns a new JWT, with only the
+// first two parts. The third part should contain the signature, unless alg is
+// "none".
 func (c *Claims) FormatWithoutSign(alg string) (tokenWithoutSignature []byte, err error) {
 	return c.newToken(alg, 0)
 }
@@ -33,14 +35,15 @@ func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey) (token []byte, err
 		return nil, err
 	}
 	digest.Write(token)
-	token = append(token, '.')
 
-	r, s, err := ecdsa.Sign(rand.Reader, key, digest.Sum(nil))
+	r, s, err := ecdsa.Sign(rand.Reader, key, digest.Sum(token[len(token):]))
 	if err != nil {
 		return nil, err
 	}
 
+	token = append(token, '.')
 	sig := token[len(token):cap(token)]
+	// serialize r and s, using sig as a buffer
 	i := len(sig)
 	for _, word := range s.Bits() {
 		for bitCount := strconv.IntSize; bitCount > 0; bitCount -= 8 {
@@ -70,15 +73,12 @@ func (c *Claims) EdDSASign(key ed25519.PrivateKey) (token []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
+
 	sig := ed25519.Sign(key, token)
 
-	i := len(token)
-	token = token[:cap(token)]
-	token[i] = '.'
-
-	encoding.Encode(token[i+1:], sig)
-
-	return token, nil
+	token = append(token, '.')
+	encoding.Encode(token[len(token):cap(token)], sig)
+	return token[:cap(token)], nil
 }
 
 // HMACSign updates the Raw field and returns a new JWT.
@@ -122,10 +122,9 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err err
 	}
 	digest.Write(token)
 
+	var sig []byte
 	// use signature space as a buffer while not set
 	buf := token[len(token):]
-
-	var sig []byte
 	if alg != "" && alg[0] == 'P' {
 		sig, err = rsa.SignPSS(rand.Reader, key, hash, digest.Sum(buf), nil)
 	} else {
@@ -135,12 +134,9 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey) (token []byte, err err
 		return nil, err
 	}
 
-	i := len(token)
-	token = token[:cap(token)]
-	token[i] = '.'
-	encoding.Encode(token[i+1:], sig)
-
-	return token, nil
+	token = append(token, '.')
+	encoding.Encode(token[len(token):cap(token)], sig)
+	return token[:cap(token)], nil
 }
 
 // NewToken returns a new JWT without the signature part.
@@ -185,13 +181,13 @@ func (c *Claims) newToken(alg string, encSigLen int) ([]byte, error) {
 		}
 	}
 
-	if bytes, err := json.Marshal(payload); err != nil {
+	bytes, err := json.Marshal(payload)
+	if err != nil {
 		return nil, err
-	} else {
-		c.Raw = json.RawMessage(bytes)
 	}
+	c.Raw = json.RawMessage(bytes)
 
-	// try fixed headers
+	// try fixed encoding
 	if c.ExtraHeaders == nil && c.KeyID == "" {
 		var fixed string
 		switch alg {

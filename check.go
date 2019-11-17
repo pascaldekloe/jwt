@@ -19,6 +19,17 @@ var ErrSigMiss = errors.New("jwt: signature mismatch")
 
 var errPart = errors.New("jwt: missing base64 part")
 
+// ParseWithoutCheck skips the signature validation.
+func ParseWithoutCheck(token []byte) (*Claims, error) {
+	var c Claims
+	firstDot, lastDot, sig, _, err := c.scan(token)
+	if err != nil {
+		return nil, err
+	}
+
+	return &c, c.applyPayload(token[firstDot+1:lastDot], sig)
+}
+
 // ECDSACheck parses a JWT if, and only if, the signature checks out.
 // The return is an AlgError when the algorithm is not in ECDSAAlgs.
 // See Valid to complete the verification.
@@ -33,11 +44,11 @@ func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
 	if err != nil {
 		return nil, err
 	}
+	digest := hash.New()
+	digest.Write(token[:lastDot])
 
 	r := big.NewInt(0).SetBytes(sig[:len(sig)/2])
 	s := big.NewInt(0).SetBytes(sig[len(sig)/2:])
-	digest := hash.New()
-	digest.Write(token[:lastDot])
 	if !ecdsa.Verify(key, digest.Sum(sig[:0]), r, s) {
 		return nil, ErrSigMiss
 	}
@@ -83,9 +94,9 @@ func HMACCheck(token, secret []byte) (*Claims, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	digest := hmac.New(hash.New, secret)
 	digest.Write(token[:lastDot])
+
 	if !hmac.Equal(sig, digest.Sum(sig[len(sig):])) {
 		return nil, ErrSigMiss
 	}
@@ -107,7 +118,6 @@ func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	digest := hash.New()
 	digest.Write(token[:lastDot])
 
@@ -120,16 +130,6 @@ func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
 		return nil, ErrSigMiss
 	}
 
-	return &c, c.applyPayload(token[firstDot+1:lastDot], sig)
-}
-
-// ParseWithoutCheck skips the signature validation.
-func ParseWithoutCheck(token []byte) (*Claims, error) {
-	var c Claims
-	firstDot, lastDot, sig, _, err := c.scan(token)
-	if err != nil {
-		return nil, err
-	}
 	return &c, c.applyPayload(token[firstDot+1:lastDot], sig)
 }
 
