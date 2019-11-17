@@ -5,13 +5,12 @@
 
 … a JSON Web Token (JWT) library for the Go programming language.
 
-The API enforces secure use by design. Unsigned tokens are rejected
-and no support for encrypted tokens—use wire encryption instead.
+The API enforces secure use by design. Unsigned tokens are rejected.
+No support for encrypted tokens either—use wire encryption instead.
 
-* Compact implementation
+* Feature complete
 * No third party dependencies
 * Full unit test coverage
-* Feature complete
 
 This is free and unencumbered software released into the
 [public domain](https://creativecommons.org/publicdomain/zero/1.0).
@@ -22,8 +21,6 @@ This is free and unencumbered software released into the
 Tokens encapsulate signed statements called claims. A claim is JSON value,
 identified by its name. The specification includes 7
 [standardised claims](https://godoc.org/github.com/pascaldekloe/jwt#Registered).
-Tokens consists of printable ASCII characters, e.g.
-`eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiJha3JpZWdlciIsInByZWZpeCI6IkRyLiJ9.RTOboYsLW7zXFJyXtIypOmXfuRGVT_FpDUTs2TOuK73qZKm56JcESfsl_etnBsl7W80TXE5l5qecrMizh3XYmw`.
 
 ```go
 var claims jwt.Claims
@@ -37,7 +34,9 @@ claims.Expires = NewNumericTime(now.Add(10*time.Minute))
 token, err := claims.EdDSASign(JWTPrivateKey)
 ```
 
-Secured resources can use tokens to determine access.
+Tokens consists of printable ASCII characters, e.g.
+`eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiJha3JpZWdlciIsInByZWZpeCI6IkRyLiJ9.RTOboYsLW7zXFJyXtIypOmXfuRGVT_FpDUTs2TOuK73qZKm56JcESfsl_etnBsl7W80TXE5l5qecrMizh3XYmw`.
+Secured resources can use such tokens to determine access.
 
 ```go
 // verify a JWT
@@ -121,34 +120,33 @@ can also be propagated through the
 
 ## Performance
 
-The following results were measured on a 3.5 GHz Xeon E5-1650 v2 (Ivy Bridge-EP).
+The following results were measured on an Intel i5-7500.
 
 ```
-name                    time/op
-ECDSA/sign-ES256-12     37.9µs ± 0%
-ECDSA/sign-ES384-12     4.53ms ± 1%
-ECDSA/sign-ES512-12     8.16ms ± 1%
-ECDSA/check-ES256-12     105µs ± 1%
-ECDSA/check-ES384-12    8.83ms ± 0%
-ECDSA/check-ES512-12    16.0ms ± 1%
-EdDSA/sign-Ed25519-12   60.0µs ± 1%
-EdDSA/check-Ed25519-12   153µs ± 0%
-HMAC/sign-HS256-12      3.29µs ± 1%
-HMAC/sign-HS384-12      3.87µs ± 1%
-HMAC/sign-HS512-12      3.91µs ± 0%
-HMAC/check-HS256-12     6.74µs ± 0%
-HMAC/check-HS384-12     7.36µs ± 0%
-HMAC/check-HS512-12     7.55µs ± 1%
-RSA/sign-1024-bit-12     427µs ± 1%
-RSA/sign-2048-bit-12    2.12ms ± 1%
-RSA/sign-4096-bit-12    12.9ms ± 0%
-RSA/check-1024-bit-12   34.6µs ± 0%
-RSA/check-2048-bit-12   75.9µs ± 0%
-RSA/check-4096-bit-12    206µs ± 1%
+name                   time/op
+ECDSA/sign-ES256-4     26.7µs ± 0%
+ECDSA/sign-ES384-4     4.09ms ± 0%
+ECDSA/sign-ES512-4     7.27ms ± 1%
+ECDSA/check-ES256-4    80.8µs ± 1%
+ECDSA/check-ES384-4    8.10ms ± 0%
+ECDSA/check-ES512-4    14.1ms ± 0%
+EdDSA/sign-Ed25519-4   50.8µs ± 1%
+EdDSA/check-Ed25519-4   136µs ± 0%
+HMAC/sign-HS256-4      2.02µs ± 1%
+HMAC/sign-HS384-4      2.30µs ± 1%
+HMAC/sign-HS512-4      2.34µs ± 1%
+HMAC/check-HS256-4     4.05µs ± 0%
+HMAC/check-HS384-4     4.40µs ± 0%
+HMAC/check-HS512-4     4.51µs ± 0%
+RSA/sign-1024-bit-4     314µs ± 0%
+RSA/sign-2048-bit-4    1.47ms ± 0%
+RSA/sign-4096-bit-4    8.22ms ± 0%
+RSA/check-1024-bit-4   27.2µs ± 0%
+RSA/check-2048-bit-4   62.2µs ± 0%
+RSA/check-4096-bit-4    167µs ± 0%
 ```
 
-EdDSA [Ed25519] produces small signatures and it performs well, especially on
-more modern hardware.
+EdDSA [Ed25519] produces small signatures and it performs well.
 
 
 ## Standard Compliance
