@@ -24,6 +24,7 @@ func BenchmarkECDSA(b *testing.B) {
 		{testKeyEC384, ES384},
 		{testKeyEC521, ES512},
 	}
+
 	for _, test := range tests {
 		b.Run("sign-"+test.alg, func(b *testing.B) {
 			var tokenLen int
@@ -56,7 +57,7 @@ func BenchmarkECDSA(b *testing.B) {
 }
 
 func BenchmarkEdDSA(b *testing.B) {
-	b.Run("sign-Ed25519", func(b *testing.B) {
+	b.Run("sign-"+EdDSA, func(b *testing.B) {
 		var tokenLen int
 		for i := 0; i < b.N; i++ {
 			token, err := benchClaims.EdDSASign(testKeyEd25519Private)
@@ -68,11 +69,12 @@ func BenchmarkEdDSA(b *testing.B) {
 		b.ReportMetric(float64(tokenLen)/float64(b.N), "B/token")
 	})
 
-	b.Run("check-Ed25519", func(b *testing.B) {
+	b.Run("check-"+EdDSA, func(b *testing.B) {
 		token, err := benchClaims.EdDSASign(testKeyEd25519Private)
 		if err != nil {
 			b.Fatal(err)
 		}
+
 		for i := 0; i < b.N; i++ {
 			_, err := EdDSACheck(token, testKeyEd25519Public)
 			if err != nil {
@@ -85,8 +87,6 @@ func BenchmarkEdDSA(b *testing.B) {
 func BenchmarkHMAC(b *testing.B) {
 	// 512-bit key
 	secret := make([]byte, 64)
-
-	// all supported algorithms in ascending order
 	algs := []string{HS256, HS384, HS512}
 
 	for _, alg := range algs {

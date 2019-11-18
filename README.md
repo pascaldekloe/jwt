@@ -130,8 +130,8 @@ ECDSA/sign-ES512-4     7.27ms ± 1%
 ECDSA/check-ES256-4    80.8µs ± 1%
 ECDSA/check-ES384-4    8.10ms ± 0%
 ECDSA/check-ES512-4    14.1ms ± 0%
-EdDSA/sign-Ed25519-4   50.8µs ± 1%
-EdDSA/check-Ed25519-4   136µs ± 0%
+EdDSA/sign-EdDSA-4     50.8µs ± 1%
+EdDSA/check-EdDSA-4     136µs ± 0%
 HMAC/sign-HS256-4      2.02µs ± 1%
 HMAC/sign-HS384-4      2.30µs ± 1%
 HMAC/sign-HS512-4      2.34µs ± 1%
