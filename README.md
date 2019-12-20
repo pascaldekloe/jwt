@@ -151,6 +151,7 @@ EdDSA [Ed25519] produces small signatures and it performs well.
 
 ## Standard Compliance
 
+* RFC 6750: “The OAuth 2.0 Authorization Framework: Bearer Token Usage”
 * RFC 7468: “Textual Encodings of PKIX, PKCS, and CMS Structures”
 * RFC 7515: “JSON Web Signature (JWS)”
 * RFC 7517: “JSON Web Key (JWK)”
