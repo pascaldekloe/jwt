@@ -169,9 +169,17 @@ type Handler struct {
 	// as a filter or as an extended http.HandlerFunc.
 	Func func(http.ResponseWriter, *http.Request, *Claims) (pass bool)
 
-	// WriteError allows for custom error responses. When nil it defaults to http.Error.
-	// The appropriate WWW-Authenticate header is already present on w.
-	WriteError func(w http.ResponseWriter, error string, code int)
+	// Error sends a custom response. Nil defaults to http.Error.
+	// The appropriate WWW-Authenticate value is already present.
+	Error func(w http.ResponseWriter, error string, statusCode int)
+}
+
+func (h *Handler) error(w http.ResponseWriter, error string, statusCode int) {
+	if h.Error != nil {
+		h.Error(w, error, statusCode)
+	} else {
+		http.Error(w, error, statusCode)
+	}
 }
 
 // ServeHTTP honors the http.Handler interface.
@@ -184,22 +192,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			w.Header().Set("WWW-Authenticate", `Bearer error="invalid_token", error_description=`+strconv.QuoteToASCII(err.Error()))
 		}
-		if h.WriteError != nil {
-			h.WriteError(w, err.Error(), http.StatusUnauthorized)
-			return
-		}
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		h.error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	// verify time constraints
 	if !claims.Valid(time.Now()) {
 		w.Header().Set("WWW-Authenticate", `Bearer error="invalid_token", error_description="jwt: time constraints exceeded"`)
-		if h.WriteError != nil {
-			h.WriteError(w, "jwt: time constraints exceeded", http.StatusUnauthorized)
-			return
-		}
-		http.Error(w, "jwt: time constraints exceeded", http.StatusUnauthorized)
+		h.error(w, "jwt: time constraints exceeded", http.StatusUnauthorized)
 		return
 	}
 
@@ -227,11 +227,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			msg := "jwt: want string for claim " + claimName
 			w.Header().Set("WWW-Authenticate", `Bearer error="invalid_token", error_description=`+strconv.QuoteToASCII(msg))
-			if h.WriteError != nil {
-				h.WriteError(w, msg, http.StatusUnauthorized)
-				return
-			}
-			http.Error(w, msg, http.StatusUnauthorized)
+			h.error(w, msg, http.StatusUnauthorized)
 			return
 		}
 

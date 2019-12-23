@@ -178,6 +178,35 @@ func ExampleHandler_deny() {
 	// Try expired token… HTTP 401 Bearer error="invalid_token", error_description="jwt: time constraints exceeded"
 }
 
+// Custom Response Format
+func ExampleHandler_error() {
+	h := &jwt.Handler{
+		Keys: &jwt.KeyRegister{ECDSAs: []*ecdsa.PublicKey{&someECKey.PublicKey}},
+
+		// JSON messages instead of plain text
+		Error: func(w http.ResponseWriter, error string, statusCode int) {
+			w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+			w.WriteHeader(statusCode)
+			fmt.Fprintf(w, `{"msg": %q}`, error)
+		},
+	}
+
+	req := httptest.NewRequest("GET", "/had-something-for-this", nil)
+	var c jwt.Claims
+	c.Expires = jwt.NewNumericTime(time.Now().Add(-time.Second))
+	if err := c.ECDSASignHeader(req, jwt.ES512, someECKey); err != nil {
+		fmt.Println("sign error:", err)
+	}
+
+	resp := httptest.NewRecorder()
+	h.ServeHTTP(resp, req)
+	fmt.Println("HTTP", resp.Code, resp.Header().Get("WWW-Authenticate"))
+	fmt.Println(resp.Body)
+	// Output:
+	// HTTP 401 Bearer error="invalid_token", error_description="jwt: time constraints exceeded"
+	// {"msg": "jwt: time constraints exceeded"}
+}
+
 // Func As A Request Filter
 func ExampleHandler_filter() {
 	h := &jwt.Handler{
