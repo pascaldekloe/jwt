@@ -5,9 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/rsa"
-	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -24,11 +22,6 @@ const OAuthURN = "urn:ietf:params:oauth:token-type:jwt"
 var ErrNoHeader = errors.New("jwt: no HTTP Authorization")
 
 var errAuthSchema = errors.New("jwt: want Bearer schema")
-
-type result struct {
-	Status string `json:"status"`
-	Message string `json:"message"`
-}
 
 // ECDSACheckHeader applies ECDSACheck on a HTTP request.
 // Specifically it looks for a bearer token in the Authorization header.
@@ -168,8 +161,9 @@ type Handler struct {
 	// as a filter or as an extended http.HandlerFunc.
 	Func func(http.ResponseWriter, *http.Request, *Claims) (pass bool)
 
-	// When true this will processResult the output
-	Jsonify bool
+	// WriteError allows for custom error responses. When nil it defaults to http.Error.
+	// The appropriate WWW-Authenticate header is already present on w.
+	WriteError func(w http.ResponseWriter, error string, code int)
 }
 
 // ServeHTTP honors the http.Handler interface.
@@ -182,20 +176,22 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			w.Header().Set("WWW-Authenticate", `Bearer error="invalid_token", error_description=`+strconv.QuoteToASCII(err.Error()))
 		}
-		http.Error(w, h.processResult(result{
-			Status:  "invalid_token",
-			Message: err.Error(),
-		}), http.StatusUnauthorized)
+		if h.WriteError != nil {
+			h.WriteError(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	// verify time constraints
 	if !claims.Valid(time.Now()) {
 		w.Header().Set("WWW-Authenticate", `Bearer error="invalid_token", error_description="jwt: time constraints exceeded"`)
-		http.Error(w, h.processResult(result{
-			Status:  "invalid_token",
-			Message: "jwt: time constraints exceeded",
-		}), http.StatusUnauthorized)
+		if h.WriteError != nil {
+			h.WriteError(w, "jwt: time constraints exceeded", http.StatusUnauthorized)
+			return
+		}
+		http.Error(w, "jwt: time constraints exceeded", http.StatusUnauthorized)
 		return
 	}
 
@@ -223,11 +219,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			msg := "jwt: want string for claim " + claimName
 			w.Header().Set("WWW-Authenticate", `Bearer error="invalid_token", error_description=`+strconv.QuoteToASCII(msg))
-			w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-			http.Error(w, h.processResult(result{
-				Status:  "invalid_token",
-				Message: msg,
-			}), http.StatusUnauthorized)
+			if h.WriteError != nil {
+				h.WriteError(w, msg, http.StatusUnauthorized)
+				return
+			}
+			http.Error(w, msg, http.StatusUnauthorized)
 			return
 		}
 
@@ -240,17 +236,4 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.Target.ServeHTTP(w, r)
-}
-
-func (h *Handler) processResult(res result) string {
-	if !h.Jsonify {
-		return res.Message
-	}
-
-	result, err := json.Marshal(res)
-	if err != nil {
-		log.Printf("JSON() error, while encoding response: %v", err.Error())
-		return ""
-	}
-	return string(result)
 }
