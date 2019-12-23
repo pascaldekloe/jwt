@@ -108,8 +108,8 @@ service logic can stay free of verification code plus easier unit testing.
 ```go
 // Greeting is a standard HTTP handler fuction.
 func Greeting(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(w, "Hello %s!\nYou are authorized as %s.\n",
-		req.Header.Get("X-Verified-Name"), req.Header.Get("X-Verified-User"))
+	fmt.Fprintf(w, "Hello %s!\n", req.Header.Get("X-Verified-Name"))
+	fmt.Fprintf(w, "You are authorized as %s.\n", req.Header.Get("X-Verified-User"))
 }
 ```
 

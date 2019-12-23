@@ -59,12 +59,12 @@ func Example() {
 	defer srv.Close()
 
 	// self-signed request
+	req, _ := http.NewRequest("GET", srv.URL, nil)
 	var claims jwt.Claims
 	claims.Subject = "lakane"
 	claims.Set = map[string]interface{}{
 		"fn": "Lana Anthony Kane",
 	}
-	req, _ := http.NewRequest("GET", srv.URL, nil)
 	if err := claims.EdDSASignHeader(req, privateKey); err != nil {
 		fmt.Println("sign error:", err)
 	}
@@ -119,14 +119,14 @@ func ExampleHandler_context() {
 			if n, ok := claims.Number("deadline"); !ok {
 				fmt.Fprintln(w, "no deadline")
 			} else {
-				t := jwt.NumericTime(n)
-				fmt.Fprintln(w, "deadline at", t.String())
+				fmt.Fprintln(w, "deadline at", (*jwt.NumericTime)(&n))
 			}
 		}),
 		Keys:       &jwt.KeyRegister{Secrets: [][]byte{[]byte("killarcherdie")}},
 		ContextKey: "verified-jwt",
 	}
 
+	// build request
 	req := httptest.NewRequest("GET", "/status", nil)
 	c := &jwt.Claims{
 		Set: map[string]interface{}{
@@ -137,17 +137,19 @@ func ExampleHandler_context() {
 		fmt.Println("sign error:", err)
 	}
 
+	// get response
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
-	fmt.Println("HTTP", resp.Code)
-	fmt.Println(resp.Body)
-	// Output: HTTP 200
-	// deadline at 1991-04-12T23:59:59Z
+	fmt.Println("HTTP", resp.Code, resp.Body)
+	// Output: HTTP 200 deadline at 1991-04-12T23:59:59Z
 }
 
 // Custom Response Format
 func ExampleHandler_error() {
 	h := &jwt.Handler{
+		Target: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintln(w, "My plan is to crowdsource a plan!")
+		}),
 		Keys: &jwt.KeyRegister{ECDSAs: []*ecdsa.PublicKey{&someECKey.PublicKey}},
 		Error: func(w http.ResponseWriter, error string, statusCode int) {
 			// JSON messages instead of plain text
@@ -157,6 +159,7 @@ func ExampleHandler_error() {
 		},
 	}
 
+	// build request
 	req := httptest.NewRequest("GET", "/had-something-for-this", nil)
 	var c jwt.Claims
 	c.Expires = jwt.NewNumericTime(time.Now().Add(-time.Second))
@@ -164,6 +167,7 @@ func ExampleHandler_error() {
 		fmt.Println("sign error:", err)
 	}
 
+	// get response
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
 	fmt.Println("HTTP", resp.Code, resp.Header().Get("WWW-Authenticate"))
@@ -177,7 +181,7 @@ func ExampleHandler_error() {
 func ExampleHandler_filter() {
 	h := &jwt.Handler{
 		Target: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Elaborate voicemail hoax!"))
+			fmt.Fprintln(w, "Elaborate voicemail hoax!")
 		}),
 		Keys: &jwt.KeyRegister{RSAs: []*rsa.PublicKey{&someRSAKey.PublicKey}},
 		Func: func(w http.ResponseWriter, req *http.Request, claims *jwt.Claims) (pass bool) {
