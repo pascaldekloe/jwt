@@ -111,7 +111,7 @@ func ExampleClaims_byName() {
 	// "jti": "d"
 }
 
-// Full Access To The JWT Claims
+// Claims Access From Request Context
 func ExampleHandler_context() {
 	h := &jwt.Handler{
 		Target: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -128,7 +128,15 @@ func ExampleHandler_context() {
 	}
 
 	req := httptest.NewRequest("GET", "/status", nil)
-	req.Header.Set("Authorization", "Bearer eyJhbGciOiJIUzI1NiJ9.eyJkZWFkbGluZSI6NjcxNTAwNzk5fQ.yeUUNOj4-RvNp5Lt0d3lpS7MTgsS_Uk9XnsXJ3kVLhw")
+	c := &jwt.Claims{
+		Set: map[string]interface{}{
+			"deadline": time.Date(1991, 4, 12, 23, 59, 59, 0, time.UTC).Unix(),
+		},
+	}
+	if err := c.HMACSignHeader(req, jwt.HS384, []byte("killarcherdie")); err != nil {
+		fmt.Println("sign error:", err)
+	}
+
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
 	fmt.Println("HTTP", resp.Code)
@@ -137,54 +145,12 @@ func ExampleHandler_context() {
 	// deadline at 1991-04-12T23:59:59Z
 }
 
-// Standard Compliant Security Out-of-the-box
-func ExampleHandler_deny() {
-	h := &jwt.Handler{
-		Target: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-			panic("reached target handler")
-		}),
-		Keys: &jwt.KeyRegister{ECDSAs: []*ecdsa.PublicKey{&someECKey.PublicKey}},
-		Func: func(w http.ResponseWriter, req *http.Request, claims *jwt.Claims) (pass bool) {
-			panic("reached JWT-enhanced handler")
-		},
-	}
-	req := httptest.NewRequest("GET", "/had-something-for-this", nil)
-
-	fmt.Print("Try without authorization… ")
-	resp := httptest.NewRecorder()
-	h.ServeHTTP(resp, req)
-	fmt.Println("HTTP", resp.Code, resp.Header().Get("WWW-Authenticate"))
-
-	fmt.Print("Try another algorithm… ")
-	var c jwt.Claims
-	if err := c.HMACSignHeader(req, jwt.HS512, []byte("guest")); err != nil {
-		fmt.Println("sign error:", err)
-	}
-	resp = httptest.NewRecorder()
-	h.ServeHTTP(resp, req)
-	fmt.Println("HTTP", resp.Code, resp.Header().Get("WWW-Authenticate"))
-
-	fmt.Print("Try expired token… ")
-	c.Expires = jwt.NewNumericTime(time.Now().Add(-time.Second))
-	if err := c.ECDSASignHeader(req, jwt.ES512, someECKey); err != nil {
-		fmt.Println("sign error:", err)
-	}
-	resp = httptest.NewRecorder()
-	h.ServeHTTP(resp, req)
-	fmt.Println("HTTP", resp.Code, resp.Header().Get("WWW-Authenticate"))
-	// Output:
-	// Try without authorization… HTTP 401 Bearer
-	// Try another algorithm… HTTP 401 Bearer error="invalid_token", error_description="jwt: signature mismatch"
-	// Try expired token… HTTP 401 Bearer error="invalid_token", error_description="jwt: time constraints exceeded"
-}
-
 // Custom Response Format
 func ExampleHandler_error() {
 	h := &jwt.Handler{
 		Keys: &jwt.KeyRegister{ECDSAs: []*ecdsa.PublicKey{&someECKey.PublicKey}},
-
-		// JSON messages instead of plain text
 		Error: func(w http.ResponseWriter, error string, statusCode int) {
+			// JSON messages instead of plain text
 			w.Header().Set("Content-Type", "application/json;charset=UTF-8")
 			w.WriteHeader(statusCode)
 			fmt.Fprintf(w, `{"msg": %q}`, error)
@@ -286,8 +252,8 @@ func ExampleKeyRegister_LoadJWK() {
 		fmt.Println("load error:", err)
 	}
 	fmt.Printf("%d keys added: ", n)
-	fmt.Printf("%d EdDSA %s & ", len(keys.EdDSAs), keys.EdDSAIDs)
-	fmt.Printf("%d secret %s: %s", len(keys.Secrets), keys.SecretIDs, keys.Secrets)
+	fmt.Printf("EdDSA %q & ", keys.EdDSAIDs)
+	fmt.Printf("secret %q: %q", keys.SecretIDs, keys.Secrets)
 	// Output:
-	// 2 keys added: 1 EdDSA [kazak] & 1 secret [good old]: [kofta]
+	// 2 keys added: EdDSA ["kazak"] & secret ["good old"]: ["kofta"]
 }
