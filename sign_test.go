@@ -9,7 +9,6 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"errors"
-	"math"
 	"math/big"
 	"reflect"
 	"testing"
@@ -86,23 +85,21 @@ func TestClaimsSyncMerge(t *testing.T) {
 }
 
 func TestHeaderFormat(t *testing.T) {
-	claims := &Claims{
-		KeyID:        "№1",
-		ExtraHeaders: map[string]interface{}{"typ": "JWT"},
-	}
-	token, err := claims.FormatWithoutSign("none")
+	claims := &Claims{KeyID: "№1"}
+	token, err := claims.FormatWithoutSign("none",
+		json.RawMessage(`{"typ": "JWT", "aud": "armory"}`),
+		json.RawMessage(`{"http://isis.us/~rodney/Approvals#RPG-7": ["marcher"]}`))
 	if err != nil {
 		t.Fatal("format error:", err)
 	}
-	const want = "eyJhbGciOiJub25lIiwia2lkIjoi4oSWMSIsInR5cCI6IkpXVCJ9.e30"
+	const want = "eyJ0eXAiOiJKV1QiLCJhdWQiOiJhcm1vcnkiLCJodHRwOi8vaXNpcy51cy9-cm9kbmV5L0FwcHJvdmFscyNSUEctNyI6WyJtYXJjaGVyIl0sImFsZyI6Im5vbmUiLCJraWQiOiLihJYxIn0.e30"
 	if string(token) != want {
 		t.Errorf("got token %q, want %q", token, want)
 	}
 
-	claims.ExtraHeaders["notAllowedInJSON"] = math.NaN()
-	_, err = claims.FormatWithoutSign("X")
-	if !errors.As(err, new(*json.UnsupportedValueError)) {
-		t.Errorf("got error %#v, want a json.UnsupportedValueError", err)
+	_, err = claims.FormatWithoutSign("X", json.RawMessage("broken"))
+	if !errors.As(err, new(*json.SyntaxError)) {
+		t.Errorf("got error %#v, want a json.SyntaxError", err)
 	}
 }
 
@@ -118,10 +115,10 @@ func TestECDSASign(t *testing.T) {
 
 	got, err := ECDSACheck(token, &testKeyEC384.PublicKey)
 	if err != nil {
-		t.Fatal("check error:", err)
+		t.Fatalf("%q check error: %s", token, err)
 	}
 	if got.KeyID != want {
-		t.Errorf("got key ID %q, want %q", got.KeyID, want)
+		t.Errorf("%q got key ID %q, want %q", token, got.KeyID, want)
 	}
 }
 
@@ -137,10 +134,10 @@ func TestEdDSASign(t *testing.T) {
 
 	got, err := EdDSACheck(token, testKeyEd25519Public)
 	if err != nil {
-		t.Fatal("check error:", err)
+		t.Fatalf("%q check error: %s", token, err)
 	}
 	if !reflect.DeepEqual(got.Audiences, want) {
-		t.Errorf("got audience %q, want %q", got.Audiences, want)
+		t.Errorf("%q got audience %q, want %q", token, got.Audiences, want)
 	}
 }
 

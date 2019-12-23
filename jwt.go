@@ -160,12 +160,6 @@ type Claims struct {
 	// string. Use of this Header Parameter is OPTIONAL.”
 	// — “JSON Web Signature (JWS)” RFC 7515, subsection 4.1.4
 	KeyID string
-
-	// Additional JOSE header mapping by name used with token production.
-	// The Sign methods put the alg(orithm) and any non-zero KeyID into
-	// ExtraHeaders when the map is not nil.
-	// Entries are treated conform the encoding/json package.
-	ExtraHeaders map[string]interface{}
 }
 
 // Valid returns whether the claims set may be accepted for processing at the
