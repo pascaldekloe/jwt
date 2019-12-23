@@ -238,6 +238,66 @@ func testUnauthorized(t *testing.T, reqHeader string) (body, header string) {
 	return string(bytes), resp.Header.Get("WWW-Authenticate")
 }
 
+func testUnauthorizedCustom(t *testing.T, reqHeader string) (body, header string) {
+	srv := httptest.NewServer(&Handler{
+		Target: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+			t.Error("handler called")
+		}),
+		Keys: &KeyRegister{
+			ECDSAs: []*ecdsa.PublicKey{&testKeyEC256.PublicKey},
+		},
+		HeaderBinding: map[string]string{
+			"iss": "X-Verified-Issuer",
+		},
+		WriteError: func(w http.ResponseWriter, error string, code int) {
+			type result struct {
+				Status string `json:"status"`
+				Message string `json:"message"`
+			}
+			res := result{
+				Status:  "invalid_token",
+				Message: error,
+			}
+
+			jsonRes, err := json.Marshal(res)
+			if err != nil {
+				t.Fatal(err)
+			}
+			w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+			w.WriteHeader(code)
+			fmt.Fprintln(w, string(jsonRes))
+
+		},
+	})
+	defer srv.Close()
+
+	req, err := http.NewRequest("GET", srv.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reqHeader != "" {
+		req.Header.Set("Authorization", reqHeader)
+	}
+
+	resp, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if want := "401 Unauthorized"; resp.Status != want {
+		t.Errorf("got status %q, want %q", resp.Status, want)
+	}
+	if got := resp.Header.Get("Content-Type"); !strings.HasPrefix(got, "application/") {
+		t.Errorf("got content type %q; want application", got)
+	}
+	return string(bytes), resp.Header.Get("WWW-Authenticate")
+}
+
 func TestHandleNoHeader(t *testing.T) {
 	body, header := testUnauthorized(t, "")
 
@@ -247,12 +307,29 @@ func TestHandleNoHeader(t *testing.T) {
 	if want := "Bearer"; header != want {
 		t.Errorf("got WWW-Authenticate %q, want %q", header, want)
 	}
+
+	body, header = testUnauthorizedCustom(t, "")
+	if want := "{\"status\":\"invalid_token\",\"message\":\"jwt: no HTTP Authorization\"}\n"; body != want {
+		t.Errorf("got body %q, want %q", body, want)
+	}
+	if want := "Bearer"; header != want {
+		t.Errorf("got WWW-Authenticate %q, want %q", header, want)
+	}
 }
 
 func TestHandleExpire(t *testing.T) {
-	body, header := testUnauthorized(t, "Bearer eyJhbGciOiJFUzI1NiJ9.eyJleHAiOjE1Mzc3OTMwNjYuMjcyNDc3OX0.NPQH3KKXDe9QlyxyGA_ntPfrNyuetNAoOuPe8G5CE8jbwBzJOX8tQRXCXBhmiI5HAUqzqhH1CZuOjqMQKxGntA")
+	reqHeader := "Bearer eyJhbGciOiJFUzI1NiJ9.eyJleHAiOjE1Mzc3OTMwNjYuMjcyNDc3OX0.NPQH3KKXDe9QlyxyGA_ntPfrNyuetNAoOuPe8G5CE8jbwBzJOX8tQRXCXBhmiI5HAUqzqhH1CZuOjqMQKxGntA"
+	body, header := testUnauthorized(t, reqHeader)
 
 	if want := "jwt: time constraints exceeded\n"; body != want {
+		t.Errorf("got body %q, want %q", body, want)
+	}
+	if want := `Bearer error="invalid_token", error_description="jwt: time constraints exceeded"`; header != want {
+		t.Errorf("got WWW-Authenticate %q, want %q", header, want)
+	}
+
+	body, header = testUnauthorizedCustom(t, reqHeader)
+	if want := "{\"status\":\"invalid_token\",\"message\":\"jwt: time constraints exceeded\"}\n"; body != want {
 		t.Errorf("got body %q, want %q", body, want)
 	}
 	if want := `Bearer error="invalid_token", error_description="jwt: time constraints exceeded"`; header != want {
@@ -261,9 +338,18 @@ func TestHandleExpire(t *testing.T) {
 }
 
 func TestHandleBindingMiss(t *testing.T) {
-	body, header := testUnauthorized(t, "Bearer eyJhbGciOiJFUzI1NiJ9.e30.ptu9sJlVNPISJIP4q6I_U7YnaNRldB2paG8V4zKav9P6EM6MksQl0IMRy8mJKevZI2LIS2DA7C1ILnNhEeSo-Q")
+	reqHeader := "Bearer eyJhbGciOiJFUzI1NiJ9.e30.ptu9sJlVNPISJIP4q6I_U7YnaNRldB2paG8V4zKav9P6EM6MksQl0IMRy8mJKevZI2LIS2DA7C1ILnNhEeSo-Q"
+	body, header := testUnauthorized(t, reqHeader)
 
 	if want := "jwt: want string for claim iss\n"; body != want {
+		t.Errorf("got body %q, want %q", body, want)
+	}
+	if want := `Bearer error="invalid_token", error_description="jwt: want string for claim iss"`; header != want {
+		t.Errorf("got WWW-Authenticate %q, want %q", header, want)
+	}
+
+	body, header = testUnauthorizedCustom(t, reqHeader)
+	if want := "{\"status\":\"invalid_token\",\"message\":\"jwt: want string for claim iss\"}\n"; body != want {
 		t.Errorf("got body %q, want %q", body, want)
 	}
 	if want := `Bearer error="invalid_token", error_description="jwt: want string for claim iss"`; header != want {
@@ -272,9 +358,18 @@ func TestHandleBindingMiss(t *testing.T) {
 }
 
 func TestHandleSchemaMiss(t *testing.T) {
-	body, header := testUnauthorized(t, "Basic QWxhZGRpbjpPcGVuU2VzYW1l")
+	reqHeader := "Basic QWxhZGRpbjpPcGVuU2VzYW1l"
+	body, header := testUnauthorized(t, reqHeader)
 
 	if want := "jwt: want Bearer schema\n"; body != want {
+		t.Errorf("got body %q, want %q", body, want)
+	}
+	if want := `Bearer error="invalid_token", error_description="jwt: want Bearer schema"`; header != want {
+		t.Errorf("got WWW-Authenticate %q, want %q", header, want)
+	}
+
+	body, header = testUnauthorizedCustom(t, reqHeader)
+	if want := "{\"status\":\"invalid_token\",\"message\":\"jwt: want Bearer schema\"}\n"; body != want {
 		t.Errorf("got body %q, want %q", body, want)
 	}
 	if want := `Bearer error="invalid_token", error_description="jwt: want Bearer schema"`; header != want {
