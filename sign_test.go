@@ -255,7 +255,7 @@ uRVZaJLTfpQ+n88IcdG4WPKnRZqxGnrq3DjtIvFrBlM=
 func TestFormatHeader(t *testing.T) {
 	/// test all standard algorithms
 	algs := map[string]struct{}{
-		EdDSA: struct{}{},
+		EdDSA: {},
 	}
 	for alg := range ECDSAAlgs {
 		algs[alg] = struct{}{}
