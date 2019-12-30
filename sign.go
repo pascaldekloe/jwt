@@ -13,10 +13,14 @@ import (
 )
 
 // FormatWithoutSign updates the Raw field and returns a new JWT, with only the
-// first two parts. The third part should contain the signature, unless alg is
-// "none".
-// Any JOSE header additions MUST be in the form of JSON objects. Presence
-// of "alg" or "kid" properties may lead to malformed token production.
+// first two parts.
+//
+//	tokenWithoutSignature :≡ header-base64 '.' payload-base64
+//	token                 :≡ tokenWithoutSignature '.' signature-base64
+//
+// Any JOSE header additions must be in the form of JSON objects. Properties may
+// not overlap. Presence of the "alg" property leads to malformed tokens, and so
+// does "kid" in combination with the KeyID field.
 func (c *Claims) FormatWithoutSign(alg string, extraHeaders ...json.RawMessage) (tokenWithoutSignature []byte, err error) {
 	return c.newToken(alg, 0, extraHeaders)
 }
@@ -25,8 +29,10 @@ func (c *Claims) FormatWithoutSign(alg string, extraHeaders ...json.RawMessage) 
 // The return is an AlgError when alg is not in ECDSAAlgs.
 // The caller must use the correct key for the respective algorithm (P-256 for
 // ES256, P-384 for ES384 and P-521 for ES512) or risk malformed token production.
-// Any JOSE header additions MUST be in the form of JSON objects. Presence
-// of "alg" or "kid" properties may lead to malformed token production.
+//
+// Any JOSE header additions must be in the form of JSON objects. Properties may
+// not overlap. Presence of the "alg" property leads to malformed tokens, and so
+// does "kid" in combination with the KeyID field.
 func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey, extraHeaders ...json.RawMessage) (token []byte, err error) {
 	hash, err := hashLookup(alg, ECDSAAlgs)
 	if err != nil {
@@ -74,8 +80,10 @@ func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey, extraHeaders ...js
 }
 
 // EdDSASign updates the Raw field and returns a new JWT.
-// Any JOSE header additions MUST be in the form of JSON objects. Presence
-// of "alg" or "kid" properties may lead to malformed token production.
+//
+// Any JOSE header additions must be in the form of JSON objects. Properties may
+// not overlap. Presence of the "alg" property leads to malformed tokens, and so
+// does "kid" in combination with the KeyID field.
 func (c *Claims) EdDSASign(key ed25519.PrivateKey, extraHeaders ...json.RawMessage) (token []byte, err error) {
 	token, err = c.newToken(EdDSA, encoding.EncodedLen(ed25519.SignatureSize), extraHeaders)
 	if err != nil {
@@ -91,8 +99,10 @@ func (c *Claims) EdDSASign(key ed25519.PrivateKey, extraHeaders ...json.RawMessa
 
 // HMACSign updates the Raw field and returns a new JWT.
 // The return is an AlgError when alg is not in HMACAlgs.
-// Any JOSE header additions MUST be in the form of JSON objects. Presence
-// of "alg" or "kid" properties may lead to malformed token production.
+//
+// Any JOSE header additions must be in the form of JSON objects. Properties may
+// not overlap. Presence of the "alg" property leads to malformed tokens, and so
+// does "kid" in combination with the KeyID field.
 func (c *Claims) HMACSign(alg string, secret []byte, extraHeaders ...json.RawMessage) (token []byte, err error) {
 	if len(secret) == 0 {
 		return nil, errNoSecret
@@ -119,8 +129,10 @@ func (c *Claims) HMACSign(alg string, secret []byte, extraHeaders ...json.RawMes
 
 // RSASign updates the Raw field and returns a new JWT.
 // The return is an AlgError when alg is not in RSAAlgs.
-// Any JOSE header additions MUST be in the form of JSON objects. Presence
-// of "alg" or "kid" properties may lead to malformed token production.
+//
+// Any JOSE header additions must be in the form of JSON objects. Properties may
+// not overlap. Presence of the "alg" property leads to malformed tokens, and so
+// does "kid" in combination with the KeyID field.
 func (c *Claims) RSASign(alg string, key *rsa.PrivateKey, extraHeaders ...json.RawMessage) (token []byte, err error) {
 	hash, err := hashLookup(alg, RSAAlgs)
 	if err != nil {
@@ -151,7 +163,6 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey, extraHeaders ...json.R
 	return token[:cap(token)], nil
 }
 
-// NewToken returns a new JWT without the signature part.
 func (c *Claims) newToken(alg string, encSigLen int, extraHeaders []json.RawMessage) ([]byte, error) {
 	var payload interface{}
 	if c.Set == nil {

@@ -233,18 +233,17 @@ func (c *Claims) Number(name string) (value float64, ok bool) {
 // UTC date/time, ignoring leap seconds.”
 type NumericTime float64
 
+// BUG(pascaldekloe): Some broken JWT implementations fail to parse tokens with
+// fractions in Registered.Expires, .NotBefore or .Issued. Round to seconds—like
+// NewNumericDate(time.Now().Round(time.Seconds))—for compatibility.
+
 // NewNumericTime returns the the corresponding representation with nil for the
-// zero value. Do t.Round(time.Second) for slighly smaller token production and
+// zero value. Do t.Round(time.Second) for slightly smaller token production and
 // compatibility. See the bugs section for details.
 func NewNumericTime(t time.Time) *NumericTime {
 	if t.IsZero() {
 		return nil
 	}
-
-	// BUG(pascaldekloe): Some broken implementations fail to parse tokens
-	// with fractions in Registered.Expires, .NotBefore or .Issued. Round to
-	// seconds—like NewNumericDate(time.Now().Round(time.Seconds))—for
-	// compatibility.
 
 	n := NumericTime(float64(t.UnixNano()) / 1e9)
 	return &n
