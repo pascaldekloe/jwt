@@ -27,8 +27,8 @@ var claims jwt.Claims
 claims.Subject = "alice@example.com"
 
 now := time.Now().Round(time.Second)
-claims.Issued = NewNumericTime(now)
-claims.Expires = NewNumericTime(now.Add(10*time.Minute))
+claims.Issued = jwt.NewNumericTime(now)
+claims.Expires = jwt.NewNumericTime(now.Add(10*time.Minute))
 
 // issue a JWT
 token, err := claims.EdDSASign(JWTPrivateKey)
