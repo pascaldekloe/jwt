@@ -6,6 +6,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,29 +17,72 @@ import (
 	"github.com/pascaldekloe/jwt"
 )
 
-var someECKey *ecdsa.PrivateKey
-var someRSAKey *rsa.PrivateKey
+var (
+	PrivateECKey  *ecdsa.PrivateKey
+	PublicECKey   *ecdsa.PublicKey
+	PrivateEdKey  ed25519.PrivateKey
+	PublicEdKey   ed25519.PublicKey
+	PrivateRSAKey *rsa.PrivateKey
+	PublicRSAKey  *rsa.PublicKey
+	LosAngeles    *time.Location
+)
 
 func init() {
 	var err error
-	someECKey, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+	PrivateECKey, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 	if err != nil {
 		panic(err)
 	}
-	someRSAKey, err = rsa.GenerateKey(rand.Reader, 1024)
+	PublicECKey = &PrivateECKey.PublicKey
+
+	PublicEdKey, PrivateEdKey, err = ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+
+	PrivateRSAKey, err = rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		panic(err)
+	}
+	PublicRSAKey = &PrivateRSAKey.PublicKey
+
+	LosAngeles, err = time.LoadLocation("America/Los_Angeles")
 	if err != nil {
 		panic(err)
 	}
 }
 
-// Claims With The Standard HTTP Library
+// Issue & Validate
 func Example() {
-	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	// issue a JWT
+	var c jwt.Claims
+	c.ID = "woodhouse"
+	c.Issued = jwt.NewNumericTime(time.Date(1894, 6, 28, 0, 0, 0, 0, time.UTC))
+	c.Expires = jwt.NewNumericTime(time.Date(1999, 4, 9, 0, 0, 0, 0, LosAngeles))
+	token, err := c.RSASign(jwt.RS256, PrivateRSAKey,
+		json.RawMessage(`{"typ": "JWT", "jku": "~/keys.json"}`))
 	if err != nil {
-		fmt.Println("key generation error:", err)
+		fmt.Println("sign error:", err)
 		return
 	}
 
+	// verify a JWT
+	claims, err := jwt.RSACheck(token, PublicRSAKey)
+	if err != nil {
+		fmt.Println("credentials denied:", err)
+		return
+	}
+	if !claims.Valid(time.Now()) {
+		fmt.Println("credential time constraints exceeded")
+	}
+	fmt.Println("got:", string(claims.Raw))
+	// Output:
+	// credential time constraints exceeded
+	// got: {"exp":923641200,"iat":-2382912000,"jti":"woodhouse"}
+}
+
+// Standard HTTP Library Integration
+func Example_http() {
 	// standard HTTP handler
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, "Hello %s!\n", req.Header.Get("X-Verified-Name"))
@@ -48,7 +92,7 @@ func Example() {
 	// secure service configuration
 	srv := httptest.NewTLSServer(&jwt.Handler{
 		Target: http.DefaultServeMux,
-		Keys:   &jwt.KeyRegister{EdDSAs: []ed25519.PublicKey{publicKey}},
+		Keys:   &jwt.KeyRegister{EdDSAs: []ed25519.PublicKey{PublicEdKey}},
 
 		HeaderPrefix: "X-Verified-",
 		HeaderBinding: map[string]string{
@@ -65,7 +109,7 @@ func Example() {
 	claims.Set = map[string]interface{}{
 		"fn": "Lana Anthony Kane",
 	}
-	if err := claims.EdDSASignHeader(req, privateKey); err != nil {
+	if err := claims.EdDSASignHeader(req, PrivateEdKey); err != nil {
 		fmt.Println("sign error:", err)
 	}
 
@@ -73,7 +117,8 @@ func Example() {
 	resp, _ := srv.Client().Do(req)
 	fmt.Println("HTTP", resp.Status)
 	io.Copy(os.Stdout, resp.Body)
-	// Output: HTTP 200 OK
+	// Output:
+	// HTTP 200 OK
 	// Hello Lana Anthony Kane!
 	// You are authorized as lakane.
 }
@@ -140,8 +185,11 @@ func ExampleHandler_context() {
 	// get response
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
-	fmt.Println("HTTP", resp.Code, resp.Body)
-	// Output: HTTP 200 deadline at 1991-04-12T23:59:59Z
+	fmt.Println("HTTP", resp.Code)
+	fmt.Println(resp.Body)
+	// Output:
+	// HTTP 200
+	// deadline at 1991-04-12T23:59:59Z
 }
 
 // Custom Response Format
@@ -150,7 +198,7 @@ func ExampleHandler_error() {
 		Target: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, "My plan is to crowdsource a plan!")
 		}),
-		Keys: &jwt.KeyRegister{ECDSAs: []*ecdsa.PublicKey{&someECKey.PublicKey}},
+		Keys: &jwt.KeyRegister{ECDSAs: []*ecdsa.PublicKey{PublicECKey}},
 		Error: func(w http.ResponseWriter, error string, statusCode int) {
 			// JSON messages instead of plain text
 			w.Header().Set("Content-Type", "application/json;charset=UTF-8")
@@ -163,17 +211,19 @@ func ExampleHandler_error() {
 	req := httptest.NewRequest("GET", "/had-something-for-this", nil)
 	var c jwt.Claims
 	c.Expires = jwt.NewNumericTime(time.Now().Add(-time.Second))
-	if err := c.ECDSASignHeader(req, jwt.ES512, someECKey); err != nil {
+	if err := c.ECDSASignHeader(req, jwt.ES512, PrivateECKey); err != nil {
 		fmt.Println("sign error:", err)
 	}
 
 	// get response
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
-	fmt.Println("HTTP", resp.Code, resp.Header().Get("WWW-Authenticate"))
+	fmt.Println("HTTP", resp.Code)
+	fmt.Println(resp.Header().Get("WWW-Authenticate"))
 	fmt.Println(resp.Body)
 	// Output:
-	// HTTP 401 Bearer error="invalid_token", error_description="jwt: time constraints exceeded"
+	// HTTP 401
+	// Bearer error="invalid_token", error_description="jwt: time constraints exceeded"
 	// {"msg": "jwt: time constraints exceeded"}
 }
 
@@ -183,7 +233,7 @@ func ExampleHandler_filter() {
 		Target: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, "Elaborate voicemail hoax!")
 		}),
-		Keys: &jwt.KeyRegister{RSAs: []*rsa.PublicKey{&someRSAKey.PublicKey}},
+		Keys: &jwt.KeyRegister{RSAs: []*rsa.PublicKey{PublicRSAKey}},
 		Func: func(w http.ResponseWriter, req *http.Request, claims *jwt.Claims) (pass bool) {
 			if claims.Subject != "marcher" {
 				http.Error(w, "Ring, ring!", http.StatusServiceUnavailable)
@@ -196,15 +246,18 @@ func ExampleHandler_filter() {
 
 	// build request
 	req := httptest.NewRequest("GET", "/urgent", nil)
-	if err := new(jwt.Claims).RSASignHeader(req, jwt.PS512, someRSAKey); err != nil {
+	if err := new(jwt.Claims).RSASignHeader(req, jwt.PS512, PrivateRSAKey); err != nil {
 		fmt.Println("sign error:", err)
 	}
 
 	// get response
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
-	fmt.Println("HTTP", resp.Code, resp.Body)
-	// Output: HTTP 503 Ring, ring!
+	fmt.Println("HTTP", resp.Code)
+	fmt.Println(resp.Body)
+	// Output:
+	// HTTP 503
+	// Ring, ring!
 }
 
 // PEM With Password Protection
