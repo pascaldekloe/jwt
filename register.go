@@ -130,8 +130,8 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 			}
 		}
 
-		r := big.NewInt(0).SetBytes(sig[:len(sig)/2])
-		s := big.NewInt(0).SetBytes(sig[len(sig)/2:])
+		r := new(big.Int).SetBytes(sig[:len(sig)/2])
+		s := new(big.Int).SetBytes(sig[len(sig)/2:])
 		digest := hash.New()
 		digest.Write(token[:lastDot])
 		digestSum := digest.Sum(sig[:0])

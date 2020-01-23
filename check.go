@@ -45,8 +45,8 @@ func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
 	digest := hash.New()
 	digest.Write(token[:lastDot])
 
-	r := big.NewInt(0).SetBytes(sig[:len(sig)/2])
-	s := big.NewInt(0).SetBytes(sig[len(sig)/2:])
+	r := new(big.Int).SetBytes(sig[:len(sig)/2])
+	s := new(big.Int).SetBytes(sig[len(sig)/2:])
 	if !ecdsa.Verify(key, digest.Sum(sig[:0]), r, s) {
 		return nil, ErrSigMiss
 	}
