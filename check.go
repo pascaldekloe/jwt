@@ -6,8 +6,6 @@ import (
 	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/rsa"
-	_ "crypto/sha256" // link binary
-	_ "crypto/sha512" // link binary
 	"encoding/json"
 	"errors"
 	"fmt"

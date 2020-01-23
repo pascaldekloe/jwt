@@ -4,6 +4,8 @@ package jwt
 
 import (
 	"crypto"
+	_ "crypto/sha256" // link into binary
+	_ "crypto/sha512" // link into binary
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -54,7 +56,6 @@ var (
 var errHashLink = errors.New("jwt: hash function not linked into binary")
 
 func hashLookup(alg string, algs map[string]crypto.Hash) (crypto.Hash, error) {
-	// availability check
 	hash, ok := algs[alg]
 	if !ok {
 		return 0, AlgError(alg)
