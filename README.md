@@ -65,7 +65,7 @@ of the client's TLS key can prevent usage of any hijacked tokens.
 
 Server-side security can be applied with a standard `http.Handler` setup.
 The following example denies requests to `MyAPI` when the JWT is not valid,
-or when the JWT does not have a subject, formatted name or roles present.
+or when the JWT is missing either the subject, formatted name or roles claim.
 
 ```go
 // define trusted credentials
@@ -105,7 +105,7 @@ http.Handle("/api/v1", &jwt.Handler{
 ```
 
 When all applicable JWT claims are mapped to HTTP request headers, then the
-service logic can stay free of verification code plus easier unit testing.
+service logic can stay free of verification code, plus easier unit testing.
 
 ```go
 // Greeting is a standard HTTP handler fuction.
@@ -116,7 +116,7 @@ func Greeting(w http.ResponseWriter, req *http.Request) {
 ```
 
 The validated [Claims](https://godoc.org/github.com/pascaldekloe/jwt#Claims)
-can also be propagated through the
+object can also be made available through the
 [request context](https://godoc.org/github.com/pascaldekloe/jwt#example-Handler--Context).
 
 

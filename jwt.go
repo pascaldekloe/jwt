@@ -123,8 +123,8 @@ type Registered struct {
 // AcceptAudience verifies the applicability of the audience identified with
 // stringOrURI. Any stringOrURI is accepted on absence of the audience claim.
 func (r *Registered) AcceptAudience(stringOrURI string) bool {
-	for _, a := range r.Audiences {
-		if stringOrURI == a {
+	for _, s := range r.Audiences {
+		if stringOrURI == s {
 			return true
 		}
 	}
@@ -133,7 +133,7 @@ func (r *Registered) AcceptAudience(stringOrURI string) bool {
 
 // Claims are the (signed) statements of a JWT.
 type Claims struct {
-	// Registered field values take precedence.
+	// Registered field values take precedence over Set.
 	Registered
 
 	// Set maps claims by name, for usecases beyond the Registered fields.
