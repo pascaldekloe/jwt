@@ -5,12 +5,12 @@
 
 … a JSON Web Token (JWT) library for the Go programming language.
 
+* Feature complete
+* No third-party dependencies
+* Full unit test coverage
+
 The API enforces secure use by design. Unsigned tokens are rejected.
 No support for encrypted tokens either—use wire encryption instead.
-
-* Feature complete
-* No third party dependencies
-* Full unit test coverage
 
 This is free and unencumbered software released into the
 [public domain](https://creativecommons.org/publicdomain/zero/1.0).
@@ -18,31 +18,32 @@ This is free and unencumbered software released into the
 
 ## Introduction
 
-Tokens encapsulate signed statements called claims. A claim is JSON value,
-identified by its name. The specification includes 7
-[standardised claims](https://godoc.org/github.com/pascaldekloe/jwt#Registered).
+Tokens encapsulate signed statements called claims. A claim is a named JSON
+value. The names in use are application specific. The JWT specification defines
+[7 common claims](https://godoc.org/github.com/pascaldekloe/jwt#Registered)
+plus an IANA registration.
 
 ```go
 var claims jwt.Claims
 claims.Subject = "alice@example.com"
-
-now := time.Now().Round(time.Second)
-claims.Issued = jwt.NewNumericTime(now)
-claims.Expires = jwt.NewNumericTime(now.Add(10*time.Minute))
-
+claims.Issued  = jwt.NewNumericTime(time.Now().Round(time.Second))
+claims.Set     = map[string]interface{}{
+	"email_verified": true,
+}
 // issue a JWT
 token, err := claims.EdDSASign(JWTPrivateKey)
 ```
 
-Tokens consists of printable ASCII characters, e.g.
+Tokens consists of printable ASCII characters, e.g.,
 `eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiJha3JpZWdlciIsInByZWZpeCI6IkRyLiJ9.RTOboYsLW7zXFJyXtIypOmXfuRGVT_FpDUTs2TOuK73qZKm56JcESfsl_etnBsl7W80TXE5l5qecrMizh3XYmw`.
-Secured resources can use such tokens to determine access.
+Secured resources can use such tokens to determine permissions.
+Note how the verification process is self-contained with just a public key.
 
 ```go
 // verify a JWT
 claims, err := jwt.EdDSACheck(token, JWTPublicKey)
 if err != nil {
-	log.Print("credentials denied: ", err)
+	log.Print("credentials denied with ", err)
 	return
 }
 if !claims.Valid(time.Now()) {
@@ -52,11 +53,12 @@ if !claims.Valid(time.Now()) {
 log.Print("hello ", claims.Subject)
 ```
 
+
 Commonly, agents receive a JWT uppon authentication/login. Then, that token is
-supplied with each request to a secured resource/API, as a proof of authority.
-Token access is "eyes only". Time constraints may be used to reduce risk. It is
-recommended to include (and enforce) more details about the client, like a TLS
-client fingerprint, to prevent use of hijacked tokens.
+included with requests to the secured resources, as a proof of authority. Token
+access is “eyes only” in such scenario. Include and enforce more context detail
+with claims to further reduce risk. E.g., a session identifier or a fingerprint
+of the client's TLS key can prevent usage of any hijacked tokens.
 
 
 ## High-Level API
