@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	dgrijalva "github.com/vtolstov/jwt-go"
 )
 
 var benchClaims = &Claims{
@@ -13,6 +15,11 @@ var benchClaims = &Claims{
 		Issuer: "benchmark",
 		Issued: NewNumericTime(time.Now()),
 	},
+}
+
+var dgrijalvaClaims = dgrijalva.StandardClaims{
+	Issuer:   benchClaims.Issuer,
+	IssuedAt: int64(*benchClaims.Issued),
 }
 
 func BenchmarkECDSA(b *testing.B) {
@@ -82,6 +89,45 @@ func BenchmarkEdDSA(b *testing.B) {
 			}
 		}
 	})
+
+	var tokenString string
+
+	privKey, err := dgrijalva.ParseEdPrivateKeyFromPEM([]byte(`-----BEGIN PRIVATE KEY-----
+MC4CAQAwBQYDK2VwBCIEIEFMEZrmlYxczXKFxIlNvNGR5JQvDhTkLovJYxwQd3ua
+-----END PRIVATE KEY-----`))
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.Run("sign-"+EdDSA+"-dgrijalva", func(b *testing.B) {
+		method := dgrijalva.GetSigningMethod("EdDSA")
+		var tokenLen int
+		for i := 0; i < b.N; i++ {
+			tokenString, err = dgrijalva.NewWithClaims(method, dgrijalvaClaims).SignedString(privKey)
+			if err != nil {
+				b.Fatal(err)
+			}
+			tokenLen += len(tokenString)
+		}
+		b.ReportMetric(float64(tokenLen)/float64(b.N), "B/token")
+	})
+
+	pubKey, err := dgrijalva.ParseEdPublicKeyFromPEM([]byte(`-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEAWH7z6hpYqvPns2i4n9yymwvB3APhi4LyQ7iHOT6crtE=
+-----END PUBLIC KEY-----`))
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.Run("check-"+EdDSA+"-dgrijalva", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			t, err := dgrijalva.Parse(tokenString, func(token *dgrijalva.Token) (interface{}, error) {
+				return pubKey, nil
+			})
+			if !t.Valid {
+				b.Fatal(err)
+			}
+		}
+
+	})
 }
 
 func BenchmarkHMAC(b *testing.B) {
@@ -101,6 +147,20 @@ func BenchmarkHMAC(b *testing.B) {
 			}
 			b.ReportMetric(float64(tokenLen)/float64(b.N), "B/token")
 		})
+
+		b.Run("sign-"+alg+"-dgrijalva", func(b *testing.B) {
+			method := dgrijalva.GetSigningMethod(alg)
+
+			var tokenLen int
+			for i := 0; i < b.N; i++ {
+				token, err := dgrijalva.NewWithClaims(method, dgrijalvaClaims).SignedString(secret)
+				if err != nil {
+					b.Fatal(err)
+				}
+				tokenLen += len(token)
+			}
+			b.ReportMetric(float64(tokenLen)/float64(b.N), "B/token")
+		})
 	}
 
 	for _, alg := range algs {
@@ -113,6 +173,18 @@ func BenchmarkHMAC(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_, err := HMACCheck(token, secret)
 				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+
+		tokenString := string(token)
+		b.Run("check-"+alg+"-dgrijalva", func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				t, err := dgrijalva.Parse(tokenString, func(token *dgrijalva.Token) (interface{}, error) {
+					return secret, nil
+				})
+				if !t.Valid {
 					b.Fatal(err)
 				}
 			}
