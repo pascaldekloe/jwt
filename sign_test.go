@@ -48,7 +48,7 @@ func TestClaimsSync(t *testing.T) {
 	if _, err := c.FormatWithoutSign("none"); err != nil {
 		t.Fatal("format error:", err)
 	}
-	const want = `{"aud":"c","exp":1537622854,"iat":1537622794,"iss":"a","jti":"d","nbf":1537622793,"sub":"b"}`
+	const want = `{"aud":["c"],"exp":1537622854,"iat":1537622794,"iss":"a","jti":"d","nbf":1537622793,"sub":"b"}`
 	if got := string(c.Raw); got != want {
 		t.Errorf("got JSON %q, want %q", got, want)
 	}

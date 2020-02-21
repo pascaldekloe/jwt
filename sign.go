@@ -177,12 +177,7 @@ func (c *Claims) newToken(alg string, encSigLen int, extraHeaders []json.RawMess
 		if c.Subject != "" {
 			c.Set[subject] = c.Subject
 		}
-		switch len(c.Audiences) {
-		case 0:
-			break
-		case 1: // single string
-			c.Set[audience] = c.Audiences[0]
-		default:
+		if len(c.Audiences) != 0 {
 			array := make([]interface{}, len(c.Audiences))
 			for i, s := range c.Audiences {
 				array[i] = s
