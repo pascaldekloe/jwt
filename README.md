@@ -1,5 +1,6 @@
 [![API Documentation](https://godoc.org/github.com/pascaldekloe/jwt?status.svg)](https://godoc.org/github.com/pascaldekloe/jwt)
 [![Build Status](https://circleci.com/gh/pascaldekloe/jwt.svg?style=svg)](https://circleci.com/gh/pascaldekloe/jwt)
+[![Fuzz Status](https://app.fuzzit.dev/badge?org_id=pascaldekloe-gh)](https://app.fuzzit.dev/orgs/pascaldekloe-gh/dashboard)
 
 ## About
 
