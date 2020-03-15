@@ -7,8 +7,8 @@
 … a JSON Web Token (JWT) library for the Go programming language.
 
 * Feature complete
-* No third-party dependencies
-* Full unit test coverage
+* Full test coverage
+* Dependency free
 
 The API enforces secure use by design. Unsigned tokens are rejected.
 No support for encrypted tokens either—use wire encryption instead.
@@ -20,24 +20,21 @@ This is free and unencumbered software released into the
 ## Introduction
 
 Tokens encapsulate signed statements called claims. A claim is a named JSON
-value. The names in use are application specific. The JWT specification defines
-[7 common claims](https://godoc.org/github.com/pascaldekloe/jwt#Registered)
-plus an IANA registration.
+value. Applications using JWTs should define which specific claims they use and
+when they are required or optional.
 
 ```go
 var claims jwt.Claims
 claims.Subject = "alice@example.com"
 claims.Issued  = jwt.NewNumericTime(time.Now().Round(time.Second))
-claims.Set     = map[string]interface{}{
-	"email_verified": true,
-}
+claims.Set     = map[string]interface{}{"email_verified": false}
 // issue a JWT
 token, err := claims.EdDSASign(JWTPrivateKey)
 ```
 
 Tokens consists of printable ASCII characters, e.g.,
 `eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiJha3JpZWdlciIsInByZWZpeCI6IkRyLiJ9.RTOboYsLW7zXFJyXtIypOmXfuRGVT_FpDUTs2TOuK73qZKm56JcESfsl_etnBsl7W80TXE5l5qecrMizh3XYmw`.
-Secured resources can use such tokens to determine permissions.
+Secured resources can use such tokens to determine the respective permissions.
 Note how the verification process is self-contained with just a public key.
 
 ```go
@@ -53,7 +50,6 @@ if !claims.Valid(time.Now()) {
 }
 log.Print("hello ", claims.Subject)
 ```
-
 
 Commonly, agents receive a JWT uppon authentication/login. Then, that token is
 included with requests to the secured resources, as a proof of authority. Token
@@ -117,7 +113,7 @@ func Greeting(w http.ResponseWriter, req *http.Request) {
 ```
 
 The validated [Claims](https://godoc.org/github.com/pascaldekloe/jwt#Claims)
-object can also be made available through the
+object may also be exposed through the
 [request context](https://godoc.org/github.com/pascaldekloe/jwt#example-Handler--Context).
 
 
