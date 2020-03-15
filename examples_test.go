@@ -91,9 +91,11 @@ func Example() {
 		return
 	}
 	fmt.Println("payload:", string(claims.Raw))
+	fmt.Println("header:", string(claims.RawHeader))
 	// Output:
 	// token: eyJhbGciOiJIUzI1NiIsImtpZCI6IuKEljRiIiwibGFuIjoiWEw5IiwidGNvZGUiOjEwMn0.eyJhcHByb3ZlZCI6W3sibmFtZSI6IlJQRy03IiwiY291bnQiOjF9XSwiYXVkIjpbImFybW9yeSJdLCJpc3MiOiJtYWxvcnkiLCJzdWIiOiJzdGVybGluZyJ9.hySn7b0UF2-8XNO63ChCc8s1PkO7NNIxtWR8VFjb4eE
 	// payload: {"approved":[{"name":"RPG-7","count":1}],"aud":["armory"],"iss":"malory","sub":"sterling"}
+	// header: {"alg":"HS256","kid":"№4b","lan":"XL9","tcode":102}
 }
 
 // Standard HTTP Library Integration

@@ -159,6 +159,22 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey, extraHeaders ...json.R
 	return token[:cap(token)], nil
 }
 
+var (
+	headerEdDSA = []byte(`{"alg":"EdDSA"}`)
+	headerES256 = []byte(`{"alg":"ES256"}`)
+	headerES384 = []byte(`{"alg":"ES384"}`)
+	headerES512 = []byte(`{"alg":"ES512"}`)
+	headerHS256 = []byte(`{"alg":"HS256"}`)
+	headerHS384 = []byte(`{"alg":"HS384"}`)
+	headerHS512 = []byte(`{"alg":"HS512"}`)
+	headerPS256 = []byte(`{"alg":"PS256"}`)
+	headerPS384 = []byte(`{"alg":"PS384"}`)
+	headerPS512 = []byte(`{"alg":"PS512"}`)
+	headerRS256 = []byte(`{"alg":"RS256"}`)
+	headerRS384 = []byte(`{"alg":"RS384"}`)
+	headerRS512 = []byte(`{"alg":"RS512"}`)
+)
+
 func (c *Claims) newToken(alg string, encSigLen int, extraHeaders []json.RawMessage) ([]byte, error) {
 	var payload interface{}
 	if c.Set == nil {
@@ -207,30 +223,43 @@ func (c *Claims) newToken(alg string, encSigLen int, extraHeaders []json.RawMess
 		switch alg {
 		case EdDSA:
 			fixed = "eyJhbGciOiJFZERTQSJ9."
+			c.RawHeader = headerEdDSA
 		case ES256:
 			fixed = "eyJhbGciOiJFUzI1NiJ9."
+			c.RawHeader = headerES256
 		case ES384:
 			fixed = "eyJhbGciOiJFUzM4NCJ9."
+			c.RawHeader = headerES384
 		case ES512:
 			fixed = "eyJhbGciOiJFUzUxMiJ9."
+			c.RawHeader = headerES512
 		case HS256:
 			fixed = "eyJhbGciOiJIUzI1NiJ9."
+			c.RawHeader = headerHS256
 		case HS384:
 			fixed = "eyJhbGciOiJIUzM4NCJ9."
+			c.RawHeader = headerHS384
 		case HS512:
 			fixed = "eyJhbGciOiJIUzUxMiJ9."
+			c.RawHeader = headerHS512
 		case PS256:
 			fixed = "eyJhbGciOiJQUzI1NiJ9."
+			c.RawHeader = headerPS256
 		case PS384:
 			fixed = "eyJhbGciOiJQUzM4NCJ9."
+			c.RawHeader = headerPS384
 		case PS512:
 			fixed = "eyJhbGciOiJQUzUxMiJ9."
+			c.RawHeader = headerPS512
 		case RS256:
 			fixed = "eyJhbGciOiJSUzI1NiJ9."
+			c.RawHeader = headerRS256
 		case RS384:
 			fixed = "eyJhbGciOiJSUzM4NCJ9."
+			c.RawHeader = headerRS384
 		case RS512:
 			fixed = "eyJhbGciOiJSUzUxMiJ9."
+			c.RawHeader = headerRS512
 		}
 
 		if fixed != "" {
@@ -260,6 +289,7 @@ func (c *Claims) newToken(alg string, encSigLen int, extraHeaders []json.RawMess
 		}
 		header.Bytes()[offset] = ','
 	}
+	c.RawHeader = json.RawMessage(header.Bytes())
 
 	// compose token
 	headerLen := encoding.EncodedLen(header.Len())

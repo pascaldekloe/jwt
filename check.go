@@ -153,6 +153,8 @@ func (c *Claims) scan(token []byte) (firstDot, lastDot int, sig []byte, alg stri
 	if err := json.Unmarshal(buf[:n], &header); err != nil {
 		return 0, 0, nil, "", fmt.Errorf("jwt: malformed JOSE header: %w", err)
 	}
+	c.RawHeader = json.RawMessage(buf[:n])
+	buf = buf[n:]
 
 	alg = header.Alg
 	c.KeyID = header.Kid

@@ -260,9 +260,12 @@ func TestFormatHeader(t *testing.T) {
 	for alg := range RSAAlgs {
 		algs[alg] = struct{}{}
 	}
+	// … and a non-standard algorithm
+	algs["hs1"] = struct{}{}
 
 	for alg := range algs {
-		token, err := new(Claims).FormatWithoutSign(alg)
+		var claims Claims
+		token, err := claims.FormatWithoutSign(alg)
 		if err != nil {
 			t.Errorf("error for %q: %s", alg, err)
 			continue
@@ -284,6 +287,9 @@ func TestFormatHeader(t *testing.T) {
 		}
 		if s, ok := m["alg"].(string); !ok || s != alg {
 			t.Errorf("got alg %#v for %q", m["alg"], alg)
+		}
+		if string(headerJSON) != string(claims.RawHeader) {
+			t.Errorf("got header %q, while claims RawHeader is set to %q", headerJSON, claims.RawHeader)
 		}
 	}
 }

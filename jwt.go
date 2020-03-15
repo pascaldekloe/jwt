@@ -151,8 +151,10 @@ type Claims struct {
 	//
 	Set map[string]interface{}
 
-	// Raw encoding as is within the token. This field is read-only.
+	// Raw payload encoding as is within the token. This field is read-only.
 	Raw json.RawMessage
+	// RawHeader encoding as is within the token. This field is read-only.
+	RawHeader json.RawMessage
 
 	// “The "kid" (key ID) Header Parameter is a hint indicating which key
 	// was used to secure the JWS. This parameter allows originators to
