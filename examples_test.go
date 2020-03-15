@@ -24,7 +24,6 @@ var (
 	PublicEdKey   ed25519.PublicKey
 	PrivateRSAKey *rsa.PrivateKey
 	PublicRSAKey  *rsa.PublicKey
-	LosAngeles    *time.Location
 )
 
 func init() {
@@ -45,40 +44,56 @@ func init() {
 		panic(err)
 	}
 	PublicRSAKey = &PrivateRSAKey.PublicKey
-
-	LosAngeles, err = time.LoadLocation("America/Los_Angeles")
-	if err != nil {
-		panic(err)
-	}
 }
 
-// Issue & Validate
+// Issue and validate a token with extra JOSE heading and non-standard claims.
+// Note how the token is flawed due to absense of a purpose classification. The
+// bare minimum should include time constraints.
 func Example() {
+	// Approval is a custom (a.k.a. private) claim element.
+	type Approval struct {
+		Name  string `json:"name"`
+		Count int    `json:"count"`
+	}
+	// ApprovalHeader classifies the JWT content.
+	var ApprovalHeader = json.RawMessage(`{"lan": "XL9", "tcode": 102}`)
+	// Secret4b is the symmetric key.
+	var Secret4b = []byte("084e0343a0486ff05530df6c705c8bb4")
+
 	// issue a JWT
 	var c jwt.Claims
-	c.ID = "woodhouse"
-	c.Issued = jwt.NewNumericTime(time.Date(1894, 6, 28, 0, 0, 0, 0, time.UTC))
-	c.Expires = jwt.NewNumericTime(time.Date(1999, 4, 9, 0, 0, 0, 0, LosAngeles))
-	token, err := c.RSASign(jwt.RS256, PrivateRSAKey,
-		json.RawMessage(`{"typ": "JWT", "jku": "~/keys.json"}`))
+	c.Issuer = "malory"
+	c.Subject = "sterling"
+	c.Audiences = []string{"armory"}
+	c.Set = map[string]interface{}{
+		"approved": []Approval{{Name: "RPG-7", Count: 1}},
+	}
+	c.KeyID = "№4b"
+	token, err := c.HMACSign(jwt.HS256, Secret4b, ApprovalHeader)
 	if err != nil {
-		fmt.Println("sign error:", err)
+		fmt.Println("token creation failed on", err)
 		return
 	}
+	fmt.Println("token:", string(token))
 
 	// verify a JWT
-	claims, err := jwt.RSACheck(token, PublicRSAKey)
+	claims, err := jwt.HMACCheck(token, Secret4b)
 	if err != nil {
 		fmt.Println("credentials denied:", err)
 		return
 	}
 	if !claims.Valid(time.Now()) {
 		fmt.Println("credential time constraints exceeded")
+		return
 	}
-	fmt.Println("got:", string(claims.Raw))
+	if !claims.AcceptAudience("armory") {
+		fmt.Println("token reject on audience", claims.Audiences)
+		return
+	}
+	fmt.Println("payload:", string(claims.Raw))
 	// Output:
-	// credential time constraints exceeded
-	// got: {"exp":923641200,"iat":-2382912000,"jti":"woodhouse"}
+	// token: eyJhbGciOiJIUzI1NiIsImtpZCI6IuKEljRiIiwibGFuIjoiWEw5IiwidGNvZGUiOjEwMn0.eyJhcHByb3ZlZCI6W3sibmFtZSI6IlJQRy03IiwiY291bnQiOjF9XSwiYXVkIjpbImFybW9yeSJdLCJpc3MiOiJtYWxvcnkiLCJzdWIiOiJzdGVybGluZyJ9.hySn7b0UF2-8XNO63ChCc8s1PkO7NNIxtWR8VFjb4eE
+	// payload: {"approved":[{"name":"RPG-7","count":1}],"aud":["armory"],"iss":"malory","sub":"sterling"}
 }
 
 // Standard HTTP Library Integration

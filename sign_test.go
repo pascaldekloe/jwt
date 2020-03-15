@@ -11,6 +11,7 @@ import (
 	"errors"
 	"math/big"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -84,20 +85,13 @@ func TestClaimsSyncMerge(t *testing.T) {
 	}
 }
 
-func TestHeaderFormat(t *testing.T) {
-	claims := &Claims{KeyID: "№1"}
-	token, err := claims.FormatWithoutSign("none",
-		json.RawMessage(`{"typ": "JWT", "aud": "armory"}`),
-		json.RawMessage(`{"http://isis.us/~rodney/Approvals#RPG-7": ["marcher"]}`))
-	if err != nil {
-		t.Fatal("format error:", err)
-	}
-	const want = "eyJ0eXAiOiJKV1QiLCJhdWQiOiJhcm1vcnkiLCJodHRwOi8vaXNpcy51cy9-cm9kbmV5L0FwcHJvdmFscyNSUEctNyI6WyJtYXJjaGVyIl0sImFsZyI6Im5vbmUiLCJraWQiOiLihJYxIn0.e30"
-	if string(token) != want {
-		t.Errorf("got token %q, want %q", token, want)
+func TestSignHeaderErrors(t *testing.T) {
+	_, err := new(Claims).FormatWithoutSign("none", json.RawMessage("false"))
+	if err == nil || !strings.Contains(err.Error(), " not a JSON object") {
+		t.Errorf("got error %s, want not a JSON object", err)
 	}
 
-	_, err = claims.FormatWithoutSign("X", json.RawMessage("broken"))
+	_, err = new(Claims).FormatWithoutSign("none", json.RawMessage("{broken}"))
 	if !errors.As(err, new(*json.SyntaxError)) {
 		t.Errorf("got error %#v, want a json.SyntaxError", err)
 	}

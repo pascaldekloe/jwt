@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 )
@@ -18,9 +19,8 @@ import (
 //	tokenWithoutSignature :≡ header-base64 '.' payload-base64
 //	token                 :≡ tokenWithoutSignature '.' signature-base64
 //
-// Any JOSE header additions must be in the form of JSON objects. Properties may
-// not overlap. Presence of the "alg" property leads to malformed tokens, and so
-// does "kid" in combination with the KeyID field.
+// The JOSE header (content) can be extended with extraHeaders, in the form of
+// JSON objects. Redundant and/or duplicate keys are applied as provided.
 func (c *Claims) FormatWithoutSign(alg string, extraHeaders ...json.RawMessage) (tokenWithoutSignature []byte, err error) {
 	return c.newToken(alg, 0, extraHeaders)
 }
@@ -30,9 +30,8 @@ func (c *Claims) FormatWithoutSign(alg string, extraHeaders ...json.RawMessage) 
 // The caller must use the correct key for the respective algorithm (P-256 for
 // ES256, P-384 for ES384 and P-521 for ES512) or risk malformed token production.
 //
-// Any JOSE header additions must be in the form of JSON objects. Properties may
-// not overlap. Presence of the "alg" property leads to malformed tokens, and so
-// does "kid" in combination with the KeyID field.
+// The JOSE header (content) can be extended with extraHeaders, in the form of
+// JSON objects. Redundant and/or duplicate keys are applied as provided.
 func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey, extraHeaders ...json.RawMessage) (token []byte, err error) {
 	hash, err := hashLookup(alg, ECDSAAlgs)
 	if err != nil {
@@ -81,9 +80,8 @@ func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey, extraHeaders ...js
 
 // EdDSASign updates the Raw field and returns a new JWT.
 //
-// Any JOSE header additions must be in the form of JSON objects. Properties may
-// not overlap. Presence of the "alg" property leads to malformed tokens, and so
-// does "kid" in combination with the KeyID field.
+// The JOSE header (content) can be extended with extraHeaders, in the form of
+// JSON objects. Redundant and/or duplicate keys are applied as provided.
 func (c *Claims) EdDSASign(key ed25519.PrivateKey, extraHeaders ...json.RawMessage) (token []byte, err error) {
 	token, err = c.newToken(EdDSA, encoding.EncodedLen(ed25519.SignatureSize), extraHeaders)
 	if err != nil {
@@ -100,9 +98,8 @@ func (c *Claims) EdDSASign(key ed25519.PrivateKey, extraHeaders ...json.RawMessa
 // HMACSign updates the Raw field and returns a new JWT.
 // The return is an AlgError when alg is not in HMACAlgs.
 //
-// Any JOSE header additions must be in the form of JSON objects. Properties may
-// not overlap. Presence of the "alg" property leads to malformed tokens, and so
-// does "kid" in combination with the KeyID field.
+// The JOSE header (content) can be extended with extraHeaders, in the form of
+// JSON objects. Redundant and/or duplicate keys are applied as provided.
 func (c *Claims) HMACSign(alg string, secret []byte, extraHeaders ...json.RawMessage) (token []byte, err error) {
 	if len(secret) == 0 {
 		return nil, errNoSecret
@@ -130,9 +127,8 @@ func (c *Claims) HMACSign(alg string, secret []byte, extraHeaders ...json.RawMes
 // RSASign updates the Raw field and returns a new JWT.
 // The return is an AlgError when alg is not in RSAAlgs.
 //
-// Any JOSE header additions must be in the form of JSON objects. Properties may
-// not overlap. Presence of the "alg" property leads to malformed tokens, and so
-// does "kid" in combination with the KeyID field.
+// The JOSE header (content) can be extended with extraHeaders, in the form of
+// JSON objects. Redundant and/or duplicate keys are applied as provided.
 func (c *Claims) RSASign(alg string, key *rsa.PrivateKey, extraHeaders ...json.RawMessage) (token []byte, err error) {
 	hash, err := hashLookup(alg, RSAAlgs)
 	if err != nil {
@@ -247,29 +243,22 @@ func (c *Claims) newToken(alg string, encSigLen int, extraHeaders []json.RawMess
 	}
 
 	// compose JOSE header
-	header := new(bytes.Buffer)
-	for _, raw := range extraHeaders {
-		offset := header.Len() - 1
-		if offset >= 0 {
-			header.Truncate(offset)
-		}
-		err := json.Compact(header, []byte(raw))
-		if err != nil {
-			return nil, fmt.Errorf("jwt: malformed extra JOSE heading: %w", err)
-		}
-		if offset >= 0 {
-			header.Bytes()[offset] = ','
-		}
-	}
-	if l := header.Len(); l == 0 {
-		header.WriteByte('{')
-	} else {
-		header.Bytes()[l-1] = ','
-	}
+	var header bytes.Buffer
 	if c.KeyID == "" {
-		fmt.Fprintf(header, `"alg":%q}`, alg)
+		fmt.Fprintf(&header, `{"alg":%q}`, alg)
 	} else {
-		fmt.Fprintf(header, `"alg":%q,"kid":%q}`, alg, c.KeyID)
+		fmt.Fprintf(&header, `{"alg":%q,"kid":%q}`, alg, c.KeyID)
+	}
+	for _, raw := range extraHeaders {
+		if len(raw) == 0 || raw[0] != '{' {
+			return nil, errors.New("jwt: JOSE header addition is not a JSON object")
+		}
+		offset := header.Len() - 1
+		header.Truncate(offset)
+		if err := json.Compact(&header, []byte(raw)); err != nil {
+			return nil, fmt.Errorf("jwt: malformed JOSE header addition: %w", err)
+		}
+		header.Bytes()[offset] = ','
 	}
 
 	// compose token
