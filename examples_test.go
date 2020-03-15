@@ -47,7 +47,7 @@ func init() {
 }
 
 // Issue and validate a token with extra JOSE heading and non-standard claims.
-// Note how the token is flawed due to absense of a purpose classification. The
+// Note how the token is flawed due to absence of a purpose classification. The
 // bare minimum should include time constraints.
 func Example() {
 	// Approval is a custom (a.k.a. private) claim element.

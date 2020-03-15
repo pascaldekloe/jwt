@@ -30,7 +30,7 @@ func ParseWithoutCheck(token []byte) (*Claims, error) {
 
 // ECDSACheck parses a JWT if, and only if, the signature checks out.
 // The return is an AlgError when the algorithm is not in ECDSAAlgs.
-// See Valid to complete the verification.
+// Use Valid to complete the verification.
 func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
 	var c Claims
 	firstDot, lastDot, sig, alg, err := c.scan(token)
@@ -55,7 +55,7 @@ func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
 }
 
 // EdDSACheck parses a JWT if, and only if, the signature checks out.
-// See Valid to complete the verification.
+// Use Valid to complete the verification.
 func EdDSACheck(token []byte, key ed25519.PublicKey) (*Claims, error) {
 	var c Claims
 	firstDot, lastDot, sig, alg, err := c.scan(token)
@@ -76,7 +76,7 @@ func EdDSACheck(token []byte, key ed25519.PublicKey) (*Claims, error) {
 
 // HMACCheck parses a JWT if, and only if, the signature checks out.
 // The return is an AlgError when the algorithm is not in HMACAlgs.
-// See Valid to complete the verification.
+// Use Valid to complete the verification.
 func HMACCheck(token, secret []byte) (*Claims, error) {
 	if len(secret) == 0 {
 		return nil, errNoSecret
@@ -104,7 +104,7 @@ func HMACCheck(token, secret []byte) (*Claims, error) {
 
 // RSACheck parses a JWT if, and only if, the signature checks out.
 // The return is an AlgError when the algorithm is not in RSAAlgs.
-// See Valid to complete the verification.
+// Use Valid to complete the verification.
 func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
 	var c Claims
 	firstDot, lastDot, sig, alg, err := c.scan(token)

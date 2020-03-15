@@ -25,7 +25,7 @@ func FuzzCheck(data []byte) int {
 	}
 
 	var keys KeyRegister
-	keys.Secrets = [][]byte{[]byte{'s', 'e', 'c', 'r', 'e', 't'}}
+	keys.Secrets = [][]byte{{'s', 'e', 'c', 'r', 'e', 't'}}
 	_, err := keys.LoadPEM([]byte(`-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEc5/E+krowgL6Q1Xv6g1Hrh74kccf
 QdmMuEk/xPJQZD22ITRYiaCRaKFWaoDBcIv21JfJo2F4whHnOCFX0Y/ALg==

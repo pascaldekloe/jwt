@@ -13,7 +13,7 @@ import (
 	"strconv"
 )
 
-// FormatWithoutSign updates the Raw field and returns a new JWT, with only the
+// FormatWithoutSign updates the Raw fields and returns a new JWT, with only the
 // first two parts.
 //
 //	tokenWithoutSignature :≡ header-base64 '.' payload-base64
@@ -25,7 +25,7 @@ func (c *Claims) FormatWithoutSign(alg string, extraHeaders ...json.RawMessage) 
 	return c.newToken(alg, 0, extraHeaders)
 }
 
-// ECDSASign updates the Raw field and returns a new JWT.
+// ECDSASign updates the Raw fields and returns a new JWT.
 // The return is an AlgError when alg is not in ECDSAAlgs.
 // The caller must use the correct key for the respective algorithm (P-256 for
 // ES256, P-384 for ES384 and P-521 for ES512) or risk malformed token production.
@@ -78,7 +78,7 @@ func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey, extraHeaders ...js
 	return token[:cap(token)], nil
 }
 
-// EdDSASign updates the Raw field and returns a new JWT.
+// EdDSASign updates the Raw fields and returns a new JWT.
 //
 // The JOSE header (content) can be extended with extraHeaders, in the form of
 // JSON objects. Redundant and/or duplicate keys are applied as provided.
@@ -95,7 +95,7 @@ func (c *Claims) EdDSASign(key ed25519.PrivateKey, extraHeaders ...json.RawMessa
 	return token[:cap(token)], nil
 }
 
-// HMACSign updates the Raw field and returns a new JWT.
+// HMACSign updates the Raw fields and returns a new JWT.
 // The return is an AlgError when alg is not in HMACAlgs.
 //
 // The JOSE header (content) can be extended with extraHeaders, in the form of
@@ -124,7 +124,7 @@ func (c *Claims) HMACSign(alg string, secret []byte, extraHeaders ...json.RawMes
 	return token[:cap(token)], nil
 }
 
-// RSASign updates the Raw field and returns a new JWT.
+// RSASign updates the Raw fields and returns a new JWT.
 // The return is an AlgError when alg is not in RSAAlgs.
 //
 // The JOSE header (content) can be extended with extraHeaders, in the form of
@@ -160,10 +160,10 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey, extraHeaders ...json.R
 }
 
 var (
-	headerEdDSA = []byte(`{"alg":"EdDSA"}`)
 	headerES256 = []byte(`{"alg":"ES256"}`)
 	headerES384 = []byte(`{"alg":"ES384"}`)
 	headerES512 = []byte(`{"alg":"ES512"}`)
+	headerEdDSA = []byte(`{"alg":"EdDSA"}`)
 	headerHS256 = []byte(`{"alg":"HS256"}`)
 	headerHS384 = []byte(`{"alg":"HS384"}`)
 	headerHS512 = []byte(`{"alg":"HS512"}`)
@@ -221,9 +221,6 @@ func (c *Claims) newToken(alg string, encSigLen int, extraHeaders []json.RawMess
 	if len(extraHeaders) == 0 && c.KeyID == "" {
 		var fixed string
 		switch alg {
-		case EdDSA:
-			fixed = "eyJhbGciOiJFZERTQSJ9."
-			c.RawHeader = headerEdDSA
 		case ES256:
 			fixed = "eyJhbGciOiJFUzI1NiJ9."
 			c.RawHeader = headerES256
@@ -233,6 +230,9 @@ func (c *Claims) newToken(alg string, encSigLen int, extraHeaders []json.RawMess
 		case ES512:
 			fixed = "eyJhbGciOiJFUzUxMiJ9."
 			c.RawHeader = headerES512
+		case EdDSA:
+			fixed = "eyJhbGciOiJFZERTQSJ9."
+			c.RawHeader = headerEdDSA
 		case HS256:
 			fixed = "eyJhbGciOiJIUzI1NiJ9."
 			c.RawHeader = headerHS256
