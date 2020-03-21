@@ -120,8 +120,21 @@ type Registered struct {
 	ID string `json:"jti,omitempty"`
 }
 
-// AcceptAudience verifies the applicability of the audience identified with
-// stringOrURI. Any stringOrURI is accepted on absence of the audience claim.
+// Valid returns whether the claims set may be accepted for processing at the
+// given moment in time. If the time is zero, then Valid returns whether there
+// are no time constraints ("nbf" & "exp").
+func (r *Registered) Valid(t time.Time) bool {
+	n := NewNumericTime(t)
+	if n == nil {
+		return r.Expires == nil && r.NotBefore == nil
+	}
+
+	return (r.Expires == nil || *r.Expires > *n) &&
+		(r.NotBefore == nil || *r.NotBefore <= *n)
+}
+
+// AcceptAudience verifies the applicability of an audience identified as
+// stringOrURI. Any stringOrURI is accepted on absence of the aud(ience) claim.
 func (r *Registered) AcceptAudience(stringOrURI string) bool {
 	for _, s := range r.Audiences {
 		if stringOrURI == s {
@@ -163,22 +176,6 @@ type Claims struct {
 	// string. Use of this Header Parameter is OPTIONAL.”
 	// — “JSON Web Signature (JWS)” RFC 7515, subsection 4.1.4
 	KeyID string
-}
-
-// Valid returns whether the claims set may be accepted for processing at the
-// given moment in time. If the time is zero, then Valid returns whether there
-// are no time constraints.
-func (c *Claims) Valid(t time.Time) bool {
-	exp, expOK := c.Number(expires)
-	nbf, nbfOK := c.Number(notBefore)
-
-	n := NewNumericTime(t)
-	if n == nil {
-		return !expOK && !nbfOK
-	}
-
-	f := float64(*n)
-	return (!expOK || exp > f) && (!nbfOK || nbf <= f)
 }
 
 // String returns the claim when present and if the representation is a JSON string.
