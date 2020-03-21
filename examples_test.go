@@ -6,7 +6,6 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,88 +17,79 @@ import (
 )
 
 var (
-	PrivateECKey  *ecdsa.PrivateKey
-	PublicECKey   *ecdsa.PublicKey
-	PrivateEdKey  ed25519.PrivateKey
-	PublicEdKey   ed25519.PublicKey
-	PrivateRSAKey *rsa.PrivateKey
-	PublicRSAKey  *rsa.PublicKey
+	ECPrivateKey  *ecdsa.PrivateKey
+	ECPublicKey   *ecdsa.PublicKey
+	EdPrivateKey  ed25519.PrivateKey
+	EdPublicKey   ed25519.PublicKey
+	RSAPrivateKey *rsa.PrivateKey
+	RSAPublicKey  *rsa.PublicKey
 )
 
 func init() {
 	var err error
-	PrivateECKey, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+	ECPrivateKey, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 	if err != nil {
 		panic(err)
 	}
-	PublicECKey = &PrivateECKey.PublicKey
+	ECPublicKey = &ECPrivateKey.PublicKey
 
-	PublicEdKey, PrivateEdKey, err = ed25519.GenerateKey(rand.Reader)
+	EdPublicKey, EdPrivateKey, err = ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		panic(err)
 	}
 
-	PrivateRSAKey, err = rsa.GenerateKey(rand.Reader, 1024)
+	RSAPrivateKey, err = rsa.GenerateKey(rand.Reader, 1024)
 	if err != nil {
 		panic(err)
 	}
-	PublicRSAKey = &PrivateRSAKey.PublicKey
+	RSAPublicKey = &RSAPrivateKey.PublicKey
 }
 
-// Issue and validate a token with extra JOSE heading and non-standard claims.
-// Note how the token is flawed due to absence of a purpose classification. The
-// bare minimum should include time constraints.
+// Note how the security is flawed without any purpose claims.
+// The bare minimum should include time constraints.
 func Example() {
-	// Approval is a custom (a.k.a. private) claim element.
-	type Approval struct {
-		Name  string `json:"name"`
-		Count int    `json:"count"`
-	}
-	// ApprovalHeader classifies the JWT content.
-	var ApprovalHeader = json.RawMessage(`{"lan": "XL9", "tcode": 102}`)
-	// Secret4b is the symmetric key.
-	var Secret4b = []byte("084e0343a0486ff05530df6c705c8bb4")
-
-	// issue a JWT
 	var c jwt.Claims
 	c.Issuer = "malory"
 	c.Subject = "sterling"
 	c.Audiences = []string{"armory"}
-	c.Set = map[string]interface{}{
-		"approved": []Approval{{Name: "RPG-7", Count: 1}},
+
+	// Approval is a custom claim element.
+	type Approval struct {
+		Name  string `json:"name"`
+		Count int    `json:"count"`
 	}
-	c.KeyID = "№4b"
-	token, err := c.HMACSign(jwt.HS256, Secret4b, ApprovalHeader)
+	c.Set = map[string]interface{}{
+		"approved": []Approval{{"RPG-7", 1}},
+	}
+
+	// issue a JWT
+	token, err := c.RSASign(jwt.RS256, RSAPrivateKey)
 	if err != nil {
 		fmt.Println("token creation failed on", err)
 		return
 	}
-	fmt.Println("token:", string(token))
 
-	// verify a JWT
-	claims, err := jwt.HMACCheck(token, Secret4b)
+	// validate the JWT
+	claims, err := jwt.RSACheck(token, RSAPublicKey)
 	if err != nil {
-		fmt.Println("credentials denied:", err)
+		fmt.Println("credentials denied on", err)
 		return
 	}
 	if !claims.Valid(time.Now()) {
-		fmt.Println("credential time constraints exceeded")
+		fmt.Println("time constraints exceeded")
 		return
 	}
 	if !claims.AcceptAudience("armory") {
-		fmt.Println("token reject on audience", claims.Audiences)
+		fmt.Println("reject on audience", claims.Audiences)
 		return
 	}
-	fmt.Println("payload:", string(claims.Raw))
-	fmt.Println("header:", string(claims.RawHeader))
+	fmt.Println(string(claims.Raw))
 	// Output:
-	// token: eyJhbGciOiJIUzI1NiIsImtpZCI6IuKEljRiIiwibGFuIjoiWEw5IiwidGNvZGUiOjEwMn0.eyJhcHByb3ZlZCI6W3sibmFtZSI6IlJQRy03IiwiY291bnQiOjF9XSwiYXVkIjpbImFybW9yeSJdLCJpc3MiOiJtYWxvcnkiLCJzdWIiOiJzdGVybGluZyJ9.hySn7b0UF2-8XNO63ChCc8s1PkO7NNIxtWR8VFjb4eE
-	// payload: {"approved":[{"name":"RPG-7","count":1}],"aud":["armory"],"iss":"malory","sub":"sterling"}
-	// header: {"alg":"HS256","kid":"№4b","lan":"XL9","tcode":102}
+	// {"approved":[{"name":"RPG-7","count":1}],"aud":["armory"],"iss":"malory","sub":"sterling"}
 }
 
 // Standard HTTP Library Integration
-func Example_http() {
+func Example_hTTP() {
 	// standard HTTP handler
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, "Hello %s!\n", req.Header.Get("X-Verified-Name"))
@@ -109,7 +99,7 @@ func Example_http() {
 	// secure service configuration
 	srv := httptest.NewTLSServer(&jwt.Handler{
 		Target: http.DefaultServeMux,
-		Keys:   &jwt.KeyRegister{EdDSAs: []ed25519.PublicKey{PublicEdKey}},
+		Keys:   &jwt.KeyRegister{EdDSAs: []ed25519.PublicKey{EdPublicKey}},
 
 		HeaderPrefix: "X-Verified-",
 		HeaderBinding: map[string]string{
@@ -126,7 +116,7 @@ func Example_http() {
 	claims.Set = map[string]interface{}{
 		"fn": "Lana Anthony Kane",
 	}
-	if err := claims.EdDSASignHeader(req, PrivateEdKey); err != nil {
+	if err := claims.EdDSASignHeader(req, EdPrivateKey); err != nil {
 		fmt.Println("sign error:", err)
 	}
 
@@ -142,20 +132,23 @@ func Example_http() {
 
 // Typed Claim Lookups
 func ExampleClaims_byName() {
-	offset := time.Unix(1537622794, 0)
+	now := time.Unix(1537622794, 0)
 	c := jwt.Claims{
 		Registered: jwt.Registered{
 			Issuer:    "a",
 			Subject:   "b",
 			Audiences: []string{"c"},
-			Expires:   jwt.NewNumericTime(offset.Add(time.Minute)),
-			NotBefore: jwt.NewNumericTime(offset.Add(-time.Second)),
-			Issued:    jwt.NewNumericTime(offset),
+			Expires:   jwt.NewNumericTime(now.Add(time.Minute)),
+			NotBefore: jwt.NewNumericTime(now.Add(-time.Second)),
+			Issued:    jwt.NewNumericTime(now),
 			ID:        "d",
+		},
+		Set: map[string]interface{}{
+			"ext": "e",
 		},
 	}
 
-	for _, name := range []string{"iss", "sub", "aud", "exp", "nbf", "iat", "jti"} {
+	for _, name := range []string{"iss", "sub", "aud", "exp", "nbf", "iat", "jti", "ext"} {
 		if s, ok := c.String(name); ok {
 			fmt.Printf("%q: %q\n", name, s)
 		}
@@ -171,6 +164,7 @@ func ExampleClaims_byName() {
 	// "nbf": 1537622793
 	// "iat": 1537622794
 	// "jti": "d"
+	// "ext": "e"
 }
 
 // Claims Access From Request Context
@@ -190,10 +184,9 @@ func ExampleHandler_context() {
 
 	// build request
 	req := httptest.NewRequest("GET", "/status", nil)
-	c := &jwt.Claims{
-		Set: map[string]interface{}{
-			"deadline": time.Date(1991, 4, 12, 23, 59, 59, 0, time.UTC).Unix(),
-		},
+	var c jwt.Claims
+	c.Set = map[string]interface{}{
+		"deadline": jwt.NewNumericTime(time.Date(1991, 4, 12, 23, 59, 59, 0, time.UTC)),
 	}
 	if err := c.HMACSignHeader(req, jwt.HS384, []byte("killarcherdie")); err != nil {
 		fmt.Println("sign error:", err)
@@ -215,7 +208,7 @@ func ExampleHandler_error() {
 		Target: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, "My plan is to crowdsource a plan!")
 		}),
-		Keys: &jwt.KeyRegister{ECDSAs: []*ecdsa.PublicKey{PublicECKey}},
+		Keys: &jwt.KeyRegister{ECDSAs: []*ecdsa.PublicKey{ECPublicKey}},
 		Error: func(w http.ResponseWriter, error string, statusCode int) {
 			// JSON messages instead of plain text
 			w.Header().Set("Content-Type", "application/json;charset=UTF-8")
@@ -228,7 +221,7 @@ func ExampleHandler_error() {
 	req := httptest.NewRequest("GET", "/had-something-for-this", nil)
 	var c jwt.Claims
 	c.Expires = jwt.NewNumericTime(time.Now().Add(-time.Second))
-	if err := c.ECDSASignHeader(req, jwt.ES512, PrivateECKey); err != nil {
+	if err := c.ECDSASignHeader(req, jwt.ES512, ECPrivateKey); err != nil {
 		fmt.Println("sign error:", err)
 	}
 
@@ -250,7 +243,7 @@ func ExampleHandler_filter() {
 		Target: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, "Elaborate voicemail hoax!")
 		}),
-		Keys: &jwt.KeyRegister{RSAs: []*rsa.PublicKey{PublicRSAKey}},
+		Keys: &jwt.KeyRegister{RSAs: []*rsa.PublicKey{RSAPublicKey}},
 		Func: func(w http.ResponseWriter, req *http.Request, claims *jwt.Claims) (pass bool) {
 			if claims.Subject != "marcher" {
 				http.Error(w, "Ring, ring!", http.StatusServiceUnavailable)
@@ -263,7 +256,7 @@ func ExampleHandler_filter() {
 
 	// build request
 	req := httptest.NewRequest("GET", "/urgent", nil)
-	if err := new(jwt.Claims).RSASignHeader(req, jwt.PS512, PrivateRSAKey); err != nil {
+	if err := new(jwt.Claims).RSASignHeader(req, jwt.PS512, RSAPrivateKey); err != nil {
 		fmt.Println("sign error:", err)
 	}
 
@@ -321,13 +314,12 @@ func ExampleKeyRegister_LoadJWK() {
 }`
 
 	var keys jwt.KeyRegister
-	n, err := keys.LoadJWK([]byte(json))
+	_, err := keys.LoadJWK([]byte(json))
 	if err != nil {
 		fmt.Println("load error:", err)
 	}
-	fmt.Printf("%d keys added: ", n)
-	fmt.Printf("EdDSA %q & ", keys.EdDSAIDs)
-	fmt.Printf("secret %q: %q", keys.SecretIDs, keys.Secrets)
+	fmt.Printf("got %d EdDSA %q", len(keys.EdDSAs), keys.EdDSAIDs)
+	fmt.Printf(" + %d secret %q", len(keys.Secrets), keys.SecretIDs)
 	// Output:
-	// 2 keys added: EdDSA ["kazak"] & secret ["good old"]: ["kofta"]
+	// got 1 EdDSA ["kazak"] + 1 secret ["good old"]
 }

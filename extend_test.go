@@ -3,39 +3,35 @@ package jwt_test
 import (
 	"crypto"
 	_ "crypto/md5" // link into binary
+	"encoding/json"
 	"fmt"
 
 	"github.com/pascaldekloe/jwt"
 )
 
 func init() {
-	// additional algorithm registration
+	// static algorithm registration
 	jwt.HMACAlgs["MD5"] = crypto.MD5
 }
 
-// Non-Standard Algorithm Use
+// Non-Standard Algorithm & JOSE Heading
 func Example_extend() {
-	c := new(jwt.Claims)
-	c.ID = "Me Too!"
-
-	// issue with custom algorithm
-	token, err := c.HMACSign("MD5", []byte("guest"))
+	c := jwt.Claims{KeyID: "№4b"}
+	token, err := c.HMACSign("MD5", []byte("guest"),
+		json.RawMessage(`{"lan": "XL9", "tcode": 102}`))
 	if err != nil {
 		fmt.Println("sign error:", err)
 		return
 	}
 	fmt.Println("token:", string(token))
-	fmt.Println("header:", string(c.RawHeader))
 
-	// verify custom algorithm
 	got, err := jwt.HMACCheck(token, []byte("guest"))
 	if err != nil {
 		fmt.Println("check error:", err)
 		return
 	}
-	fmt.Println("payload:", string(got.Raw))
+	fmt.Println("header:", string(got.RawHeader))
 	// Output:
-	// token: eyJhbGciOiJNRDUifQ.eyJqdGkiOiJNZSBUb28hIn0.W5dsc6-lD0Bgc58TP_YOTg
-	// header: {"alg":"MD5"}
-	// payload: {"jti":"Me Too!"}
+	// token: eyJhbGciOiJNRDUiLCJraWQiOiLihJY0YiIsImxhbiI6IlhMOSIsInRjb2RlIjoxMDJ9.e30.Gfpw0GU5qxm8oNQZeYHhnQ
+	// header: {"alg":"MD5","kid":"№4b","lan":"XL9","tcode":102}
 }
