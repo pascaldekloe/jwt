@@ -146,29 +146,24 @@ func TestSignHeaderError(t *testing.T) {
 }
 
 func TestHandlerHeaders(t *testing.T) {
-	req, err := http.NewRequest("GET", "/", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Set("Verified-Injection", "attempt to pollute namespace")
 	var claims Claims
-	claims.ID = "test"
-	claims.Subject = "test"
+	claims.ID = "test ID"
 	if err := claims.EdDSASignHeader(req, testKeyEd25519Private); err != nil {
 		t.Fatal(err)
 	}
 
 	handler := Handler{
-		HeaderPrefix: "Verified-",
+		HeaderPrefix: "vErified-",
 		HeaderBinding: map[string]string{
-			"jti": "Verified-Header",
-			"sub": "Unverified-Header", // prefix doesn't match
+			"jti": "VeRified-header",
 		},
 		Func: func(w http.ResponseWriter, req *http.Request, claims *Claims) (pass bool) {
-			if req.Header.Get("Verified-Injection") != "" {
+			if len(req.Header.Values("Verified-Injection")) != 0 {
 				t.Error("header injection present at JWT Handler Func")
 			}
-			if req.Header.Get("Verified-Header") != "" || req.Header.Get("Unverified-Header") != "" {
+			if len(req.Header.Values("Verified-Header")) != 0 {
 				t.Error("header binding present at JWT Handler Func")
 			}
 			fmt.Fprintln(w, "✓ func")
@@ -178,22 +173,42 @@ func TestHandlerHeaders(t *testing.T) {
 			if req.Header.Get("Verified-Injection") != "" {
 				t.Error("header injection present at HTTP Handler")
 			}
-			if req.Header.Get("Verified-Header") == "" {
-				t.Error("header match absent at HTTP Handler")
-			}
-			if req.Header.Get("Unverified-Header") != "" {
-				t.Error("header mismatch present at HTTP Handler")
+			if got := req.Header.Values("Verified-Header"); strings.Join(got, ",") != "test ID" {
+				t.Errorf("bound header value got %q, want test ID", got)
 			}
 			fmt.Fprintln(w, "✓ handler")
 		}),
 		Keys: &KeyRegister{EdDSAs: []ed25519.PublicKey{testKeyEd25519Public}},
 	}
 
-	const want = "✓ func\n✓ handler\n"
 	resp := httptest.NewRecorder()
 	handler.ServeHTTP(resp, req)
-	if got := fmt.Sprint(resp.Body); got != want {
-		t.Errorf("got HTTP body %q, want %q", got, want)
+	if want := "✓ func\n✓ handler\n"; resp.Body.String() != want {
+		t.Errorf("got HTTP body %q, want %q", resp.Body, want)
+	}
+}
+
+func TestHandlerHeaderPrefixBindingMismatch(t *testing.T) {
+	req := httptest.NewRequest("GET", "/", nil)
+	if err := new(Claims).EdDSASignHeader(req, testKeyEd25519Private); err != nil {
+		t.Fatal(err)
+	}
+
+	handler := Handler{
+		HeaderPrefix: "vErified-",
+		HeaderBinding: map[string]string{
+			"jti": "not-within-prefix",
+		},
+		Target: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			t.Error("target handler invoked")
+		}),
+		Keys: &KeyRegister{EdDSAs: []ed25519.PublicKey{testKeyEd25519Public}},
+	}
+
+	resp := httptest.NewRecorder()
+	handler.ServeHTTP(resp, req)
+	if resp.Code != 500 || !strings.Contains(resp.Body.String(), "prefix mismatch") {
+		t.Errorf("got HTTP %d %q, want HTTP 500 prefix mismatch", resp.Code, resp.Body)
 	}
 }
 

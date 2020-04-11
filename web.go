@@ -153,8 +153,7 @@ type Handler struct {
 
 	// HeaderPrefix is an optional constraint for JWT claim binding.
 	// Any client headers that match the prefix are removed from the
-	// request. HeaderBinding entries that don't match the prefix
-	// are ignored.
+	// request.
 	HeaderPrefix string
 
 	// ContextKey places the validated Claims in the context of
@@ -204,9 +203,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// filter request headers
-	if h.HeaderPrefix != "" {
+	headerPrefix := http.CanonicalHeaderKey(h.HeaderPrefix)
+	if headerPrefix != "" {
 		for name := range r.Header {
-			if strings.HasPrefix(name, h.HeaderPrefix) {
+			if strings.HasPrefix(name, headerPrefix) {
 				delete(r.Header, name)
 			}
 		}
@@ -219,8 +219,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// claim propagation
 	for claimName, headerName := range h.HeaderBinding {
-		if !strings.HasPrefix(headerName, h.HeaderPrefix) {
-			continue // silent ignore
+		headerName = http.CanonicalHeaderKey(headerName)
+		if !strings.HasPrefix(headerName, headerPrefix) {
+			h.error(w, "jwt: prefix mismatch in header binding", http.StatusInternalServerError)
+			return
 		}
 
 		s, ok := claims.String(claimName)
@@ -230,8 +232,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.error(w, msg, http.StatusUnauthorized)
 			return
 		}
-
-		r.Header.Set(headerName, s)
+		r.Header[headerName] = []string{s}
 	}
 
 	// place claims in request context
