@@ -160,10 +160,10 @@ func TestHandlerHeaders(t *testing.T) {
 			"jti": "VeRified-header",
 		},
 		Func: func(w http.ResponseWriter, req *http.Request, claims *Claims) (pass bool) {
-			if len(req.Header.Values("Verified-Injection")) != 0 {
+			if _, ok := req.Header[http.CanonicalHeaderKey("Verified-Injection")]; ok {
 				t.Error("header injection present at JWT Handler Func")
 			}
-			if len(req.Header.Values("Verified-Header")) != 0 {
+			if _, ok := req.Header[http.CanonicalHeaderKey("Verified-Header")]; ok {
 				t.Error("header binding present at JWT Handler Func")
 			}
 			fmt.Fprintln(w, "✓ func")
@@ -173,7 +173,7 @@ func TestHandlerHeaders(t *testing.T) {
 			if req.Header.Get("Verified-Injection") != "" {
 				t.Error("header injection present at HTTP Handler")
 			}
-			if got := req.Header.Values("Verified-Header"); strings.Join(got, ",") != "test ID" {
+			if got := strings.Join(req.Header[http.CanonicalHeaderKey("Verified-Header")], ","); got != "test ID" {
 				t.Errorf("bound header value got %q, want test ID", got)
 			}
 			fmt.Fprintln(w, "✓ handler")
