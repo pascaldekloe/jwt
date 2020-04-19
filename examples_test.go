@@ -4,10 +4,10 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
-	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -26,19 +26,21 @@ var (
 )
 
 func init() {
+	r := rand.New(rand.NewSource(42))
+
 	var err error
-	ECPrivateKey, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+	ECPrivateKey, err = ecdsa.GenerateKey(elliptic.P521(), r)
 	if err != nil {
 		panic(err)
 	}
 	ECPublicKey = &ECPrivateKey.PublicKey
 
-	EdPublicKey, EdPrivateKey, err = ed25519.GenerateKey(rand.Reader)
+	EdPublicKey, EdPrivateKey, err = ed25519.GenerateKey(r)
 	if err != nil {
 		panic(err)
 	}
 
-	RSAPrivateKey, err = rsa.GenerateKey(rand.Reader, 1024)
+	RSAPrivateKey, err = rsa.GenerateKey(r, 2048)
 	if err != nil {
 		panic(err)
 	}
