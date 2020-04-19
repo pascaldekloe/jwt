@@ -102,7 +102,7 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 		digestSum := digest.Sum(sig[len(sig):])
 		for _, key := range keyOptions {
 			if alg != "" && alg[0] == 'P' {
-				err = rsa.VerifyPSS(key, hash, digestSum, sig, nil)
+				err = rsa.VerifyPSS(key, hash, digestSum, sig, &pSSOptions)
 			} else {
 				err = rsa.VerifyPKCS1v15(key, hash, digestSum, sig)
 			}

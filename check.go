@@ -120,7 +120,7 @@ func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
 	digest.Write(token[:lastDot])
 
 	if alg != "" && alg[0] == 'P' {
-		err = rsa.VerifyPSS(key, hash, digest.Sum(sig[len(sig):]), sig, nil)
+		err = rsa.VerifyPSS(key, hash, digest.Sum(sig[len(sig):]), sig, &pSSOptions)
 	} else {
 		err = rsa.VerifyPKCS1v15(key, hash, digest.Sum(sig[len(sig):]), sig)
 	}

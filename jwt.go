@@ -4,6 +4,7 @@ package jwt
 
 import (
 	"crypto"
+	"crypto/rsa"
 	_ "crypto/sha256" // link into binary
 	_ "crypto/sha512" // link into binary
 	"encoding/base64"
@@ -78,6 +79,10 @@ func (e AlgError) Error() string {
 var errNoSecret = errors.New("jwt: empty secret rejected")
 
 var encoding = base64.RawURLEncoding
+
+// “The size of the salt value is the same size as the hash function output.”
+// — “JSON Web Algorithms (JWA)” RFC 7518, subsection 3.5
+var pSSOptions = rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash}
 
 // Standard (IANA registered) claim names.
 const (

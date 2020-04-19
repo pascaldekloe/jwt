@@ -146,7 +146,7 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey, extraHeaders ...json.R
 	// use signature space as a buffer while not set
 	buf := token[len(token):]
 	if alg != "" && alg[0] == 'P' {
-		sig, err = rsa.SignPSS(rand.Reader, key, hash, digest.Sum(buf), nil)
+		sig, err = rsa.SignPSS(rand.Reader, key, hash, digest.Sum(buf), &pSSOptions)
 	} else {
 		sig, err = rsa.SignPKCS1v15(rand.Reader, key, hash, digest.Sum(buf))
 	}
