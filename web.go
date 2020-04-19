@@ -87,7 +87,10 @@ func tokenFromHeader(r *http.Request) ([]byte, error) {
 
 	const prefix = "Bearer "
 	if !strings.HasPrefix(auth, prefix) {
-		return nil, errAuthSchema
+		// RFC 2617, subsection 1.2 defines the scheme token as case-insensitive.
+		if len(auth) < len(prefix) || !strings.EqualFold(auth[:len(prefix)], prefix) {
+			return nil, errAuthSchema
+		}
 	}
 	return []byte(auth[len(prefix):]), nil
 }
