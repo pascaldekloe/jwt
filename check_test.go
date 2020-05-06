@@ -207,8 +207,11 @@ func TestCheckHashNotLinked(t *testing.T) {
 }
 
 func TestJOSEExtension(t *testing.T) {
-	_, err := HMACCheck([]byte("eyJhbGciOiJIUzI1NiIsImNyaXQiOlsiZXhwIl0sImV4cCI6MTM2MzI4NDAwMH0.e30.8Ep7gVUA49twmE6NYAiEwVwwtn_UmJEkOH1uQSPPYr0"), []byte("guest"))
-	const want = "jwt: unsupported critical extension in JOSE header: [\"exp\"]"
+	// “Negative Test Case for "crit" Header Parameter” from RFC 7515, appendix E.
+	const token = "eyJhbGciOiJub25lIiwNCiAiY3JpdCI6WyJodHRwOi8vZXhhbXBsZS5jb20vVU5ERUZJTkVEIl0sDQogImh0dHA6Ly9leGFtcGxlLmNvbS9VTkRFRklORUQiOnRydWUNCn0.RkFJTA."
+
+	_, err := ParseWithoutCheck([]byte(token))
+	const want = "jwt: unsupported critical extension in JOSE header: [\"http://example.com/UNDEFINED\"]"
 	if err == nil || err.Error() != want {
 		t.Errorf("got error %q, want %q", err, want)
 	}
