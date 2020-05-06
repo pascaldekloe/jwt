@@ -17,6 +17,20 @@ var ErrSigMiss = errors.New("jwt: signature mismatch")
 
 var errPart = errors.New("jwt: missing base64 part")
 
+// “Producers MUST NOT use the empty list "[]" as the "crit" value.”
+// — “JSON Web Signature (JWS)” RFC 7515, subsection 4.1.11
+var errCritEmpty = errors.New("jwt: empty array in crit header")
+
+// EvalCrit is invoked by the Check functions for each token with one or more
+// JOSE extensions. The crit slice has the JSON field names (for header) which
+// “MUST be understood and processed” according to RFC 7515, subsection 4.1.11.
+// “If any of the listed extension Header Parameters are not understood and
+// supported by the recipient, then the JWS is invalid.”
+// The respective Check function returns any error from EvalCrit as is.
+var EvalCrit = func(token []byte, crit []string, header json.RawMessage) error {
+	return fmt.Errorf("jwt: unsupported critical extension in JOSE header: %q", crit)
+}
+
 // ParseWithoutCheck skips the signature validation.
 func ParseWithoutCheck(token []byte) (*Claims, error) {
 	var c Claims
@@ -146,9 +160,9 @@ func (c *Claims) scan(token []byte) (firstDot, lastDot int, sig []byte, alg stri
 	}
 
 	var header struct {
-		Kid  string        `json:"kid"`
-		Alg  string        `json:"alg"`
-		Crit []interface{} `json:"crit"`
+		Kid  string   `json:"kid"`
+		Alg  string   `json:"alg"`
+		Crit []string `json:"crit"`
 	}
 	if err := json.Unmarshal(buf[:n], &header); err != nil {
 		return 0, 0, nil, "", fmt.Errorf("jwt: malformed JOSE header: %w", err)
@@ -158,12 +172,13 @@ func (c *Claims) scan(token []byte) (firstDot, lastDot int, sig []byte, alg stri
 
 	alg = header.Alg
 	c.KeyID = header.Kid
-	// “If any of the listed extension Header Parameters are not understood
-	// and supported by the recipient, then the JWS is invalid. […]
-	// Producers MUST NOT use the empty list "[]" as the "crit" value.”
-	// — “JSON Web Signature (JWS)” RFC 7515, subsection 4.1.11
 	if header.Crit != nil {
-		return 0, 0, nil, "", fmt.Errorf("jwt: unsupported critical extension in JOSE header: %q", header.Crit)
+		if len(header.Crit) == 0 {
+			return 0, 0, nil, "", errCritEmpty
+		}
+		if err := EvalCrit(token, header.Crit, c.RawHeader); err != nil {
+			return 0, 0, nil, "", err
+		}
 	}
 
 	// signature

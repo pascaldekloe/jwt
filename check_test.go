@@ -6,6 +6,8 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/rsa"
+	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 )
@@ -208,12 +210,49 @@ func TestCheckHashNotLinked(t *testing.T) {
 
 func TestJOSEExtension(t *testing.T) {
 	// “Negative Test Case for "crit" Header Parameter” from RFC 7515, appendix E.
-	const token = "eyJhbGciOiJub25lIiwNCiAiY3JpdCI6WyJodHRwOi8vZXhhbXBsZS5jb20vVU5ERUZJTkVEIl0sDQogImh0dHA6Ly9leGFtcGxlLmNvbS9VTkRFRklORUQiOnRydWUNCn0.RkFJTA."
+	const testToken = "eyJhbGciOiJub25lIiwNCiAiY3JpdCI6WyJodHRwOi8vZXhhbXBsZS5jb20vVU5ERUZJTkVEIl0sDQogImh0dHA6Ly9leGFtcGxlLmNvbS9VTkRFRklORUQiOnRydWUNCn0.RkFJTA."
+	errTest := errors.New("test error")
 
-	_, err := ParseWithoutCheck([]byte(token))
+	_, err := ParseWithoutCheck([]byte(testToken))
 	const want = "jwt: unsupported critical extension in JOSE header: [\"http://example.com/UNDEFINED\"]"
 	if err == nil || err.Error() != want {
 		t.Errorf("got error %q, want %q", err, want)
+	}
+
+	bu := EvalCrit
+	defer func() {
+		EvalCrit = bu // restore
+	}()
+	// extend
+	EvalCrit = func(token []byte, crit []string, header json.RawMessage) error {
+		if string(token) != testToken {
+			t.Errorf("got token %q, want %q", token, testToken)
+		}
+
+		const wantHeader = "{\"alg\":\"none\",\r\n \"crit\":[\"http://example.com/UNDEFINED\"],\r\n \"http://example.com/UNDEFINED\":true\r\n}"
+		if string(header) != wantHeader {
+			t.Errorf("got header %q, want %q", header, wantHeader)
+		}
+
+		const wantCrit = "http://example.com/UNDEFINED"
+		if len(crit) != 1 || crit[0] != wantCrit {
+			t.Errorf("got crit %q, want %q", crit, wantCrit)
+		}
+
+		return errTest
+	}
+	_, err = ParseWithoutCheck([]byte(testToken))
+	if err != errTest {
+		t.Errorf("got error %q, want %q", err, errTest)
+	}
+
+	token, err := new(Claims).HMACSign(HS256, []byte("secret"),
+		json.RawMessage(`{ "crit": [] }`))
+	if err != nil {
+		t.Fatal("compose token with empty crit array:", err)
+	}
+	if _, err := HMACCheck(token, []byte("wrong")); err != errCritEmpty {
+		t.Errorf("got error %q, want %q", err, errCritEmpty)
 	}
 }
 
