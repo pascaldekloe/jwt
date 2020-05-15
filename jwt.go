@@ -195,7 +195,7 @@ func (c *Claims) String(name string) (value string, ok bool) {
 		if len(c.Audiences) == 1 {
 			return c.Audiences[0], true
 		}
-		if len(c.Audiences) != 0 {
+		if c.Audiences != nil {
 			return "", false
 		}
 	case id:
