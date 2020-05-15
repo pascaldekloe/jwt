@@ -25,7 +25,7 @@ when they are required or optional.
 
 ```go
 var claims jwt.Claims
-claims.Subject = "alice@example.com"
+claims.Subject = "alice"
 claims.Issued  = jwt.NewNumericTime(time.Now().Round(time.Second))
 claims.Set     = map[string]interface{}{"email_verified": false}
 // issue a JWT
@@ -49,6 +49,9 @@ if !claims.Valid(time.Now()) {
 	return
 }
 log.Print("hello ", claims.Subject)
+if verified, _ := claims.Set["email_verified"].(bool); !verified {
+	log.Print("e-mail confirmation still pending")
+}
 ```
 
 Commonly, agents receive a JWT uppon authentication/login. Then, that token is

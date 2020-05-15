@@ -147,15 +147,19 @@ func ExampleClaims_byName() {
 		},
 		Set: map[string]interface{}{
 			"ext": "e",
+			"nde": true,
 		},
 	}
 
-	for _, name := range []string{"iss", "sub", "aud", "exp", "nbf", "iat", "jti", "ext"} {
+	for _, name := range []string{"iss", "sub", "aud", "exp", "nbf", "iat", "jti", "ext", "nde"} {
 		if s, ok := c.String(name); ok {
 			fmt.Printf("%q: %q\n", name, s)
 		}
 		if n, ok := c.Number(name); ok {
 			fmt.Printf("%q: %0.f\n", name, n)
+		}
+		if b, ok := c.Set[name].(bool); ok {
+			fmt.Printf("%q: %t\n", name, b)
 		}
 	}
 	// Output:
@@ -167,6 +171,7 @@ func ExampleClaims_byName() {
 	// "iat": 1537622794
 	// "jti": "d"
 	// "ext": "e"
+	// "nde": true
 }
 
 // Claims Access From Request Context
