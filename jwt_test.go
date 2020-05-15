@@ -210,6 +210,17 @@ func TestClaimsValid(t *testing.T) {
 	}
 }
 
+func TestClaimsNull(t *testing.T) {
+	const name = "x"
+	c := Claims{Set: map[string]interface{}{name: nil}}
+	if _, ok := c.String(name); ok {
+		t.Error("null accepted as string")
+	}
+	if _, ok := c.Number(name); ok {
+		t.Error("null accepted as number")
+	}
+}
+
 func mustParseECKey(s string) *ecdsa.PrivateKey {
 	block, _ := pem.Decode([]byte(s))
 	if block == nil {

@@ -184,6 +184,7 @@ type Claims struct {
 }
 
 // String returns the claim when present and if the representation is a JSON string.
+// Note that null is not a string.
 func (c *Claims) String(name string) (value string, ok bool) {
 	// try Registered first
 	switch name {
@@ -211,6 +212,7 @@ func (c *Claims) String(name string) (value string, ok bool) {
 }
 
 // Number returns the claim when present and if the representation is a JSON number.
+// Note that null is not a number.
 func (c *Claims) Number(name string) (value float64, ok bool) {
 	// try Registered first
 	switch name {
