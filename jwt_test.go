@@ -177,6 +177,18 @@ func TestNumericTimeMapping(t *testing.T) {
 	}
 }
 
+func TestNumericTimeRounding(t *testing.T) {
+	// The following epoch offset causes a rounding error (to 4742743139.000001)
+	// when converted to nanoseconds as a double-precision floating-point.
+	ts := time.Unix(4742743139, 0)
+	if got := NewNumericTime(ts); *got != NumericTime(ts.Unix()) {
+		t.Errorf("got %f, want %d", *got, ts.Unix())
+	}
+	if got := NewNumericTime(ts).Time(); !ts.Equal(got) {
+		t.Errorf("got time %s from %s", got, ts)
+	}
+}
+
 func TestClaimsValid(t *testing.T) {
 	c := new(Claims)
 	if !c.Valid(time.Time{}) {

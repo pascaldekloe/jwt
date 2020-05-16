@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 )
 
@@ -251,7 +252,11 @@ func NewNumericTime(t time.Time) *NumericTime {
 	if t.IsZero() {
 		return nil
 	}
-
+	if t.Nanosecond() == 0 {
+		// no rounding errors
+		n := NumericTime(t.Unix())
+		return &n
+	}
 	n := NumericTime(float64(t.UnixNano()) / 1e9)
 	return &n
 }
@@ -261,7 +266,12 @@ func (n *NumericTime) Time() time.Time {
 	if n == nil {
 		return time.Time{}
 	}
-	return time.Unix(0, int64(float64(*n)*float64(time.Second))).UTC()
+	int, frac := math.Modf(float64(*n))
+	if frac == 0 {
+		// no rounding errors
+		return time.Unix(int64(int), 0).UTC()
+	}
+	return time.Unix(0, int64(*n*NumericTime(time.Second))).UTC()
 }
 
 // String returns the ISO representation or the empty string for nil.
