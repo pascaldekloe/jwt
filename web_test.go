@@ -97,6 +97,32 @@ func TestCheckHeadersAlg(t *testing.T) {
 	}
 }
 
+func TestSignHeaders(t *testing.T) {
+	var c Claims
+	req := httptest.NewRequest("GET", "/", nil)
+
+	if err := c.ECDSASignHeader(req, ES256, testKeyEC256); err != nil {
+		t.Error("ECDSA error:", err)
+	} else if _, err = ECDSACheckHeader(req, &testKeyEC256.PublicKey); err != nil {
+		t.Errorf("ECDSA check %q error: %s", req.Header.Get("Authorization"), err)
+	}
+	if err := c.EdDSASignHeader(req, testKeyEd25519Private); err != nil {
+		t.Error("EdDSA error:", err)
+	} else if _, err = EdDSACheckHeader(req, testKeyEd25519Public); err != nil {
+		t.Errorf("EdDSA check %q error: %s", req.Header.Get("Authorization"), err)
+	}
+	if err := c.HMACSignHeader(req, HS256, []byte("guest")); err != nil {
+		t.Error("HMAC error:", err)
+	} else if _, err = HMACCheckHeader(req, []byte("guest")); err != nil {
+		t.Errorf("HMAC check %q error: %s", req.Header.Get("Authorization"), err)
+	}
+	if err := c.RSASignHeader(req, RS256, testKeyRSA1024); err != nil {
+		t.Error("RSA error:", err)
+	} else if _, err = RSACheckHeader(req, &testKeyRSA1024.PublicKey); err != nil {
+		t.Errorf("RSA check %q error: %s", req.Header.Get("Authorization"), err)
+	}
+}
+
 func TestSignHeadersError(t *testing.T) {
 	// JSON does not allow NaN
 	n := NumericTime(math.NaN())
