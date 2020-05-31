@@ -9,6 +9,7 @@
 * Feature complete
 * Full test coverage
 * Dependency free
+* Key [management](https://godoc.org/github.com/pascaldekloe/jwt#KeyRegister)
 
 The API enforces secure use by design. Unsigned tokens are rejected.
 No support for encrypted tokens either—use wire encryption instead.
@@ -48,9 +49,10 @@ if !claims.Valid(time.Now()) {
 	log.Print("credential time constraints exceeded")
 	return
 }
+
 log.Print("hello ", claims.Subject)
 if verified, _ := claims.Set["email_verified"].(bool); !verified {
-	log.Print("e-mail confirmation still pending")
+	log.Print("e-mail confirmation pending")
 }
 ```
 
