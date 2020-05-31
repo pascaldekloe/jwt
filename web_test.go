@@ -13,98 +13,72 @@ import (
 	"testing"
 )
 
-func TestCheckHeader(t *testing.T) {
-	req, err := http.NewRequest("GET", "/", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestCheckHeaders(t *testing.T) {
+	req := httptest.NewRequest("GET", "/", nil)
 
 	req.Header.Set("Authorization", "Bearer "+goldenECDSAs[0].token)
-	_, err = ECDSACheckHeader(req, goldenECDSAs[0].key)
-	if err != nil {
-		t.Error("ECDSA error:", err)
+	if _, err := ECDSACheckHeader(req, goldenECDSAs[0].key); err != nil {
+		t.Errorf("ECDSA %q error: %s", req.Header.Get("Authorization"), err)
 	}
-
 	req.Header.Set("Authorization", "BEARER "+goldenEdDSAs[0].token)
-	_, err = EdDSACheckHeader(req, goldenEdDSAs[0].key)
-	if err != nil {
-		t.Error("EdDSA error:", err)
+	if _, err := EdDSACheckHeader(req, goldenEdDSAs[0].key); err != nil {
+		t.Errorf("EdDSA %q error: %s", req.Header.Get("Authorization"), err)
 	}
-
 	req.Header.Set("Authorization", "bearer "+goldenHMACs[0].token)
-	_, err = HMACCheckHeader(req, goldenHMACs[0].secret)
-	if err != nil {
-		t.Error("HMAC error:", err)
+	if _, err := HMACCheckHeader(req, goldenHMACs[0].secret); err != nil {
+		t.Errorf("HMAC %q error: %s", req.Header.Get("Authorization"), err)
 	}
-
 	req.Header.Set("Authorization", "bEArEr "+goldenRSAs[0].token)
-	_, err = RSACheckHeader(req, goldenRSAs[0].key)
-	if err != nil {
-		t.Error("RSA error:", err)
+	if _, err := RSACheckHeader(req, goldenRSAs[0].key); err != nil {
+		t.Errorf("RSA %q error: %s", req.Header.Get("Authorization"), err)
 	}
 }
 
-func TestCheckHeaderPresent(t *testing.T) {
-	req, err := http.NewRequest("GET", "/", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestCheckHeadersPresence(t *testing.T) {
+	req := httptest.NewRequest("GET", "/", nil)
 
-	_, err = ECDSACheckHeader(req, &testKeyEC256.PublicKey)
-	if err != ErrNoHeader {
+	if _, err := ECDSACheckHeader(req, &testKeyEC256.PublicKey); err != ErrNoHeader {
 		t.Errorf("ECDSA check got %v, want %v", err, ErrNoHeader)
 	}
-	_, err = EdDSACheckHeader(req, testKeyEd25519Public)
-	if err != ErrNoHeader {
+	if _, err := EdDSACheckHeader(req, testKeyEd25519Public); err != ErrNoHeader {
 		t.Errorf("EdDSA check got %v, want %v", err, ErrNoHeader)
 	}
-	_, err = HMACCheckHeader(req, nil)
-	if err != ErrNoHeader {
+	if _, err := HMACCheckHeader(req, nil); err != ErrNoHeader {
 		t.Errorf("HMAC check got %v, want %v", err, ErrNoHeader)
 	}
-	_, err = RSACheckHeader(req, &testKeyRSA1024.PublicKey)
-	if err != ErrNoHeader {
+	if _, err := RSACheckHeader(req, &testKeyRSA1024.PublicKey); err != ErrNoHeader {
 		t.Errorf("RSA check got %v, want %v", err, ErrNoHeader)
 	}
-	_, err = new(KeyRegister).CheckHeader(req)
-	if err != ErrNoHeader {
+	if _, err := new(KeyRegister).CheckHeader(req); err != ErrNoHeader {
 		t.Errorf("KeyRegister check got %v, want %v", err, ErrNoHeader)
 	}
 }
 
-func TestCheckHeaderSchema(t *testing.T) {
-	req, err := http.NewRequest("GET", "/", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestCheckHeadersSchema(t *testing.T) {
+	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Set("Authorization", "Basic QWxhZGRpbjpPcGVuU2VzYW1l")
-
-	_, err = ECDSACheckHeader(req, &testKeyEC256.PublicKey)
-	if err != errAuthSchema {
+	if _, err := ECDSACheckHeader(req, &testKeyEC256.PublicKey); err != errAuthSchema {
 		t.Errorf("ECDSA check got %v, want %v", err, errAuthSchema)
 	}
-	_, err = EdDSACheckHeader(req, testKeyEd25519Public)
-	if err != errAuthSchema {
+	if _, err := EdDSACheckHeader(req, testKeyEd25519Public); err != errAuthSchema {
 		t.Errorf("EdDSA check got %v, want %v", err, errAuthSchema)
 	}
-	_, err = HMACCheckHeader(req, nil)
-	if err != errAuthSchema {
+	if _, err := HMACCheckHeader(req, nil); err != errAuthSchema {
 		t.Errorf("HMAC check got %v, want %v", err, errAuthSchema)
 	}
-	_, err = RSACheckHeader(req, &testKeyRSA1024.PublicKey)
-	if err != errAuthSchema {
+	if _, err := RSACheckHeader(req, &testKeyRSA1024.PublicKey); err != errAuthSchema {
 		t.Errorf("RSA check got %v, want %v", err, errAuthSchema)
+	}
+	if _, err := new(KeyRegister).CheckHeader(req); err != errAuthSchema {
+		t.Errorf("KeyRegister check got %v, want %v", err, errAuthSchema)
 	}
 }
 
-func TestCheckHeaderError(t *testing.T) {
-	req, err := http.NewRequest("GET", "/", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// example from RFC 7519, subsection 6.1.
+func TestCheckHeadersAlg(t *testing.T) {
+	req := httptest.NewRequest("GET", "/", nil)
+	// example from RFC 7519, subsection 6.1
 	req.Header.Set("Authorization", "Bearer eyJhbGciOiJub25lIn0.eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGFtcGxlLmNvbS9pc19yb290Ijp0cnVlfQ.")
-	want := AlgError("none")
+	const want = AlgError("none")
 
 	if _, err := ECDSACheckHeader(req, &testKeyEC256.PublicKey); err != want {
 		t.Errorf("ECDSA got error %v, want %v", err, want)
@@ -118,9 +92,12 @@ func TestCheckHeaderError(t *testing.T) {
 	if _, err := RSACheckHeader(req, &testKeyRSA1024.PublicKey); err != want {
 		t.Errorf("RSA got error %v, want %v", err, want)
 	}
+	if _, err := new(KeyRegister).CheckHeader(req); err != want {
+		t.Errorf("KeyRegister check got %v, want %v", err, want)
+	}
 }
 
-func TestSignHeaderError(t *testing.T) {
+func TestSignHeadersError(t *testing.T) {
 	// JSON does not allow NaN
 	n := NumericTime(math.NaN())
 	var c Claims
