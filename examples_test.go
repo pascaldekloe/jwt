@@ -47,9 +47,9 @@ func init() {
 	RSAPublicKey = &RSAPrivateKey.PublicKey
 }
 
-// Note how the security is flawed without any purpose claims.
-// The bare minimum should include time constraints.
-func Example() {
+// Note how the security model is flawed without any purpose claims.
+// The bare minimum should include time constraints like Expires.
+func ExampleClaims() {
 	var c jwt.Claims
 	c.Issuer = "malory"
 	c.Subject = "sterling"
@@ -71,7 +71,7 @@ func Example() {
 		return
 	}
 
-	// validate the JWT
+	// verify a JWT
 	claims, err := jwt.RSACheck(token, RSAPublicKey)
 	if err != nil {
 		fmt.Println("credentials denied on", err)
@@ -88,48 +88,6 @@ func Example() {
 	fmt.Println(string(claims.Raw))
 	// Output:
 	// {"approved":[{"name":"RPG-7","count":1}],"aud":["armory"],"iss":"malory","sub":"sterling"}
-}
-
-// Standard HTTP Library Integration
-func Example_hTTP() {
-	// standard HTTP handler
-	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		fmt.Fprintf(w, "Hello %s!\n", req.Header.Get("X-Verified-Name"))
-		fmt.Fprintf(w, "You are authorized as %s.\n", req.Header.Get("X-Verified-User"))
-	})
-
-	// secure service configuration
-	srv := httptest.NewTLSServer(&jwt.Handler{
-		Target: http.DefaultServeMux,
-		Keys:   &jwt.KeyRegister{EdDSAs: []ed25519.PublicKey{EdPublicKey}},
-
-		HeaderPrefix: "X-Verified-",
-		HeaderBinding: map[string]string{
-			"sub": "X-Verified-User", // registered [standard] claim name
-			"fn":  "X-Verified-Name", // private [custom] claim name
-		},
-	})
-	defer srv.Close()
-
-	// self-signed request
-	req, _ := http.NewRequest("GET", srv.URL, nil)
-	var claims jwt.Claims
-	claims.Subject = "lakane"
-	claims.Set = map[string]interface{}{
-		"fn": "Lana Anthony Kane",
-	}
-	if err := claims.EdDSASignHeader(req, EdPrivateKey); err != nil {
-		fmt.Println("sign error:", err)
-	}
-
-	// call service
-	resp, _ := srv.Client().Do(req)
-	fmt.Println("HTTP", resp.Status)
-	io.Copy(os.Stdout, resp.Body)
-	// Output:
-	// HTTP 200 OK
-	// Hello Lana Anthony Kane!
-	// You are authorized as lakane.
 }
 
 // Typed Claim Lookups
@@ -174,11 +132,45 @@ func ExampleClaims_byName() {
 	// "nde": true
 }
 
-// Claims Access From Request Context
+func ExampleHandler() {
+	// standard HTTP handler
+	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		fmt.Fprintf(w, "Hello %s!\n", req.Header.Get("X-Verified-Name"))
+		fmt.Fprintf(w, "You are authorized as %s.\n", req.Header.Get("X-Verified-User"))
+	})
+
+	// secure service configuration
+	srv := httptest.NewTLSServer(&jwt.Handler{
+		Target:       http.DefaultServeMux,
+		Keys:         &jwt.KeyRegister{EdDSAs: []ed25519.PublicKey{EdPublicKey}},
+		HeaderPrefix: "X-Verified-",
+		HeaderBinding: map[string]string{
+			"sub": "X-Verified-User", // registered [standard] claim name
+			"fn":  "X-Verified-Name", // private [custom] claim name
+		},
+	})
+	defer srv.Close()
+
+	// call service
+	req, _ := http.NewRequest("GET", srv.URL, nil)
+	req.Header.Set("Authorization", "Bearer eyJhbGciOiJFZERTQSJ9.eyJmbiI6IkxhbmEgQW50aG9ueSBLYW5lIiwic3ViIjoibGFrYW5lIn0.ronG5Hgrk011SVnDgoqQ0iZn5iw6ePvp3M2TgYInSodCHeSKNck06Jec-ygS4Pjrq2HoLCilD3-xuspc2e48CQ")
+	resp, _ := srv.Client().Do(req)
+	fmt.Println("HTTP", resp.Status)
+	io.Copy(os.Stdout, resp.Body)
+	// Output:
+	// HTTP 200 OK
+	// Hello Lana Anthony Kane!
+	// You are authorized as lakane.
+}
+
+// Claims From Request Context
 func ExampleHandler_context() {
+	const claimsKey = "verified-jwt"
+
+	// secure service configuration
 	h := &jwt.Handler{
 		Target: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			claims := req.Context().Value("verified-jwt").(*jwt.Claims)
+			claims := req.Context().Value(claimsKey).(*jwt.Claims)
 			if n, ok := claims.Number("deadline"); !ok {
 				fmt.Fprintln(w, "no deadline")
 			} else {
@@ -186,20 +178,12 @@ func ExampleHandler_context() {
 			}
 		}),
 		Keys:       &jwt.KeyRegister{Secrets: [][]byte{[]byte("killarcherdie")}},
-		ContextKey: "verified-jwt",
+		ContextKey: claimsKey,
 	}
 
-	// build request
+	// call service
 	req := httptest.NewRequest("GET", "/status", nil)
-	var c jwt.Claims
-	c.Set = map[string]interface{}{
-		"deadline": jwt.NewNumericTime(time.Date(1991, 4, 12, 23, 59, 59, 0, time.UTC)),
-	}
-	if err := c.HMACSignHeader(req, jwt.HS384, []byte("killarcherdie")); err != nil {
-		fmt.Println("sign error:", err)
-	}
-
-	// get response
+	req.Header.Set("Authorization", "Bearer eyJhbGciOiJIUzM4NCJ9.eyJkZWFkbGluZSI6NjcxNTAwNzk5fQ.HS3mmHVfgP9EMpV4LLzagc6BB1P9J9Yh5TRA9DQHS4GeEejqMaBX0N4LAsMPgW0G")
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
 	fmt.Println("HTTP", resp.Code)
@@ -209,30 +193,28 @@ func ExampleHandler_context() {
 	// deadline at 1991-04-12T23:59:59Z
 }
 
-// Custom Response Format
 func ExampleHandler_error() {
+	// secure service configuration
 	h := &jwt.Handler{
 		Target: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, "My plan is to crowdsource a plan!")
 		}),
 		Keys: &jwt.KeyRegister{ECDSAs: []*ecdsa.PublicKey{ECPublicKey}},
+		// customise with JSON messages
 		Error: func(w http.ResponseWriter, error string, statusCode int) {
-			// JSON messages instead of plain text
 			w.Header().Set("Content-Type", "application/json;charset=UTF-8")
 			w.WriteHeader(statusCode)
 			fmt.Fprintf(w, `{"msg": %q}`, error)
 		},
 	}
 
-	// build request
+	// call service with expired token
 	req := httptest.NewRequest("GET", "/had-something-for-this", nil)
 	var c jwt.Claims
 	c.Expires = jwt.NewNumericTime(time.Now().Add(-time.Second))
 	if err := c.ECDSASignHeader(req, jwt.ES512, ECPrivateKey); err != nil {
 		fmt.Println("sign error:", err)
 	}
-
-	// get response
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
 	fmt.Println("HTTP", resp.Code)
@@ -246,6 +228,7 @@ func ExampleHandler_error() {
 
 // Func As A Request Filter
 func ExampleHandler_filter() {
+	// secure service configuration
 	h := &jwt.Handler{
 		Target: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, "Elaborate voicemail hoax!")
@@ -261,13 +244,9 @@ func ExampleHandler_filter() {
 		},
 	}
 
-	// build request
+	// call service
 	req := httptest.NewRequest("GET", "/urgent", nil)
-	if err := new(jwt.Claims).RSASignHeader(req, jwt.PS512, RSAPrivateKey); err != nil {
-		fmt.Println("sign error:", err)
-	}
-
-	// get response
+	req.Header.Set("Authorization", "Bearer eyJhbGciOiJQUzUxMiJ9.e30.fYCHbcIFriKYKDh2BVKFXQCwepdl5U5WaK_7r6_oyUEJCOjHYD7pV2ecTR0Nqx_bTFtDQ7f4ZSiYdxLvNywWpuaEOw7rZJIR1YV43_IOwOIDbubD4ZAswLzEXMqdACYtKGLZw7capp4wUzGGzZ9loWLkc_yqVRe8X3f5n_aXUBCk8_5fH7jg6FGajgm69UAL1YYYKvAQKv1MmA9LOD-2k0gyuyS4c0Q7qcDJ1ckNLFLd1_u1clOAY8OKvaVNv_kW-jlXwQ5H5XKDIOetmuwTT48QuqWRUdk9ptUGpU-tS6JBPrmdhI69jjXrLaIb_coPkcadgNhO3E81hsmsF-G69g")
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
 	fmt.Println("HTTP", resp.Code)
