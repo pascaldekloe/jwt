@@ -33,6 +33,9 @@ const (
 )
 
 // Algorithm support is configured with hash registrations.
+// Any modifications should be made before first use to prevent
+// data races in the Check and Sign functions, i.e., customise
+// from either main or init.
 var (
 	ECDSAAlgs = map[string]crypto.Hash{
 		ES256: crypto.SHA256,
