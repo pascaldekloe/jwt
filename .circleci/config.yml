@@ -9,3 +9,6 @@ jobs:
       - run:
           name: Unit Tests
           command: go test -v ./...
+      - run:
+          name: Static Code Analysis
+          command: go run honnef.co/go/tools/cmd/staticcheck
