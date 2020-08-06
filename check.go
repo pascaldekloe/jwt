@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash"
 	"math/big"
 )
 
@@ -107,6 +108,31 @@ func HMACCheck(token, secret []byte) (*Claims, error) {
 		return nil, err
 	}
 	digest := hmac.New(hash.New, secret)
+	digest.Write(token[:lastDot])
+
+	if !hmac.Equal(sig, digest.Sum(sig[len(sig):])) {
+		return nil, ErrSigMiss
+	}
+
+	return &c, c.applyPayload(token[firstDot+1:lastDot], sig)
+}
+
+// Check parses a JWT if, and only if, the signature checks out.
+// The return is an AlgError when the algorithm does not math.
+// Use Valid to complete the verification.
+func (h *HMAC) Check(token []byte) (*Claims, error) {
+	var c Claims
+	firstDot, lastDot, sig, alg, err := c.scan(token)
+	if err != nil {
+		return nil, err
+	}
+	if alg != h.alg {
+		return nil, AlgError(alg)
+	}
+
+	digest := h.digests.Get().(hash.Hash)
+	defer h.digests.Put(digest)
+	digest.Reset()
 	digest.Write(token[:lastDot])
 
 	if !hmac.Equal(sig, digest.Sum(sig[len(sig):])) {

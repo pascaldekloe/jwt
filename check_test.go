@@ -100,6 +100,29 @@ func TestHMACCheck(t *testing.T) {
 		if string(claims.Raw) != gold.claims {
 			t.Errorf("%d: got claims JSON %q, want %q", i, claims.Raw, gold.claims)
 		}
+
+		// extract alg
+		var header struct {
+			Alg string `json:"alg"`
+		}
+		if err := json.Unmarshal(claims.RawHeader, &header); err != nil {
+			t.Errorf("malformed RawHeader %q: %s", claims.RawHeader, err)
+			continue
+		}
+
+		h, err := NewHMAC(header.Alg, gold.secret)
+		if err != nil {
+			t.Errorf("NewHMAC(%q, %q) got error %v", header.Alg, gold.secret, err)
+			continue
+		}
+		claims, err = h.Check([]byte(gold.token))
+		if err != nil {
+			t.Errorf("%d: reuse check error: %s", i, err)
+			continue
+		}
+		if string(claims.Raw) != gold.claims {
+			t.Errorf("%d: reuse got claims JSON %q, want %q", i, claims.Raw, gold.claims)
+		}
 	}
 }
 
@@ -133,7 +156,7 @@ func TestRSACheck(t *testing.T) {
 	}
 }
 
-func TestCheckAudiences(t *testing.T) {
+func TestAcceptAudiences(t *testing.T) {
 	const token = "eyJhbGciOiJSUzUxMiJ9.eyJhdWQiOlsiT3RoZXIgQmFycnkiLCJEZXNlcnQgRWFnbGUiLG51bGxdfQ.TtztyCP1yhNcr6DfwuHul9pBNlIXiNNvEC-lob4feS6M6TxbBu0gdhM70vtbMX7eMRPvyd1_4upq01hbGKl50WTpFPtEyb-nGG0jBjgin2gLp8rugKSZHepipOVeKcLl7ruwk40AV-wc_8RbApyT2Bsl8p90MW6tMDobAZEEVt4"
 	claims, err := ParseWithoutCheck([]byte(token))
 	if err != nil {
@@ -161,6 +184,31 @@ func TestCheckAudiences(t *testing.T) {
 	}
 }
 
+func TestCheckAlgError(t *testing.T) {
+	const token = "eyJhbGciOiJkb2VzbnRleGlzdCJ9.e30.e30"
+	const want = AlgError("doesntexist")
+
+	if _, err := ECDSACheck([]byte(token), &testKeyEC256.PublicKey); err != want {
+		t.Errorf("ECDSA got error %v, want %v", err, want)
+	}
+	if _, err := HMACCheck([]byte(token), []byte("guest")); err != want {
+		t.Errorf("HMAC got error %v, want %v", err, want)
+	}
+	if _, err := RSACheck([]byte(token), &testKeyRSA1024.PublicKey); err != want {
+		t.Errorf("RSA got error %v, want %v", err, want)
+	}
+	if _, err := HMACCheck([]byte(token), []byte("guest")); err != want {
+		t.Errorf("NewHMAC got error %v, want %v", err, want)
+	}
+	h, err := NewHMAC(HS512, []byte("guest"))
+	if err != nil {
+		t.Fatalf("NewHMAC got error %v", err)
+	}
+	if _, err := h.Check([]byte(token)); err != want {
+		t.Errorf("HMAC reuse got error %v, want %v", err, want)
+	}
+}
+
 func TestCheckMiss(t *testing.T) {
 	_, err := ECDSACheck([]byte(goldenECDSAs[0].token), &testKeyEC521.PublicKey)
 	if err != ErrSigMiss {
@@ -184,6 +232,15 @@ func TestCheckMiss(t *testing.T) {
 	_, err = RSACheck([]byte(goldenRSAs[0].token), &testKeyRSA4096.PublicKey)
 	if err != ErrSigMiss {
 		t.Errorf("RSA check got error %v, want %v", err, ErrSigMiss)
+	}
+
+	h, err := NewHMAC(HS256, []byte("wrong"))
+	if err != nil {
+		t.Fatal("NewHMAC error:", err)
+	}
+	_, err = h.Check([]byte(goldenHMACs[0].token))
+	if err != ErrSigMiss {
+		t.Errorf("HMAC reuse check got error %v, want %v", err, ErrSigMiss)
 	}
 }
 
@@ -289,14 +346,19 @@ func TestRejectNone(t *testing.T) {
 }
 
 func TestCheckBrokenBase64(t *testing.T) {
+	h, err := NewHMAC(HS256, []byte("guest"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	want := "jwt: malformed JOSE header: "
-	_, err := HMACCheck([]byte("*yJhbGciOiJIUzI1NiJ9.e30.4E_Bsx-pJi3kOW9wVXN8CgbATwP09D9V5gxh9-9zSZ0"), []byte("guest"))
+	_, err = h.Check([]byte("*yJhbGciOiJIUzI1NiJ9.e30.4E_Bsx-pJi3kOW9wVXN8CgbATwP09D9V5gxh9-9zSZ0"))
 	if err == nil || !strings.HasPrefix(err.Error(), want) {
 		t.Errorf("corrupt base64 in header got error %v, want %s…", err, want)
 	}
 
 	want = "jwt: malformed payload: "
-	_, err = HMACCheck([]byte("eyJhbGciOiJIUzI1NiJ9.#.yuPeHF3zFJaCselXdCR23yxl5Don3rD3ABnzcO_460M"), []byte("guest"))
+	_, err = h.Check([]byte("eyJhbGciOiJIUzI1NiJ9.#.yuPeHF3zFJaCselXdCR23yxl5Don3rD3ABnzcO_460M"))
 	if err == nil || !strings.HasPrefix(err.Error(), want) {
 		t.Errorf("corrupt base64 in payload got error %v, want %s…", err, want)
 	}

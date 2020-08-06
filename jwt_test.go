@@ -148,6 +148,22 @@ zy+yxL9GXRV+vvJLdKOJfTWihiG8i2qiIMmX0XSV8qUuvNCfruCfr4vGtWDRuFs/
 EeRpjDtIq46JS/EMcvoetl0Ch8l2tGLC1fpOD4kQsd9TSaTMO3MSy/5WIGg=
 -----END RSA PRIVATE KEY-----`)
 
+func TestNewHMACAlgError(t *testing.T) {
+	unknownAlg := "doesntexist"
+	want := AlgError("doesntexist")
+
+	if _, err := NewHMAC(unknownAlg, []byte("guest")); err != want {
+		t.Errorf("NewHMAC got error %v, want %v", err, want)
+	}
+}
+
+func TestNewHMACNoSecret(t *testing.T) {
+	_, err := NewHMAC("HS256", []byte{})
+	if err != errNoSecret {
+		t.Errorf("got error %v, want %v", err, errNoSecret)
+	}
+}
+
 func TestNumericTimeMapping(t *testing.T) {
 	if got := NewNumericTime(time.Time{}); got != nil {
 		t.Errorf("NewNumericTime from zero value got %f, want nil", *got)

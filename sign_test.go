@@ -91,7 +91,11 @@ func TestSignHeaderErrors(t *testing.T) {
 		t.Errorf("got error %s, want not a JSON object", err)
 	}
 
-	_, err = new(Claims).FormatWithoutSign("none", json.RawMessage("{broken}"))
+	h, err := NewHMAC(HS256, []byte{1, 2, 3})
+	if err != nil {
+		t.Fatal("NewHMAC error", err)
+	}
+	_, err = h.Sign(new(Claims), json.RawMessage("{broken}"))
 	if !errors.As(err, new(*json.SyntaxError)) {
 		t.Errorf("got error %#v, want a json.SyntaxError", err)
 	}
@@ -140,7 +144,25 @@ func TestHMACSign(t *testing.T) {
 	c.Subject = "the world's greatest secret agent"
 	got, err := c.HMACSign("HS512", []byte("guest"))
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal("sign error", err)
+	}
+
+	want := "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ0aGUgd29ybGQncyBncmVhdGVzdCBzZWNyZXQgYWdlbnQifQ.6shd8lGY9wOn9NghWeVAwRFtTE9Y-HtYy3PFxPc2ulahSq2HMOR5b8T0OhUCnZzM0svC6VH3hgh8fACD_30ubQ"
+	if s := string(got); s != want {
+		t.Errorf("got %q, want %q", s, want)
+	}
+}
+
+func TestHMACSignReuse(t *testing.T) {
+	var c Claims
+	c.Subject = "the world's greatest secret agent"
+	h, err := NewHMAC("HS512", []byte("guest"))
+	if err != nil {
+		t.Fatal("NewHMAC error", err)
+	}
+	got, err := h.Sign(&c)
+	if err != nil {
+		t.Fatal("sign error", err)
 	}
 
 	want := "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ0aGUgd29ybGQncyBncmVhdGVzdCBzZWNyZXQgYWdlbnQifQ.6shd8lGY9wOn9NghWeVAwRFtTE9Y-HtYy3PFxPc2ulahSq2HMOR5b8T0OhUCnZzM0svC6VH3hgh8fACD_30ubQ"
@@ -179,7 +201,7 @@ func TestRSA(t *testing.T) {
 	}
 }
 
-func TestSignNoSecret(t *testing.T) {
+func TestHMACSignNoSecret(t *testing.T) {
 	_, err := new(Claims).HMACSign(HS512, []byte{})
 	if err != errNoSecret {
 		t.Errorf("got error %v, want %v", err, errNoSecret)
@@ -201,8 +223,8 @@ func TestSignHashNotLinked(t *testing.T) {
 }
 
 func TestSignAlgError(t *testing.T) {
-	unknownAlg := "doesntexist"
-	want := AlgError("doesntexist")
+	const unknownAlg = "doesntexist"
+	const want = AlgError(unknownAlg)
 
 	c := new(Claims)
 	if _, err := c.ECDSASign(unknownAlg, testKeyEC256); err != want {

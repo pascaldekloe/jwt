@@ -101,6 +101,22 @@ func BenchmarkHMAC(b *testing.B) {
 			}
 			b.ReportMetric(float64(tokenLen)/float64(b.N), "B/token")
 		})
+
+		b.Run("sign-"+alg+"-reuse", func(b *testing.B) {
+			hmac, err := NewHMAC(alg, secret)
+			if err != nil {
+				b.Fatal(err)
+			}
+			var tokenLen int
+			for i := 0; i < b.N; i++ {
+				token, err := hmac.Sign(benchClaims)
+				if err != nil {
+					b.Fatal(err)
+				}
+				tokenLen += len(token)
+			}
+			b.ReportMetric(float64(tokenLen)/float64(b.N), "B/token")
+		})
 	}
 
 	for _, alg := range algs {
@@ -112,6 +128,19 @@ func BenchmarkHMAC(b *testing.B) {
 		b.Run("check-"+alg, func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_, err := HMACCheck(token, secret)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+
+		b.Run("check-"+alg+"-reuse", func(b *testing.B) {
+			hmac, err := NewHMAC(alg, secret)
+			if err != nil {
+				b.Fatal(err)
+			}
+			for i := 0; i < b.N; i++ {
+				_, err := hmac.Check(token)
 				if err != nil {
 					b.Fatal(err)
 				}

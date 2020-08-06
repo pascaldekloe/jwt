@@ -4,6 +4,7 @@ package jwt
 
 import (
 	"crypto"
+	"crypto/hmac"
 	"crypto/rsa"
 	_ "crypto/sha256" // link into binary
 	_ "crypto/sha512" // link into binary
@@ -12,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sync"
 	"time"
 )
 
@@ -81,6 +83,28 @@ func (e AlgError) Error() string {
 
 // ErrNoSecret protects against programming and configuration mistakes.
 var errNoSecret = errors.New("jwt: empty secret rejected")
+
+// HMAC is a reusable instance, optimized for high usage scenarios.
+//
+// Multiple goroutines may invoke methods on an HMAC simultaneously.
+type HMAC struct {
+	alg     string
+	digests sync.Pool
+}
+
+// NewHMAC returns a new reusable instance.
+func NewHMAC(alg string, secret []byte) (*HMAC, error) {
+	if len(secret) == 0 {
+		return nil, errNoSecret
+	}
+	hash, err := hashLookup(alg, HMACAlgs)
+	if err != nil {
+		return nil, err
+	}
+	return &HMAC{alg, sync.Pool{New: func() interface{} {
+		return hmac.New(hash.New, secret)
+	}}}, nil
+}
 
 var encoding = base64.RawURLEncoding
 

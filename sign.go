@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash"
 	"strconv"
 )
 
@@ -112,6 +113,28 @@ func (c *Claims) HMACSign(alg string, secret []byte, extraHeaders ...json.RawMes
 	digest := hmac.New(hash.New, secret)
 
 	token, err = c.newToken(alg, encoding.EncodedLen(digest.Size()), extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+	digest.Write(token)
+
+	token = append(token, '.')
+	// use tail as a buffer; encoder won't overhaul source space
+	bufOffset := cap(token) - digest.Size()
+	encoding.Encode(token[len(token):cap(token)], digest.Sum(token[bufOffset:bufOffset]))
+	return token[:cap(token)], nil
+}
+
+// Sign updates the Raw fields on c and returns a new JWT.
+//
+// The JOSE header (content) can be extended with extraHeaders, in the form of
+// JSON objects. Redundant and/or duplicate keys are applied as provided.
+func (h *HMAC) Sign(c *Claims, extraHeaders ...json.RawMessage) (token []byte, err error) {
+	digest := h.digests.Get().(hash.Hash)
+	defer h.digests.Put(digest)
+	digest.Reset()
+
+	token, err = c.newToken(h.alg, encoding.EncodedLen(digest.Size()), extraHeaders)
 	if err != nil {
 		return nil, err
 	}
