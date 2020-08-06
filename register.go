@@ -73,7 +73,7 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 		for _, secret := range keyOptions {
 			digest := hmac.New(hash.New, secret)
 			digest.Write(token[:lastDot])
-			if hmac.Equal(sig, digest.Sum(sig[len(sig):])) {
+			if hmac.Equal(sig, digest.Sum(nil)) {
 				return &c, c.applyPayload()
 			}
 		}
@@ -99,7 +99,7 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 
 		digest := hash.New()
 		digest.Write(token[:lastDot])
-		digestSum := digest.Sum(sig[len(sig):])
+		digestSum := digest.Sum(nil)
 		for _, key := range keyOptions {
 			if alg != "" && alg[0] == 'P' {
 				err = rsa.VerifyPSS(key, hash, digestSum, sig, &pSSOptions)
@@ -134,7 +134,7 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 		s := new(big.Int).SetBytes(sig[len(sig)/2:])
 		digest := hash.New()
 		digest.Write(token[:lastDot])
-		digestSum := digest.Sum(sig[:0])
+		digestSum := digest.Sum(nil)
 		for _, key := range keyOptions {
 			if ecdsa.Verify(key, digestSum, r, s) {
 				return &c, c.applyPayload()
