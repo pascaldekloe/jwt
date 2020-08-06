@@ -81,6 +81,10 @@ func (e AlgError) Error() string {
 	return fmt.Sprintf("jwt: algorithm %q not in use", string(e))
 }
 
+// ErrUnsecured signals a token without a signature, as described in RFC 7519,
+// section 6.
+const ErrUnsecured = AlgError("none")
+
 // ErrNoSecret protects against programming and configuration mistakes.
 var errNoSecret = errors.New("jwt: empty secret rejected")
 

@@ -10,7 +10,7 @@
 * Dependency free
 * Key [management](https://godoc.org/github.com/pascaldekloe/jwt#KeyRegister)
 
-The API enforces secure use by design. Unsigned tokens are rejected.
+The API enforces secure use by design. Unsigned tokens are [rejected](https://godoc.org/github.com/pascaldekloe/jwt#ErrUnsecured).
 No support for encrypted tokens either—use wire encryption instead.
 
 This is free and unencumbered software released into the

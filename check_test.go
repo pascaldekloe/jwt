@@ -334,21 +334,6 @@ func TestCheckPart(t *testing.T) {
 	}
 }
 
-func TestRejectNone(t *testing.T) {
-	// example from RFC 7519, subsection 6.1.
-	const token = "eyJhbGciOiJub25lIn0.eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGFtcGxlLmNvbS9pc19yb290Ijp0cnVlfQ."
-	const want = `jwt: algorithm "none" not in use`
-
-	_, err := HMACCheck([]byte(token), []byte("guest"))
-	if err == nil || err.Error() != want {
-		t.Errorf("HMACCheck got error %v, want %s", err, want)
-	}
-	_, err = new(KeyRegister).Check([]byte(token))
-	if err == nil || err.Error() != want {
-		t.Errorf("KeyRegister Check got error %v, want %s", err, want)
-	}
-}
-
 func TestCheckBrokenBase64(t *testing.T) {
 	h, err := NewHMAC(HS256, []byte("guest"))
 	if err != nil {

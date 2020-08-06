@@ -148,6 +148,25 @@ zy+yxL9GXRV+vvJLdKOJfTWihiG8i2qiIMmX0XSV8qUuvNCfruCfr4vGtWDRuFs/
 EeRpjDtIq46JS/EMcvoetl0Ch8l2tGLC1fpOD4kQsd9TSaTMO3MSy/5WIGg=
 -----END RSA PRIVATE KEY-----`)
 
+func TestErrUnsecured(t *testing.T) {
+	// example from RFC 7519, subsection 6.1.
+	const token = "eyJhbGciOiJub25lIn0.eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGFtcGxlLmNvbS9pc19yb290Ijp0cnVlfQ."
+
+	_, err := HMACCheck([]byte(token), []byte("guest"))
+	if err != ErrUnsecured {
+		t.Errorf("HMACCheck got error %v, want ErrUnsecured", err)
+	}
+	_, err = new(KeyRegister).Check([]byte(token))
+	if err != ErrUnsecured {
+		t.Errorf("KeyRegister Check got error %v, want ErrUnsecured", err)
+	}
+
+	const want = `jwt: algorithm "none" not in use`
+	if got := ErrUnsecured.Error(); got != want {
+		t.Errorf("Error got %q, want %q", got, want)
+	}
+}
+
 func TestNewHMACAlgError(t *testing.T) {
 	unknownAlg := "doesntexist"
 	want := AlgError("doesntexist")
