@@ -16,7 +16,7 @@ import (
 // ErrSigMiss means the signature check failed.
 var ErrSigMiss = errors.New("jwt: signature mismatch")
 
-var errPart = errors.New("jwt: missing base64 part")
+var errNoPayload = errors.New("jwt: one part only—payload absent")
 
 // “Producers MUST NOT use the empty list "[]" as the "crit" value.”
 // — “JSON Web Signature (JWS)” RFC 7515, subsection 4.1.11
@@ -35,12 +35,12 @@ var EvalCrit = func(token []byte, crit []string, header json.RawMessage) error {
 // ParseWithoutCheck skips the signature validation.
 func ParseWithoutCheck(token []byte) (*Claims, error) {
 	var c Claims
-	firstDot, lastDot, sig, _, err := c.scan(token)
+	_, _, _, err := c.scan(token)
 	if err != nil {
 		return nil, err
 	}
 
-	return &c, c.applyPayload(token[firstDot+1:lastDot], sig)
+	return &c, c.applyPayload()
 }
 
 // ECDSACheck parses a JWT if, and only if, the signature checks out.
@@ -48,7 +48,7 @@ func ParseWithoutCheck(token []byte) (*Claims, error) {
 // Use Valid to complete the verification.
 func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
 	var c Claims
-	firstDot, lastDot, sig, alg, err := c.scan(token)
+	bodyLen, sig, alg, err := c.scan(token)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
 		return nil, err
 	}
 	digest := hash.New()
-	digest.Write(token[:lastDot])
+	digest.Write(token[:bodyLen])
 
 	r := new(big.Int).SetBytes(sig[:len(sig)/2])
 	s := new(big.Int).SetBytes(sig[len(sig)/2:])
@@ -66,14 +66,14 @@ func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
 		return nil, ErrSigMiss
 	}
 
-	return &c, c.applyPayload(token[firstDot+1:lastDot], sig)
+	return &c, c.applyPayload()
 }
 
 // EdDSACheck parses a JWT if, and only if, the signature checks out.
 // Use Valid to complete the verification.
 func EdDSACheck(token []byte, key ed25519.PublicKey) (*Claims, error) {
 	var c Claims
-	firstDot, lastDot, sig, alg, err := c.scan(token)
+	bodyLen, sig, alg, err := c.scan(token)
 	if err != nil {
 		return nil, err
 	}
@@ -82,11 +82,11 @@ func EdDSACheck(token []byte, key ed25519.PublicKey) (*Claims, error) {
 		return nil, AlgError(alg)
 	}
 
-	if !ed25519.Verify(key, token[:lastDot], sig) {
+	if !ed25519.Verify(key, token[:bodyLen], sig) {
 		return nil, ErrSigMiss
 	}
 
-	return &c, c.applyPayload(token[firstDot+1:lastDot], sig)
+	return &c, c.applyPayload()
 }
 
 // HMACCheck parses a JWT if, and only if, the signature checks out.
@@ -98,7 +98,7 @@ func HMACCheck(token, secret []byte) (*Claims, error) {
 	}
 
 	var c Claims
-	firstDot, lastDot, sig, alg, err := c.scan(token)
+	bodyLen, sig, alg, err := c.scan(token)
 	if err != nil {
 		return nil, err
 	}
@@ -108,13 +108,13 @@ func HMACCheck(token, secret []byte) (*Claims, error) {
 		return nil, err
 	}
 	digest := hmac.New(hash.New, secret)
-	digest.Write(token[:lastDot])
+	digest.Write(token[:bodyLen])
 
 	if !hmac.Equal(sig, digest.Sum(nil)) {
 		return nil, ErrSigMiss
 	}
 
-	return &c, c.applyPayload(token[firstDot+1:lastDot], sig)
+	return &c, c.applyPayload()
 }
 
 // Check parses a JWT if, and only if, the signature checks out.
@@ -122,7 +122,7 @@ func HMACCheck(token, secret []byte) (*Claims, error) {
 // Use Valid to complete the verification.
 func (h *HMAC) Check(token []byte) (*Claims, error) {
 	var c Claims
-	firstDot, lastDot, sig, alg, err := c.scan(token)
+	bodyLen, sig, alg, err := c.scan(token)
 	if err != nil {
 		return nil, err
 	}
@@ -133,13 +133,13 @@ func (h *HMAC) Check(token []byte) (*Claims, error) {
 	digest := h.digests.Get().(hash.Hash)
 	defer h.digests.Put(digest)
 	digest.Reset()
-	digest.Write(token[:lastDot])
+	digest.Write(token[:bodyLen])
 
 	if !hmac.Equal(sig, digest.Sum(nil)) {
 		return nil, ErrSigMiss
 	}
 
-	return &c, c.applyPayload(token[firstDot+1:lastDot], sig)
+	return &c, c.applyPayload()
 }
 
 // RSACheck parses a JWT if, and only if, the signature checks out.
@@ -147,7 +147,7 @@ func (h *HMAC) Check(token []byte) (*Claims, error) {
 // Use Valid to complete the verification.
 func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
 	var c Claims
-	firstDot, lastDot, sig, alg, err := c.scan(token)
+	bodyLen, sig, alg, err := c.scan(token)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
 		return nil, err
 	}
 	digest := hash.New()
-	digest.Write(token[:lastDot])
+	digest.Write(token[:bodyLen])
 
 	if alg != "" && alg[0] == 'P' {
 		err = rsa.VerifyPSS(key, hash, digest.Sum(nil), sig, &pSSOptions)
@@ -168,21 +168,63 @@ func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
 		return nil, ErrSigMiss
 	}
 
-	return &c, c.applyPayload(token[firstDot+1:lastDot], sig)
+	return &c, c.applyPayload()
 }
 
-func (c *Claims) scan(token []byte) (firstDot, lastDot int, sig []byte, alg string, err error) {
-	firstDot = bytes.IndexByte(token, '.')
-	lastDot = bytes.LastIndexByte(token, '.')
-	if lastDot <= firstDot {
-		// zero or one dot
-		return 0, 0, nil, "", errPart
+// DecodeParts reads up to three base64 parts. The result goes in c.RawHeader, c.Raw and sig.
+func (c *Claims) decodeParts(token []byte) (bodyLen int, sig []byte, err error) {
+	buf := make([]byte, encoding.DecodedLen(len(token)))
+
+	// header
+	i := bytes.IndexByte(token, '.')
+	if i < 0 {
+		i = len(token)
+	}
+	n, err := encoding.Decode(buf, token[:i])
+	if err != nil {
+		return 0, nil, fmt.Errorf("jwt: malformed JOSE header: %w", err)
+	}
+	c.RawHeader = json.RawMessage(buf[:n])
+	buf = buf[n:]
+
+	if i >= len(token) {
+		return len(token), nil, nil
+	}
+	i++ // pass first dot
+
+	// payload
+	bodyLen = i + bytes.IndexByte(token[i:], '.')
+	if bodyLen < i {
+		bodyLen = len(token)
+	}
+	n, err = encoding.Decode(buf, token[i:bodyLen])
+	if err != nil {
+		return 0, nil, fmt.Errorf("jwt: malformed payload: %w", err)
+	}
+	c.Raw = json.RawMessage(buf[:n])
+	buf = buf[n:]
+
+	if bodyLen >= len(token) {
+		return bodyLen, nil, nil
 	}
 
-	buf := make([]byte, encoding.DecodedLen(len(token)))
-	n, err := encoding.Decode(buf, token[:firstDot])
+	// signature
+	remain := token[bodyLen+1:]
+	end := bytes.IndexByte(remain, '.')
+	if end >= 0 {
+		remain = remain[:end]
+	}
+	n, err = encoding.Decode(buf, remain)
 	if err != nil {
-		return 0, 0, nil, "", fmt.Errorf("jwt: malformed JOSE header: %w", err)
+		return 0, nil, fmt.Errorf("jwt: malformed signature: %w", err)
+	}
+	return bodyLen, buf[:n], nil
+}
+
+func (c *Claims) scan(token []byte) (bodyLen int, sig []byte, alg string, err error) {
+	bodyLen, sig, err = c.decodeParts(token)
+	if err != nil {
+		return 0, nil, "", err
 	}
 
 	var header struct {
@@ -190,43 +232,32 @@ func (c *Claims) scan(token []byte) (firstDot, lastDot int, sig []byte, alg stri
 		Alg  string   `json:"alg"`
 		Crit []string `json:"crit"`
 	}
-	if err := json.Unmarshal(buf[:n], &header); err != nil {
-		return 0, 0, nil, "", fmt.Errorf("jwt: malformed JOSE header: %w", err)
+	if err := json.Unmarshal([]byte(c.RawHeader), &header); err != nil {
+		return 0, nil, "", fmt.Errorf("jwt: malformed JOSE header: %w", err)
 	}
-	c.RawHeader = json.RawMessage(buf[:n])
-	buf = buf[n:]
 
+	if len(c.Raw) == 0 {
+		return 0, nil, "", errNoPayload
+	}
+
+	// apply JOSE
 	alg = header.Alg
 	c.KeyID = header.Kid
 	if header.Crit != nil {
 		if len(header.Crit) == 0 {
-			return 0, 0, nil, "", errCritEmpty
+			return 0, nil, "", errCritEmpty
 		}
 		if err := EvalCrit(token, header.Crit, c.RawHeader); err != nil {
-			return 0, 0, nil, "", err
+			return 0, nil, "", err
 		}
 	}
-
-	// signature
-	n, err = encoding.Decode(buf, token[lastDot+1:])
-	if err != nil {
-		return 0, 0, nil, "", fmt.Errorf("jwt: malformed signature: %w", err)
-	}
-	sig = buf[:n]
 
 	return
 }
 
-// Buf remains in use as the Raw field.
-func (c *Claims) applyPayload(encoded, buf []byte) error {
-	buf = buf[:cap(buf)]
-	n, err := encoding.Decode(buf, encoded)
+func (c *Claims) applyPayload() error {
+	err := json.Unmarshal([]byte(c.Raw), &c.Set)
 	if err != nil {
-		return fmt.Errorf("jwt: malformed payload: %w", err)
-	}
-	buf = buf[:n]
-	c.Raw = json.RawMessage(buf)
-	if err = json.Unmarshal(buf, &c.Set); err != nil {
 		return fmt.Errorf("jwt: malformed payload: %w", err)
 	}
 

@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/json"
 	"errors"
 	"math/big"
 	"testing"
@@ -225,6 +226,13 @@ EUTC5n7n+Qeyo3rL3iLhC/jn3rouX1FA5J7baL17KzDSiF5eQVlLOIfy
 	}
 }
 
+func TestKeyRegisterCheckBroken(t *testing.T) {
+	_, err := new(KeyRegister).Check([]byte("broken"))
+	if !errors.As(err, new(*json.SyntaxError)) {
+		t.Errorf("got error %#v, want a json.SyntaxError", err)
+	}
+}
+
 func TestKeyRegisterLoadPublicKeys(t *testing.T) {
 	const pem = `Public Keys
 RSA:
@@ -404,10 +412,6 @@ P9j/1Whc92wzd4Osod3U6Tw9g+C1LuHuHOoLJhj5nUQQcP8UQk6jzKPwr4L4uKAc
 	}
 
 	keys.Secrets = append(keys.Secrets, []byte{1, 2})
-
-	if _, err := keys.Check([]byte("broken")); err != errPart {
-		t.Error("broken token got error:", err)
-	}
 
 	// check unsupported algorithm
 	const encryptedToken = "eyJhbGciOiJSU0ExXzUiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0.QR1Owv2ug2WyPBnbQrRARTeEk9kDO2w8qDcjiHnSJflSdv1iNqhWXaKH4MqAkQtMoNfABIPJaZm0HaA415sv3aeuBWnD8J-Ui7Ah6cWafs3ZwwFKDFUUsWHSK-IPKxLGTkND09XyjORj_CHAgOPJ-Sd8ONQRnJvWn_hXV1BNMHzUjPyYwEsRhDhzjAD26imasOTsgruobpYGoQcXUwFDn7moXPRfDE8-NoQX7N7ZYMmpUDkR-Cx9obNGwJQ3nM52YCitxoQVPzjbl7WBuB7AohdBoZOdZ24WlN1lVIeh8v1K4krB8xgKvRU8kgFrEn_a1rZgN5TiysnmzTROF869lQ.AxY8DCtDaGlsbGljb3RoZQ.MKOle7UQrG6nSxTLX6Mqwt0orbHvAKeWnDYvpIAeZ72deHxz3roJDXQyhxx0wKaMHDjUEOKIwrtkHthpqEanSBNYHZgmNOV7sln1Eu9g3J8.fiK51VwhsxJ-siBMR-YFiA"

@@ -34,7 +34,7 @@ type KeyRegister struct {
 // Use Claims.Valid to complete the verification.
 func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 	var c Claims
-	firstDot, lastDot, sig, alg, err := c.scan(token)
+	lastDot, sig, alg, err := c.scan(token)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 
 		for _, key := range keyOptions {
 			if ed25519.Verify(key, token[:lastDot], sig) {
-				return &c, c.applyPayload(token[firstDot+1:lastDot], sig)
+				return &c, c.applyPayload()
 			}
 		}
 		return nil, ErrSigMiss
@@ -74,7 +74,7 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 			digest := hmac.New(hash.New, secret)
 			digest.Write(token[:lastDot])
 			if hmac.Equal(sig, digest.Sum(sig[len(sig):])) {
-				return &c, c.applyPayload(token[firstDot+1:lastDot], sig)
+				return &c, c.applyPayload()
 			}
 		}
 		return nil, ErrSigMiss
@@ -107,7 +107,7 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 				err = rsa.VerifyPKCS1v15(key, hash, digestSum, sig)
 			}
 			if err == nil {
-				return &c, c.applyPayload(token[firstDot+1:lastDot], sig)
+				return &c, c.applyPayload()
 			}
 		}
 		return nil, ErrSigMiss
@@ -137,7 +137,7 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 		digestSum := digest.Sum(sig[:0])
 		for _, key := range keyOptions {
 			if ecdsa.Verify(key, digestSum, r, s) {
-				return &c, c.applyPayload(token[firstDot+1:lastDot], sig)
+				return &c, c.applyPayload()
 			}
 		}
 		return nil, ErrSigMiss
