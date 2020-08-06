@@ -62,7 +62,7 @@ func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
 
 	r := new(big.Int).SetBytes(sig[:len(sig)/2])
 	s := new(big.Int).SetBytes(sig[len(sig)/2:])
-	if !ecdsa.Verify(key, digest.Sum(sig[:0]), r, s) {
+	if !ecdsa.Verify(key, digest.Sum(nil), r, s) {
 		return nil, ErrSigMiss
 	}
 
@@ -110,7 +110,7 @@ func HMACCheck(token, secret []byte) (*Claims, error) {
 	digest := hmac.New(hash.New, secret)
 	digest.Write(token[:lastDot])
 
-	if !hmac.Equal(sig, digest.Sum(sig[len(sig):])) {
+	if !hmac.Equal(sig, digest.Sum(nil)) {
 		return nil, ErrSigMiss
 	}
 
@@ -135,7 +135,7 @@ func (h *HMAC) Check(token []byte) (*Claims, error) {
 	digest.Reset()
 	digest.Write(token[:lastDot])
 
-	if !hmac.Equal(sig, digest.Sum(sig[len(sig):])) {
+	if !hmac.Equal(sig, digest.Sum(nil)) {
 		return nil, ErrSigMiss
 	}
 
@@ -160,9 +160,9 @@ func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
 	digest.Write(token[:lastDot])
 
 	if alg != "" && alg[0] == 'P' {
-		err = rsa.VerifyPSS(key, hash, digest.Sum(sig[len(sig):]), sig, &pSSOptions)
+		err = rsa.VerifyPSS(key, hash, digest.Sum(nil), sig, &pSSOptions)
 	} else {
-		err = rsa.VerifyPKCS1v15(key, hash, digest.Sum(sig[len(sig):]), sig)
+		err = rsa.VerifyPKCS1v15(key, hash, digest.Sum(nil), sig)
 	}
 	if err != nil {
 		return nil, ErrSigMiss

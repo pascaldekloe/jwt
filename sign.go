@@ -48,7 +48,7 @@ func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey, extraHeaders ...js
 	}
 	digest.Write(token)
 
-	r, s, err := ecdsa.Sign(rand.Reader, key, digest.Sum(token[len(token):]))
+	r, s, err := ecdsa.Sign(rand.Reader, key, digest.Sum(nil))
 	if err != nil {
 		return nil, err
 	}
@@ -119,9 +119,7 @@ func (c *Claims) HMACSign(alg string, secret []byte, extraHeaders ...json.RawMes
 	digest.Write(token)
 
 	token = append(token, '.')
-	// use tail as a buffer; encoder won't overhaul source space
-	bufOffset := cap(token) - digest.Size()
-	encoding.Encode(token[len(token):cap(token)], digest.Sum(token[bufOffset:bufOffset]))
+	encoding.Encode(token[len(token):cap(token)], digest.Sum(nil))
 	return token[:cap(token)], nil
 }
 
@@ -141,9 +139,7 @@ func (h *HMAC) Sign(c *Claims, extraHeaders ...json.RawMessage) (token []byte, e
 	digest.Write(token)
 
 	token = append(token, '.')
-	// use tail as a buffer; encoder won't overhaul source space
-	bufOffset := cap(token) - digest.Size()
-	encoding.Encode(token[len(token):cap(token)], digest.Sum(token[bufOffset:bufOffset]))
+	encoding.Encode(token[len(token):cap(token)], digest.Sum(nil))
 	return token[:cap(token)], nil
 }
 
@@ -166,12 +162,10 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey, extraHeaders ...json.R
 	digest.Write(token)
 
 	var sig []byte
-	// use signature space as a buffer while not set
-	buf := token[len(token):]
 	if alg != "" && alg[0] == 'P' {
-		sig, err = rsa.SignPSS(rand.Reader, key, hash, digest.Sum(buf), &pSSOptions)
+		sig, err = rsa.SignPSS(rand.Reader, key, hash, digest.Sum(nil), &pSSOptions)
 	} else {
-		sig, err = rsa.SignPKCS1v15(rand.Reader, key, hash, digest.Sum(buf))
+		sig, err = rsa.SignPKCS1v15(rand.Reader, key, hash, digest.Sum(nil))
 	}
 	if err != nil {
 		return nil, err
