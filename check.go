@@ -62,7 +62,8 @@ func ECDSACheck(token []byte, key *ecdsa.PublicKey) (*Claims, error) {
 
 	r := new(big.Int).SetBytes(sig[:len(sig)/2])
 	s := new(big.Int).SetBytes(sig[len(sig)/2:])
-	if !ecdsa.Verify(key, digest.Sum(nil), r, s) {
+	buf := sig[len(sig):]
+	if !ecdsa.Verify(key, digest.Sum(buf), r, s) {
 		return nil, ErrSigMiss
 	}
 
@@ -110,7 +111,8 @@ func HMACCheck(token, secret []byte) (*Claims, error) {
 	digest := hmac.New(hash.New, secret)
 	digest.Write(token[:bodyLen])
 
-	if !hmac.Equal(sig, digest.Sum(nil)) {
+	buf := sig[len(sig):]
+	if !hmac.Equal(sig, digest.Sum(buf)) {
 		return nil, ErrSigMiss
 	}
 
@@ -135,7 +137,8 @@ func (h *HMAC) Check(token []byte) (*Claims, error) {
 	digest.Reset()
 	digest.Write(token[:bodyLen])
 
-	if !hmac.Equal(sig, digest.Sum(nil)) {
+	buf := sig[len(sig):]
+	if !hmac.Equal(sig, digest.Sum(buf)) {
 		return nil, ErrSigMiss
 	}
 
@@ -159,10 +162,11 @@ func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
 	digest := hash.New()
 	digest.Write(token[:bodyLen])
 
+	buf := sig[len(sig):]
 	if alg != "" && alg[0] == 'P' {
-		err = rsa.VerifyPSS(key, hash, digest.Sum(nil), sig, &pSSOptions)
+		err = rsa.VerifyPSS(key, hash, digest.Sum(buf), sig, &pSSOptions)
 	} else {
-		err = rsa.VerifyPKCS1v15(key, hash, digest.Sum(nil), sig)
+		err = rsa.VerifyPKCS1v15(key, hash, digest.Sum(buf), sig)
 	}
 	if err != nil {
 		return nil, ErrSigMiss
@@ -173,7 +177,8 @@ func RSACheck(token []byte, key *rsa.PublicKey) (*Claims, error) {
 
 // DecodeParts reads up to three base64 parts. The result goes in c.RawHeader, c.Raw and sig.
 func (c *Claims) decodeParts(token []byte) (bodyLen int, sig []byte, err error) {
-	buf := make([]byte, encoding.DecodedLen(len(token)))
+	// fits all 3 parts decoded + buffer space for Hash.Sum.
+	buf := make([]byte, len(token))
 
 	// header
 	i := bytes.IndexByte(token, '.')

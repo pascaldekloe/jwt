@@ -38,6 +38,8 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 	if err != nil {
 		return nil, err
 	}
+	body := token[:lastDot]
+	buf := sig[len(sig):]
 
 	if alg == EdDSA {
 		keyOptions := keys.EdDSAs
@@ -51,7 +53,7 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 		}
 
 		for _, key := range keyOptions {
-			if ed25519.Verify(key, token[:lastDot], sig) {
+			if ed25519.Verify(key, body, sig) {
 				return &c, c.applyPayload()
 			}
 		}
@@ -72,8 +74,8 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 
 		for _, secret := range keyOptions {
 			digest := hmac.New(hash.New, secret)
-			digest.Write(token[:lastDot])
-			if hmac.Equal(sig, digest.Sum(nil)) {
+			digest.Write(body)
+			if hmac.Equal(sig, digest.Sum(buf)) {
 				return &c, c.applyPayload()
 			}
 		}
@@ -98,8 +100,8 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 		}
 
 		digest := hash.New()
-		digest.Write(token[:lastDot])
-		digestSum := digest.Sum(nil)
+		digest.Write(body)
+		digestSum := digest.Sum(buf)
 		for _, key := range keyOptions {
 			if alg != "" && alg[0] == 'P' {
 				err = rsa.VerifyPSS(key, hash, digestSum, sig, &pSSOptions)
@@ -133,8 +135,8 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 		r := new(big.Int).SetBytes(sig[:len(sig)/2])
 		s := new(big.Int).SetBytes(sig[len(sig)/2:])
 		digest := hash.New()
-		digest.Write(token[:lastDot])
-		digestSum := digest.Sum(nil)
+		digest.Write(body)
+		digestSum := digest.Sum(buf)
 		for _, key := range keyOptions {
 			if ecdsa.Verify(key, digestSum, r, s) {
 				return &c, c.applyPayload()

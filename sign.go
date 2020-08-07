@@ -48,7 +48,8 @@ func (c *Claims) ECDSASign(alg string, key *ecdsa.PrivateKey, extraHeaders ...js
 	}
 	digest.Write(token)
 
-	r, s, err := ecdsa.Sign(rand.Reader, key, digest.Sum(nil))
+	buf := token[len(token):]
+	r, s, err := ecdsa.Sign(rand.Reader, key, digest.Sum(buf))
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +120,9 @@ func (c *Claims) HMACSign(alg string, secret []byte, extraHeaders ...json.RawMes
 	digest.Write(token)
 
 	token = append(token, '.')
-	encoding.Encode(token[len(token):cap(token)], digest.Sum(nil))
+	i := cap(token) - digest.Size()
+	buf := token[i:i]
+	encoding.Encode(token[len(token):cap(token)], digest.Sum(buf))
 	return token[:cap(token)], nil
 }
 
@@ -139,7 +142,9 @@ func (h *HMAC) Sign(c *Claims, extraHeaders ...json.RawMessage) (token []byte, e
 	digest.Write(token)
 
 	token = append(token, '.')
-	encoding.Encode(token[len(token):cap(token)], digest.Sum(nil))
+	i := cap(token) - digest.Size()
+	buf := token[i:i]
+	encoding.Encode(token[len(token):cap(token)], digest.Sum(buf))
 	return token[:cap(token)], nil
 }
 
@@ -162,10 +167,11 @@ func (c *Claims) RSASign(alg string, key *rsa.PrivateKey, extraHeaders ...json.R
 	digest.Write(token)
 
 	var sig []byte
+	buf := token[len(token):]
 	if alg != "" && alg[0] == 'P' {
-		sig, err = rsa.SignPSS(rand.Reader, key, hash, digest.Sum(nil), &pSSOptions)
+		sig, err = rsa.SignPSS(rand.Reader, key, hash, digest.Sum(buf), &pSSOptions)
 	} else {
-		sig, err = rsa.SignPKCS1v15(rand.Reader, key, hash, digest.Sum(nil))
+		sig, err = rsa.SignPKCS1v15(rand.Reader, key, hash, digest.Sum(buf))
 	}
 	if err != nil {
 		return nil, err
