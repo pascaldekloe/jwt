@@ -678,11 +678,13 @@ type UnsupportedCurve struct{}
 
 func (UnsupportedCurve) Params() *elliptic.CurveParams {
 	return &elliptic.CurveParams{
-		P:  big.NewInt(1),
-		N:  big.NewInt(1),
-		B:  big.NewInt(1),
-		Gx: big.NewInt(1),
-		Gy: big.NewInt(1),
+		P:       big.NewInt(1),
+		N:       big.NewInt(1),
+		B:       big.NewInt(1),
+		Gx:      big.NewInt(1),
+		Gy:      big.NewInt(1),
+		BitSize: 100,
+		Name:    "unsupported",
 	}
 }
 func (UnsupportedCurve) IsOnCurve(x, y *big.Int) bool                         { return false }
