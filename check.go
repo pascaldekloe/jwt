@@ -120,7 +120,7 @@ func HMACCheck(token, secret []byte) (*Claims, error) {
 }
 
 // Check parses a JWT if, and only if, the signature checks out.
-// The return is an AlgError when the algorithm does not math.
+// The return is an AlgError when the algorithm does not match.
 // Use Valid to complete the verification.
 func (h *HMAC) Check(token []byte) (*Claims, error) {
 	var c Claims
