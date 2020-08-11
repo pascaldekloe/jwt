@@ -28,6 +28,11 @@ func TestCheckHeaders(t *testing.T) {
 	if _, err := HMACCheckHeader(req, goldenHMACs[0].secret); err != nil {
 		t.Errorf("HMAC %q error: %s", req.Header.Get("Authorization"), err)
 	}
+	if h, err := NewHMAC(HS256, goldenHMACs[0].secret); err != nil {
+		t.Errorf("NewHMAC error: %s", err)
+	} else if _, err := h.CheckHeader(req); err != nil {
+		t.Errorf("reusable HMAC %q error: %s", req.Header.Get("Authorization"), err)
+	}
 	req.Header.Set("Authorization", "bEArEr "+goldenRSAs[0].token)
 	if _, err := RSACheckHeader(req, goldenRSAs[0].key); err != nil {
 		t.Errorf("RSA %q error: %s", req.Header.Get("Authorization"), err)
@@ -45,6 +50,11 @@ func TestCheckHeadersPresence(t *testing.T) {
 	}
 	if _, err := HMACCheckHeader(req, nil); err != ErrNoHeader {
 		t.Errorf("HMAC check got %v, want %v", err, ErrNoHeader)
+	}
+	if h, err := NewHMAC(HS256, []byte("arbitary")); err != nil {
+		t.Errorf("NewHMAC error: %s", err)
+	} else if _, err := h.CheckHeader(req); err != ErrNoHeader {
+		t.Errorf("reusable HMAC check got %v, want %v", err, ErrNoHeader)
 	}
 	if _, err := RSACheckHeader(req, &testKeyRSA1024.PublicKey); err != ErrNoHeader {
 		t.Errorf("RSA check got %v, want %v", err, ErrNoHeader)
@@ -65,6 +75,11 @@ func TestCheckHeadersSchema(t *testing.T) {
 	}
 	if _, err := HMACCheckHeader(req, nil); err != errAuthSchema {
 		t.Errorf("HMAC check got %v, want %v", err, errAuthSchema)
+	}
+	if h, err := NewHMAC(HS256, []byte("arbitary")); err != nil {
+		t.Errorf("NewHMAC error: %s", err)
+	} else if _, err := h.CheckHeader(req); err != errAuthSchema {
+		t.Errorf("reusable HMAC check got %v, want %v", err, errAuthSchema)
 	}
 	if _, err := RSACheckHeader(req, &testKeyRSA1024.PublicKey); err != errAuthSchema {
 		t.Errorf("RSA check got %v, want %v", err, errAuthSchema)
@@ -88,6 +103,11 @@ func TestCheckHeadersAlg(t *testing.T) {
 	}
 	if _, err := HMACCheckHeader(req, []byte("guest")); err != want {
 		t.Errorf("HMAC got error %v, want %v", err, want)
+	}
+	if h, err := NewHMAC(HS256, []byte("guest")); err != nil {
+		t.Errorf("NewHMAC error: %s", err)
+	} else if _, err := h.CheckHeader(req); err != want {
+		t.Errorf("resuable HMAC got error %v, want %v", err, want)
 	}
 	if _, err := RSACheckHeader(req, &testKeyRSA1024.PublicKey); err != want {
 		t.Errorf("RSA got error %v, want %v", err, want)
@@ -116,6 +136,13 @@ func TestSignHeaders(t *testing.T) {
 	} else if _, err = HMACCheckHeader(req, []byte("guest")); err != nil {
 		t.Errorf("HMAC check %q error: %s", req.Header.Get("Authorization"), err)
 	}
+	if h, err := NewHMAC(HS256, []byte("guest")); err != nil {
+		t.Errorf("NewHMAC error: %s", err)
+	} else if err := h.SignHeader(&c, req); err != nil {
+		t.Error("reusable HMAC error:", err)
+	} else if _, err = h.CheckHeader(req); err != nil {
+		t.Errorf("reusable HMAC check %q error: %s", req.Header.Get("Authorization"), err)
+	}
 	if err := c.RSASignHeader(req, RS256, testKeyRSA1024); err != nil {
 		t.Error("RSA error:", err)
 	} else if _, err = RSACheckHeader(req, &testKeyRSA1024.PublicKey); err != nil {
@@ -141,6 +168,14 @@ func TestSignHeadersError(t *testing.T) {
 	err = c.HMACSignHeader(req, HS256, []byte("guest"))
 	if _, ok := err.(*json.UnsupportedValueError); !ok {
 		t.Errorf("HMAC got error %#v, want json.UnsupportedValueError", err)
+	}
+	h, err := NewHMAC(HS256, []byte("guest"))
+	if err != nil {
+		t.Errorf("NewHMAC error: %s", err)
+	}
+	err = h.SignHeader(&c, req)
+	if _, ok := err.(*json.UnsupportedValueError); !ok {
+		t.Errorf("reusable HMAC got error %#v, want json.UnsupportedValueError", err)
 	}
 	err = c.RSASignHeader(req, RS256, testKeyRSA1024)
 	if _, ok := err.(*json.UnsupportedValueError); !ok {

@@ -23,7 +23,7 @@ var ErrNoHeader = errors.New("jwt: no HTTP authorization header")
 
 var errAuthSchema = errors.New("jwt: want Bearer schema")
 
-// ECDSACheckHeader applies ECDSACheck on a HTTP request.
+// ECDSACheckHeader applies ECDSACheck on an HTTP request.
 // Specifically it looks for a bearer token in the Authorization header.
 func ECDSACheckHeader(r *http.Request, key *ecdsa.PublicKey) (*Claims, error) {
 	token, err := tokenFromHeader(r)
@@ -33,7 +33,7 @@ func ECDSACheckHeader(r *http.Request, key *ecdsa.PublicKey) (*Claims, error) {
 	return ECDSACheck(token, key)
 }
 
-// EdDSACheckHeader applies EdDSACheck on a HTTP request.
+// EdDSACheckHeader applies EdDSACheck on an HTTP request.
 // Specifically it looks for a bearer token in the Authorization header.
 func EdDSACheckHeader(r *http.Request, key ed25519.PublicKey) (*Claims, error) {
 	token, err := tokenFromHeader(r)
@@ -43,7 +43,7 @@ func EdDSACheckHeader(r *http.Request, key ed25519.PublicKey) (*Claims, error) {
 	return EdDSACheck(token, key)
 }
 
-// HMACCheckHeader applies HMACCheck on a HTTP request.
+// HMACCheckHeader applies HMACCheck on an HTTP request.
 // Specifically it looks for a bearer token in the Authorization header.
 func HMACCheckHeader(r *http.Request, secret []byte) (*Claims, error) {
 	token, err := tokenFromHeader(r)
@@ -53,7 +53,17 @@ func HMACCheckHeader(r *http.Request, secret []byte) (*Claims, error) {
 	return HMACCheck(token, secret)
 }
 
-// RSACheckHeader applies RSACheck on a HTTP request.
+// CheckHeader applies Check on an HTTP request.
+// Specifically it looks for a bearer token in the Authorization header.
+func (h *HMAC) CheckHeader(r *http.Request) (*Claims, error) {
+	token, err := tokenFromHeader(r)
+	if err != nil {
+		return nil, err
+	}
+	return h.Check(token)
+}
+
+// RSACheckHeader applies RSACheck on an HTTP request.
 // Specifically it looks for a bearer token in the Authorization header.
 func RSACheckHeader(r *http.Request, key *rsa.PublicKey) (*Claims, error) {
 	token, err := tokenFromHeader(r)
@@ -63,7 +73,7 @@ func RSACheckHeader(r *http.Request, key *rsa.PublicKey) (*Claims, error) {
 	return RSACheck(token, key)
 }
 
-// CheckHeader applies KeyRegister.Check on a HTTP request.
+// CheckHeader applies KeyRegister.Check on an HTTP request.
 // Specifically it looks for a bearer token in the Authorization header.
 func (keys *KeyRegister) CheckHeader(r *http.Request) (*Claims, error) {
 	token, err := tokenFromHeader(r)
@@ -95,7 +105,7 @@ func tokenFromHeader(r *http.Request) ([]byte, error) {
 	return []byte(auth[len(prefix):]), nil
 }
 
-// ECDSASignHeader applies ECDSASign on a HTTP request.
+// ECDSASignHeader applies ECDSASign on an HTTP request.
 // Specifically it sets a bearer token in the Authorization header.
 func (c *Claims) ECDSASignHeader(r *http.Request, alg string, key *ecdsa.PrivateKey) error {
 	token, err := c.ECDSASign(alg, key)
@@ -106,7 +116,7 @@ func (c *Claims) ECDSASignHeader(r *http.Request, alg string, key *ecdsa.Private
 	return nil
 }
 
-// EdDSASignHeader applies ECDSASign on a HTTP request.
+// EdDSASignHeader applies ECDSASign on an HTTP request.
 // Specifically it sets a bearer token in the Authorization header.
 func (c *Claims) EdDSASignHeader(r *http.Request, key ed25519.PrivateKey) error {
 	token, err := c.EdDSASign(key)
@@ -117,7 +127,7 @@ func (c *Claims) EdDSASignHeader(r *http.Request, key ed25519.PrivateKey) error 
 	return nil
 }
 
-// HMACSignHeader applies HMACSign on a HTTP request.
+// HMACSignHeader applies HMACSign on an HTTP request.
 // Specifically it sets a bearer token in the Authorization header.
 func (c *Claims) HMACSignHeader(r *http.Request, alg string, secret []byte) error {
 	token, err := c.HMACSign(alg, secret)
@@ -128,7 +138,18 @@ func (c *Claims) HMACSignHeader(r *http.Request, alg string, secret []byte) erro
 	return nil
 }
 
-// RSASignHeader applies RSASign on a HTTP request.
+// SignHeader applies Sign on an HTTP request.
+// Specifically it sets a bearer token in the Authorization header.
+func (h *HMAC) SignHeader(c *Claims, r *http.Request) error {
+	token, err := h.Sign(c)
+	if err != nil {
+		return err
+	}
+	r.Header.Set("Authorization", "Bearer "+string(token))
+	return nil
+}
+
+// RSASignHeader applies RSASign on an HTTP request.
 // Specifically it sets a bearer token in the Authorization header.
 func (c *Claims) RSASignHeader(r *http.Request, alg string, key *rsa.PrivateKey) error {
 	token, err := c.RSASign(alg, key)
