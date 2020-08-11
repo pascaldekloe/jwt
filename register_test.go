@@ -177,7 +177,12 @@ EUTC5n7n+Qeyo3rL3iLhC/jn3rouX1FA5J7baL17KzDSiF5eQVlLOIfy
 	}
 
 	// add the HMAC keys
-	for _, gold := range goldenHMACs {
+	if h, err := NewHMAC(HS256, goldenHMACs[0].secret); err != nil {
+		t.Error("NewHMAC error:", err)
+	} else {
+		keys.HMACs = append(keys.HMACs, h)
+	}
+	for _, gold := range goldenHMACs[1:] {
 		keys.Secrets = append(keys.Secrets, gold.secret)
 	}
 
@@ -467,21 +472,32 @@ func TestKeyIDMiss(t *testing.T) {
 	}
 	keys.EdDSAs = append(keys.EdDSAs, testKeyEd25519Public, randEdKey)
 	keys.RSAs = append(keys.RSAs, &testKeyRSA1024.PublicKey, &testKeyRSA2048.PublicKey)
-	keys.Secrets = append(keys.Secrets, []byte("secret 1"), []byte("secret 2"))
+	h1, err := NewHMAC(HS256, []byte("secret 1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h2, err := NewHMAC(HS256, []byte("secret 2"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys.HMACs = append(keys.HMACs, h1, h2)
+	keys.Secrets = append(keys.Secrets, []byte("secret 3"), []byte("secret 4"))
 
 	// identifier mapping
 	keys.ECDSAIDs = append(keys.ECDSAIDs, "first", "second")
 	keys.EdDSAIDs = append(keys.EdDSAIDs, "first", "second")
 	keys.RSAIDs = append(keys.RSAIDs, "first", "second")
+	keys.HMACIDs = append(keys.HMACIDs, "first", "second")
 	keys.SecretIDs = append(keys.SecretIDs, "first", "second")
 
 	// match second key–sign with first key
 	c := Claims{KeyID: "second"}
-	var tokens [4][]byte
+	var tokens [5][]byte
 	tokens[0], _ = c.ECDSASign(ES256, testKeyEC256)
 	tokens[1], _ = c.EdDSASign(testKeyEd25519Private)
 	tokens[2], _ = c.RSASign(RS256, testKeyRSA1024)
 	tokens[3], _ = c.HMACSign(HS256, []byte("secret 1"))
+	tokens[4], _ = c.HMACSign(HS256, []byte("secret 3"))
 
 	for i, token := range tokens {
 		_, err := keys.Check(token)

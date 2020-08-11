@@ -12,6 +12,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"hash"
 	"math/big"
 )
 
@@ -20,6 +21,7 @@ type KeyRegister struct {
 	ECDSAs  []*ecdsa.PublicKey  // ECDSA credentials
 	EdDSAs  []ed25519.PublicKey // EdDSA credentials
 	RSAs    []*rsa.PublicKey    // RSA credentials
+	HMACs   []*HMAC             // HMAC credentials
 	Secrets [][]byte            // HMAC credentials
 
 	// Optional key identification. See Claims.KeyID for details.
@@ -27,6 +29,7 @@ type KeyRegister struct {
 	ECDSAIDs  []string // ECDSAs key ID mapping
 	EdDSAIDs  []string // EdDSA key ID mapping
 	RSAIDs    []string // RSAs key ID mapping
+	HMACIDs   []string // Secrets key ID mapping
 	SecretIDs []string // Secrets key ID mapping
 }
 
@@ -40,6 +43,28 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 	}
 	body := token[:lastDot]
 	buf := sig[len(sig):]
+
+	hMACOptions := keys.HMACs
+	if c.KeyID != "" {
+		for i, kid := range keys.HMACIDs {
+			if kid == c.KeyID && i < len(hMACOptions) {
+				hMACOptions = hMACOptions[i : i+1]
+				break
+			}
+		}
+	}
+	for _, h := range hMACOptions {
+		if h.alg == alg {
+			digest := h.digests.Get().(hash.Hash)
+			digest.Reset()
+			digest.Write(body)
+			sum := digest.Sum(buf)
+			h.digests.Put(digest)
+			if hmac.Equal(sig, sum) {
+				return &c, c.applyPayload()
+			}
+		}
+	}
 
 	if alg == EdDSA {
 		keyOptions := keys.EdDSAs
