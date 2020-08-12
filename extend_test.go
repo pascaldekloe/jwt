@@ -19,8 +19,8 @@ func init() {
 
 // Demo use of a non-standard algorithm and custom JOSE heading.
 func Example_extend() {
-	c := jwt.Claims{KeyID: "№1"}
 	// issue a JWT
+	c := jwt.Claims{KeyID: "№1"}
 	token, err := c.HMACSign("HM5", []byte("guest"), JWTHeaders)
 	if err != nil {
 		fmt.Println("sign error:", err)

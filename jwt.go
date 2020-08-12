@@ -201,7 +201,7 @@ type Claims struct {
 	//
 	Set map[string]interface{}
 
-	// Raw payload encoding as is within the token. This field is read-only.
+	// Raw encoding as is within the token. This field is read-only.
 	Raw json.RawMessage
 	// RawHeader encoding as is within the token. This field is read-only.
 	RawHeader json.RawMessage
