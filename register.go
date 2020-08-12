@@ -44,26 +44,53 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 	body := token[:lastDot]
 	buf := sig[len(sig):]
 
-	hMACOptions := keys.HMACs
-	if c.KeyID != "" {
-		for i, kid := range keys.HMACIDs {
-			if kid == c.KeyID && i < len(hMACOptions) {
-				hMACOptions = hMACOptions[i : i+1]
-				break
+	switch hashAlg, err := hashLookup(alg, HMACAlgs); err.(type) {
+	case nil:
+		hMACOptions := keys.HMACs
+		if c.KeyID != "" {
+			for i, kid := range keys.HMACIDs {
+				if kid == c.KeyID && i < len(hMACOptions) {
+					hMACOptions = hMACOptions[i : i+1]
+					break
+				}
 			}
 		}
-	}
-	for _, h := range hMACOptions {
-		if h.alg == alg {
-			digest := h.digests.Get().(hash.Hash)
-			digest.Reset()
+		for _, h := range hMACOptions {
+			if h.alg == alg {
+				digest := h.digests.Get().(hash.Hash)
+				digest.Reset()
+				digest.Write(body)
+				sum := digest.Sum(buf)
+				h.digests.Put(digest)
+				if hmac.Equal(sig, sum) {
+					return &c, c.applyPayload()
+				}
+			}
+		}
+
+		keyOptions := keys.Secrets
+		if c.KeyID != "" {
+			for i, kid := range keys.SecretIDs {
+				if kid == c.KeyID && i < len(keyOptions) {
+					keyOptions = keyOptions[i : i+1]
+					break
+				}
+			}
+		}
+
+		for _, secret := range keyOptions {
+			digest := hmac.New(hashAlg.New, secret)
 			digest.Write(body)
-			sum := digest.Sum(buf)
-			h.digests.Put(digest)
-			if hmac.Equal(sig, sum) {
+			if hmac.Equal(sig, digest.Sum(buf)) {
 				return &c, c.applyPayload()
 			}
 		}
+		return nil, ErrSigMiss
+
+	case AlgError:
+		break // next
+	default:
+		return nil, err
 	}
 
 	if alg == EdDSA {
@@ -83,33 +110,6 @@ func (keys *KeyRegister) Check(token []byte) (*Claims, error) {
 			}
 		}
 		return nil, ErrSigMiss
-	}
-
-	switch hash, err := hashLookup(alg, HMACAlgs); err.(type) {
-	case nil:
-		keyOptions := keys.Secrets
-		if c.KeyID != "" {
-			for i, kid := range keys.SecretIDs {
-				if kid == c.KeyID && i < len(keyOptions) {
-					keyOptions = keyOptions[i : i+1]
-					break
-				}
-			}
-		}
-
-		for _, secret := range keyOptions {
-			digest := hmac.New(hash.New, secret)
-			digest.Write(body)
-			if hmac.Equal(sig, digest.Sum(buf)) {
-				return &c, c.applyPayload()
-			}
-		}
-		return nil, ErrSigMiss
-
-	case AlgError:
-		break // next
-	default:
-		return nil, err
 	}
 
 	switch hash, err := hashLookup(alg, RSAAlgs); err.(type) {
