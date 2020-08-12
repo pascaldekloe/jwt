@@ -123,30 +123,36 @@ object may also be exposed through the
 
 ## Performance
 
-The following results were measured on an Intel i5-7500.
+The following results were measured with Go 1.15RC2 on an Intel i5-7500.
 
 ```
-name                   time/op
-ECDSA/sign-ES256-4     26.7µs ± 0%
-ECDSA/sign-ES384-4     4.09ms ± 0%
-ECDSA/sign-ES512-4     7.27ms ± 1%
-ECDSA/check-ES256-4    80.8µs ± 1%
-ECDSA/check-ES384-4    8.10ms ± 0%
-ECDSA/check-ES512-4    14.1ms ± 0%
-EdDSA/sign-EdDSA-4     50.8µs ± 1%
-EdDSA/check-EdDSA-4     136µs ± 0%
-HMAC/sign-HS256-4      2.02µs ± 1%
-HMAC/sign-HS384-4      2.30µs ± 1%
-HMAC/sign-HS512-4      2.34µs ± 1%
-HMAC/check-HS256-4     4.05µs ± 0%
-HMAC/check-HS384-4     4.40µs ± 0%
-HMAC/check-HS512-4     4.51µs ± 0%
-RSA/sign-1024-bit-4     314µs ± 0%
-RSA/sign-2048-bit-4    1.47ms ± 0%
-RSA/sign-4096-bit-4    8.22ms ± 0%
-RSA/check-1024-bit-4   27.2µs ± 0%
-RSA/check-2048-bit-4   62.2µs ± 0%
-RSA/check-4096-bit-4    167µs ± 0%
+name                      time/op
+ECDSA/sign-ES256-4        27.9µs ± 0%
+ECDSA/sign-ES384-4        4.36ms ± 0%
+ECDSA/sign-ES512-4        7.66ms ± 0%
+ECDSA/check-ES256-4       83.1µs ± 1%
+ECDSA/check-ES384-4       8.61ms ± 0%
+ECDSA/check-ES512-4       14.9ms ± 0%
+EdDSA/sign-EdDSA-4        51.6µs ± 0%
+EdDSA/check-EdDSA-4        138µs ± 1%
+HMAC/sign-HS256-4         2.03µs ± 1%
+HMAC/sign-HS256-reuse-4   1.42µs ± 1%
+HMAC/sign-HS384-4         2.32µs ± 0%
+HMAC/sign-HS384-reuse-4   1.39µs ± 0%
+HMAC/sign-HS512-4         2.35µs ± 1%
+HMAC/sign-HS512-reuse-4   1.42µs ± 0%
+HMAC/check-HS256-4        4.14µs ± 0%
+HMAC/check-HS256-reuse-4  3.51µs ± 1%
+HMAC/check-HS384-4        4.47µs ± 1%
+HMAC/check-HS384-reuse-4  3.53µs ± 0%
+HMAC/check-HS512-4        4.53µs ± 1%
+HMAC/check-HS512-reuse-4  3.57µs ± 0%
+RSA/sign-1024-bit-4        327µs ± 0%
+RSA/sign-2048-bit-4       1.49ms ± 0%
+RSA/sign-4096-bit-4       8.14ms ± 1%
+RSA/check-1024-bit-4      29.0µs ± 0%
+RSA/check-2048-bit-4      64.6µs ± 1%
+RSA/check-4096-bit-4       173µs ± 1%
 ```
 
 EdDSA [Ed25519] produces small signatures and it performs well.
