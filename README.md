@@ -79,7 +79,7 @@ log.Print("setup with ", n, " JWT keys")
 
 http.Handle("/api/v1", &jwt.Handler{
 	Target: MyAPI, // protected HTTP handler
-	Keys:   keys,
+	Keys:   &keys,
 
 	// map two claims to HTTP headers
 	HeaderPrefix: "X-Verified-",
