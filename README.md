@@ -123,36 +123,36 @@ object may also be exposed through the
 
 ## Performance
 
-The following results were measured with Go 1.15RC2 on an Intel i5-7500.
+The following results were measured with Go 1.17.2 on an Intel i5-7500.
 
 ```
 name                      time/op
-ECDSA/sign-ES256-4        27.9µs ± 0%
-ECDSA/sign-ES384-4        4.36ms ± 0%
-ECDSA/sign-ES512-4        7.66ms ± 0%
-ECDSA/check-ES256-4       83.1µs ± 1%
-ECDSA/check-ES384-4       8.61ms ± 0%
-ECDSA/check-ES512-4       14.9ms ± 0%
-EdDSA/sign-EdDSA-4        51.6µs ± 0%
-EdDSA/check-EdDSA-4        138µs ± 1%
-HMAC/sign-HS256-4         2.03µs ± 1%
-HMAC/sign-HS256-reuse-4   1.42µs ± 1%
-HMAC/sign-HS384-4         2.32µs ± 0%
-HMAC/sign-HS384-reuse-4   1.39µs ± 0%
-HMAC/sign-HS512-4         2.35µs ± 1%
-HMAC/sign-HS512-reuse-4   1.42µs ± 0%
-HMAC/check-HS256-4        4.14µs ± 0%
-HMAC/check-HS256-reuse-4  3.51µs ± 1%
-HMAC/check-HS384-4        4.47µs ± 1%
-HMAC/check-HS384-reuse-4  3.53µs ± 0%
-HMAC/check-HS512-4        4.53µs ± 1%
-HMAC/check-HS512-reuse-4  3.57µs ± 0%
-RSA/sign-1024-bit-4        327µs ± 0%
-RSA/sign-2048-bit-4       1.49ms ± 0%
-RSA/sign-4096-bit-4       8.14ms ± 1%
-RSA/check-1024-bit-4      29.0µs ± 0%
-RSA/check-2048-bit-4      64.6µs ± 1%
-RSA/check-4096-bit-4       173µs ± 1%
+ECDSA/sign-ES256-4        28.8µs ± 0%
+ECDSA/sign-ES384-4        3.49ms ± 1%
+ECDSA/sign-ES512-4        1.77ms ± 0%
+ECDSA/check-ES256-4       83.9µs ± 1%
+ECDSA/check-ES384-4       6.95ms ± 0%
+ECDSA/check-ES512-4       3.23ms ± 1%
+EdDSA/sign-EdDSA-4        26.6µs ± 1%
+EdDSA/check-EdDSA-4       65.8µs ± 1%
+HMAC/sign-HS256-4         1.91µs ± 1%
+HMAC/sign-HS256-reuse-4   1.30µs ± 1%
+HMAC/sign-HS384-4         2.26µs ± 1%
+HMAC/sign-HS384-reuse-4   1.27µs ± 0%
+HMAC/sign-HS512-4         2.29µs ± 2%
+HMAC/sign-HS512-reuse-4   1.31µs ± 1%
+HMAC/check-HS256-4        3.98µs ± 1%
+HMAC/check-HS256-reuse-4  3.35µs ± 1%
+HMAC/check-HS384-4        4.28µs ± 0%
+HMAC/check-HS384-reuse-4  3.39µs ± 0%
+HMAC/check-HS512-4        4.33µs ± 1%
+HMAC/check-HS512-reuse-4  3.45µs ± 1%
+RSA/sign-1024-bit-4        316µs ± 0%
+RSA/sign-2048-bit-4       1.47ms ± 1%
+RSA/sign-4096-bit-4       8.34ms ± 0%
+RSA/check-1024-bit-4      23.3µs ± 1%
+RSA/check-2048-bit-4      53.7µs ± 1%
+RSA/check-4096-bit-4       150µs ± 1%
 ```
 
 EdDSA [Ed25519] produces small signatures and it performs well.
