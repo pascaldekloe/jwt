@@ -67,25 +67,25 @@ func TestCheckHeadersPresence(t *testing.T) {
 func TestCheckHeadersSchema(t *testing.T) {
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Set("Authorization", "Basic QWxhZGRpbjpPcGVuU2VzYW1l")
-	if _, err := ECDSACheckHeader(req, &testKeyEC256.PublicKey); err != errAuthSchema {
-		t.Errorf("ECDSA check got %v, want %v", err, errAuthSchema)
+	if _, err := ECDSACheckHeader(req, &testKeyEC256.PublicKey); err != errNotBearer {
+		t.Errorf("ECDSA check got %v, want %v", err, errNotBearer)
 	}
-	if _, err := EdDSACheckHeader(req, testKeyEd25519Public); err != errAuthSchema {
-		t.Errorf("EdDSA check got %v, want %v", err, errAuthSchema)
+	if _, err := EdDSACheckHeader(req, testKeyEd25519Public); err != errNotBearer {
+		t.Errorf("EdDSA check got %v, want %v", err, errNotBearer)
 	}
-	if _, err := HMACCheckHeader(req, nil); err != errAuthSchema {
-		t.Errorf("HMAC check got %v, want %v", err, errAuthSchema)
+	if _, err := HMACCheckHeader(req, nil); err != errNotBearer {
+		t.Errorf("HMAC check got %v, want %v", err, errNotBearer)
 	}
 	if h, err := NewHMAC(HS256, []byte("arbitary")); err != nil {
 		t.Errorf("NewHMAC error: %s", err)
-	} else if _, err := h.CheckHeader(req); err != errAuthSchema {
-		t.Errorf("reusable HMAC check got %v, want %v", err, errAuthSchema)
+	} else if _, err := h.CheckHeader(req); err != errNotBearer {
+		t.Errorf("reusable HMAC check got %v, want %v", err, errNotBearer)
 	}
-	if _, err := RSACheckHeader(req, &testKeyRSA1024.PublicKey); err != errAuthSchema {
-		t.Errorf("RSA check got %v, want %v", err, errAuthSchema)
+	if _, err := RSACheckHeader(req, &testKeyRSA1024.PublicKey); err != errNotBearer {
+		t.Errorf("RSA check got %v, want %v", err, errNotBearer)
 	}
-	if _, err := new(KeyRegister).CheckHeader(req); err != errAuthSchema {
-		t.Errorf("KeyRegister check got %v, want %v", err, errAuthSchema)
+	if _, err := new(KeyRegister).CheckHeader(req); err != errNotBearer {
+		t.Errorf("KeyRegister check got %v, want %v", err, errNotBearer)
 	}
 }
 
@@ -327,10 +327,10 @@ func TestHandleBindingMiss(t *testing.T) {
 func TestHandleSchemaMiss(t *testing.T) {
 	body, header := testUnauthorized(t, "Basic QWxhZGRpbjpPcGVuU2VzYW1l")
 
-	if want := "jwt: want Bearer schema\n"; body != want {
+	if want := "jwt: not HTTP Bearer scheme\n"; body != want {
 		t.Errorf("got body %q, want %q", body, want)
 	}
-	if want := `Bearer error="invalid_token", error_description="jwt: want Bearer schema"`; header != want {
+	if want := `Bearer error="invalid_token", error_description="jwt: not HTTP Bearer scheme"`; header != want {
 		t.Errorf("got WWW-Authenticate %q, want %q", header, want)
 	}
 }

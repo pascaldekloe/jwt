@@ -21,88 +21,87 @@ const OAuthURN = "urn:ietf:params:oauth:token-type:jwt"
 // ErrNoHeader signals an HTTP request without authorization.
 var ErrNoHeader = errors.New("jwt: no HTTP authorization header")
 
-var errAuthSchema = errors.New("jwt: want Bearer schema")
+var errNotBearer = errors.New("jwt: not HTTP Bearer scheme")
 
 // ECDSACheckHeader applies ECDSACheck on an HTTP request.
 // Specifically it looks for a bearer token in the Authorization header.
 func ECDSACheckHeader(r *http.Request, key *ecdsa.PublicKey) (*Claims, error) {
-	token, err := tokenFromHeader(r)
+	token, err := BearerToken(r.Header)
 	if err != nil {
 		return nil, err
 	}
-	return ECDSACheck(token, key)
+	return ECDSACheck([]byte(token), key)
 }
 
 // EdDSACheckHeader applies EdDSACheck on an HTTP request.
 // Specifically it looks for a bearer token in the Authorization header.
 func EdDSACheckHeader(r *http.Request, key ed25519.PublicKey) (*Claims, error) {
-	token, err := tokenFromHeader(r)
+	token, err := BearerToken(r.Header)
 	if err != nil {
 		return nil, err
 	}
-	return EdDSACheck(token, key)
+	return EdDSACheck([]byte(token), key)
 }
 
 // HMACCheckHeader applies HMACCheck on an HTTP request.
 // Specifically it looks for a bearer token in the Authorization header.
 func HMACCheckHeader(r *http.Request, secret []byte) (*Claims, error) {
-	token, err := tokenFromHeader(r)
+	token, err := BearerToken(r.Header)
 	if err != nil {
 		return nil, err
 	}
-	return HMACCheck(token, secret)
+	return HMACCheck([]byte(token), secret)
 }
 
 // CheckHeader applies Check on an HTTP request.
 // Specifically it looks for a bearer token in the Authorization header.
 func (h *HMAC) CheckHeader(r *http.Request) (*Claims, error) {
-	token, err := tokenFromHeader(r)
+	token, err := BearerToken(r.Header)
 	if err != nil {
 		return nil, err
 	}
-	return h.Check(token)
+	return h.Check([]byte(token))
 }
 
 // RSACheckHeader applies RSACheck on an HTTP request.
 // Specifically it looks for a bearer token in the Authorization header.
 func RSACheckHeader(r *http.Request, key *rsa.PublicKey) (*Claims, error) {
-	token, err := tokenFromHeader(r)
+	token, err := BearerToken(r.Header)
 	if err != nil {
 		return nil, err
 	}
-	return RSACheck(token, key)
+	return RSACheck([]byte(token), key)
 }
 
 // CheckHeader applies KeyRegister.Check on an HTTP request.
 // Specifically it looks for a bearer token in the Authorization header.
 func (keys *KeyRegister) CheckHeader(r *http.Request) (*Claims, error) {
-	token, err := tokenFromHeader(r)
+	token, err := BearerToken(r.Header)
 	if err != nil {
 		return nil, err
 	}
-	return keys.Check(token)
+	return keys.Check([]byte(token))
 }
 
-func tokenFromHeader(r *http.Request) ([]byte, error) {
-	h := r.Header["Authorization"]
-	if h == nil {
-		return nil, ErrNoHeader
+// Bearer extracts the token from an HTTP header.
+func BearerToken(h http.Header) (token string, err error) {
+	v := h.Values("Authorization")
+	if len(v) == 0 {
+		return "", ErrNoHeader
 	}
-
-	// “Multiple message-header fields with the same field-name MAY be
-	// present in a message if and only if the entire field-value for that
-	//  header field is defined as a comma-separated list.”
+	// “It MUST be possible to combine the multiple header fields into one
+	// "field-name: field-value" pair, without changing the semantics of the
+	// message, by appending each subsequent field-value to the first, each
+	// separated by a comma.”
 	// — “Hypertext Transfer Protocol” RFC 2616, subsection 4.2
-	auth := strings.Join(h, ", ")
+	s := strings.Join(v, ", ")
 
 	const prefix = "Bearer "
-	if !strings.HasPrefix(auth, prefix) {
-		// RFC 2617, subsection 1.2 defines the scheme token as case-insensitive.
-		if len(auth) < len(prefix) || !strings.EqualFold(auth[:len(prefix)], prefix) {
-			return nil, errAuthSchema
-		}
+	// The scheme is case-insensitive 🤦 as per RFC 2617, subsection 1.2.
+	if len(s) < len(prefix) || !strings.EqualFold(s[:len(prefix)], prefix) {
+		return "", errNotBearer
 	}
-	return []byte(auth[len(prefix):]), nil
+	return s[len(prefix):], nil
 }
 
 // ECDSASignHeader applies ECDSASign on an HTTP request.
