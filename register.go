@@ -29,7 +29,7 @@ type KeyRegister struct {
 	ECDSAIDs  []string // ECDSAs key ID mapping
 	EdDSAIDs  []string // EdDSA key ID mapping
 	RSAIDs    []string // RSAs key ID mapping
-	HMACIDs   []string // Secrets key ID mapping
+	HMACIDs   []string // HMACs key ID mapping
 	SecretIDs []string // Secrets key ID mapping
 }
 
