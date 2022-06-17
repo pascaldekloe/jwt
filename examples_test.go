@@ -343,17 +343,20 @@ H1136cspYG6+0iY7X1fCE9+E9LKhRANCAAR/zc4ncPbEXUGDy+5v20t7WAczNXvp
 -----END PRIVATE KEY-----`
 
 // EdJWK is an example key from RFC 8037, appendix A.1.
+//
 //lint:ignore U1000 reserved for future use
 const EdJWK = `{"kty":"OKP","crv":"Ed25519",
    "d":"nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A",
    "x":"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"}`
 
 // EdPublicJWK is an example key from RFC 8037, appendix A.2.
+//
 //lint:ignore U1000 reserved for future use
 const EdPublicJWK = `{"kty":"OKP","crv":"Ed25519",
    "x":"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"}`
 
 // EdKey is an example key from RFC 8037, appendix A.1.
+//
 //lint:ignore U1000 reserved for future use
 var EdKey = append(ed25519.PrivateKey{
 	0x9d, 0x61, 0xb1, 0x9d, 0xef, 0xfd, 0x5a, 0x60,
