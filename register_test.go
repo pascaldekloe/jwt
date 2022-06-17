@@ -703,7 +703,7 @@ func (UnsupportedCurve) Params() *elliptic.CurveParams {
 		Name:    "unsupported",
 	}
 }
-func (UnsupportedCurve) IsOnCurve(x, y *big.Int) bool                         { return false }
+func (UnsupportedCurve) IsOnCurve(x, y *big.Int) bool                         { return true }
 func (UnsupportedCurve) Add(x1, y1, x2, y2 *big.Int) (x, y *big.Int)          { return }
 func (UnsupportedCurve) Double(x1, y1 *big.Int) (x, y *big.Int)               { return }
 func (UnsupportedCurve) ScalarMult(x1, y1 *big.Int, k []byte) (x, y *big.Int) { return }
