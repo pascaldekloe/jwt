@@ -5,13 +5,11 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
-	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
 	"errors"
-	"math/big"
 	"testing"
 )
 
@@ -671,14 +669,9 @@ MCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=
 
 func TestKeyRegisterPEMErrors(t *testing.T) {
 	var keys KeyRegister
-
-	keys.ECDSAs = []*ecdsa.PublicKey{{
-		Curve: UnsupportedCurve{},
-		X:     big.NewInt(1),
-		Y:     big.NewInt(2),
-	}}
+	keys.ECDSAs = []*ecdsa.PublicKey{&mustNewUnsupportedCurveKey().PublicKey}
 	if text, err := keys.PEM(); err == nil {
-		t.Errorf("no error for broken ECDSA key: %q", text)
+		t.Errorf("no error for unsupported ECDSA key: %q", text)
 	}
 	keys.ECDSAs = nil
 
@@ -688,26 +681,6 @@ func TestKeyRegisterPEMErrors(t *testing.T) {
 	}
 	keys.RSAs = nil
 }
-
-// UnsupportedCurve implements ellipticCurve.
-type UnsupportedCurve struct{}
-
-func (UnsupportedCurve) Params() *elliptic.CurveParams {
-	return &elliptic.CurveParams{
-		P:       big.NewInt(1),
-		N:       big.NewInt(1),
-		B:       big.NewInt(1),
-		Gx:      big.NewInt(1),
-		Gy:      big.NewInt(1),
-		BitSize: 100,
-		Name:    "unsupported",
-	}
-}
-func (UnsupportedCurve) IsOnCurve(x, y *big.Int) bool                         { return true }
-func (UnsupportedCurve) Add(x1, y1, x2, y2 *big.Int) (x, y *big.Int)          { return }
-func (UnsupportedCurve) Double(x1, y1 *big.Int) (x, y *big.Int)               { return }
-func (UnsupportedCurve) ScalarMult(x1, y1 *big.Int, k []byte) (x, y *big.Int) { return }
-func (UnsupportedCurve) ScalarBaseMult(k []byte) (x, y *big.Int)              { return }
 
 func TestKeyRegisterLoadJWKs(t *testing.T) {
 	for _, gold := range GoldenJWKs {

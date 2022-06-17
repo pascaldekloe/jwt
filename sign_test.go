@@ -3,13 +3,9 @@ package jwt
 import (
 	"bytes"
 	"crypto"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
 	"errors"
-	"math/big"
 	"reflect"
 	"strings"
 	"testing"
@@ -235,18 +231,6 @@ func TestSignAlgError(t *testing.T) {
 	}
 	if _, err := c.RSASign(unknownAlg, testKeyRSA1024); err != want {
 		t.Errorf("RSA got error %v, want %v", err, want)
-	}
-}
-
-func TestECDSAKeyBroken(t *testing.T) {
-	key, err := ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	key.Params().N = new(big.Int)
-	_, err = new(Claims).ECDSASign(ES512, key)
-	if err == nil || err.Error() != "zero parameter" {
-		t.Errorf("got error %q, want zero parameter", err)
 	}
 }
 

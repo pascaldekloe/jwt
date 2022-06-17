@@ -3,9 +3,11 @@ package jwt
 import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
+	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"math/big"
 	"testing"
 	"time"
 )
@@ -290,6 +292,50 @@ func mustParseRSAKey(s string) *rsa.PrivateKey {
 	key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
 		panic(err)
+	}
+	return key
+}
+
+func mustNewUnsupportedCurveKey() *ecdsa.PrivateKey {
+	var p elliptic.CurveParams
+	p.Name = "secp112r1"
+	p.BitSize = 112
+
+	var ok bool
+	p.P, ok = new(big.Int).SetString("00db7c2abf62e35e668076bead208b", 16)
+	if !ok {
+		panic("invalid test P")
+	}
+	p.N, ok = new(big.Int).SetString("00db7c2abf62e35e7628dfac6561c5", 16)
+	if !ok {
+		panic("invalid test N")
+	}
+	p.B, ok = new(big.Int).SetString("659ef8ba043916eede8911702b22", 16)
+	if !ok {
+		panic("invalid test B")
+	}
+	p.Gx, ok = new(big.Int).SetString("09487239995a5ee76b55f9c2f098", 16)
+	if !ok {
+		panic("invalid test Gx")
+	}
+	p.Gy, ok = new(big.Int).SetString("a89ce5af8724c0a23e0e0ff77500", 16)
+	if !ok {
+		panic("invalid test Gy")
+	}
+
+	key := new(ecdsa.PrivateKey)
+	key.Curve = &p
+	key.X, ok = new(big.Int).SetString("545076648635244520850683786163850", 10)
+	if !ok {
+		panic("invalid test X")
+	}
+	key.Y, ok = new(big.Int).SetString("199516871503042085886490398553031", 10)
+	if !ok {
+		panic("invalid test Y")
+	}
+	key.D, ok = new(big.Int).SetString("1855065928854287716720369990418743", 10)
+	if !ok {
+		panic("invalid test D")
 	}
 	return key
 }
