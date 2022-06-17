@@ -22,6 +22,13 @@ const (
 	EdDSA = "EdDSA" // EdDSA signature algorithms
 	ES256 = "ES256" // ECDSA using P-256 and SHA-256
 	ES384 = "ES384" // ECDSA using P-384 and SHA-384
+	// Deprecated: Use ES384 instead.
+	// “Go just implemented all specified curves from FIPS 186. If I were to
+	// make that choice today we'd have only P-256 and P-384.
+	//
+	// In 12 years, they will either all be broken by quantum computers, or
+	// P-384 and P-521 will both stand.”
+	// — Filippo Valsorda
 	ES512 = "ES512" // ECDSA using P-521 and SHA-512
 	HS256 = "HS256" // HMAC using SHA-256
 	HS384 = "HS384" // HMAC using SHA-384

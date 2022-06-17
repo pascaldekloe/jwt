@@ -22,7 +22,6 @@ func BenchmarkECDSA(b *testing.B) {
 	}{
 		{testKeyEC256, ES256},
 		{testKeyEC384, ES384},
-		{testKeyEC521, ES512},
 	}
 
 	for _, test := range tests {

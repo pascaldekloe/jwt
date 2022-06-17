@@ -129,10 +129,8 @@ The following results were measured with Go 1.19-beta1 on an Apple M1.
 name                      time/op
 ECDSA/sign-ES256-8        19.8µs ± 0%
 ECDSA/sign-ES384-8         196µs ± 0%
-ECDSA/sign-ES512-8         526µs ± 0%
 ECDSA/check-ES256-8       58.7µs ± 0%
 ECDSA/check-ES384-8        632µs ± 0%
-ECDSA/check-ES512-8       1.92ms ± 1%
 EdDSA/sign-EdDSA-8        24.9µs ± 0%
 EdDSA/check-EdDSA-8       54.0µs ± 0%
 HMAC/sign-HS256-8          664ns ± 1%
