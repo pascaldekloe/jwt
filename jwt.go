@@ -290,26 +290,40 @@ func NewNumericTime(t time.Time) *NumericTime {
 	if t.IsZero() {
 		return nil
 	}
-	if t.Nanosecond() == 0 {
-		// no rounding errors
-		n := NumericTime(t.Unix())
-		return &n
+	var n NumericTime
+	switch unix := t.Unix(); {
+	case unix >= int64(math.MaxInt64)/1e9, unix <= int64(math.MinInt64)/1e9,
+		t.Nanosecond() == 0:
+		n = NumericTime(unix)
+	default:
+		n = NumericTime(float64(t.UnixNano()) / 1e9)
 	}
-	n := NumericTime(float64(t.UnixNano()) / 1e9)
 	return &n
 }
 
 // Time returns the Go mapping with the zero value for nil.
 func (n *NumericTime) Time() time.Time {
-	if n == nil {
-		return time.Time{}
+	var t time.Time
+	switch {
+	case n == nil:
+		break
+	case *n >= math.MaxInt64:
+		t = time.Unix(math.MaxInt64, 0) // truncate
+	case *n <= math.MinInt64:
+		t = time.Unix(math.MinInt64, 0) // truncate
+	case *n >= math.MaxInt64/1e9, *n <= math.MinInt64/1e9:
+		t = time.Unix(int64(math.Round(float64(*n))), 0)
+	default:
+		seconds, fraction := math.Modf(float64(*n))
+		if fraction == 0 {
+			// no rounding errors
+			t = time.Unix(int64(seconds), 0)
+		} else {
+			t = time.Unix(0, int64(*n*1e9))
+		}
 	}
-	int, frac := math.Modf(float64(*n))
-	if frac == 0 {
-		// no rounding errors
-		return time.Unix(int64(int), 0).UTC()
-	}
-	return time.Unix(0, int64(*n*NumericTime(time.Second))).UTC()
+	// NumericTime is without timezone
+	return t.UTC()
 }
 
 // String returns the ISO representation or the empty string for nil.

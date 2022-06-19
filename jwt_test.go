@@ -7,6 +7,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"math"
 	"math/big"
 	"testing"
 	"time"
@@ -223,6 +224,29 @@ func TestNumericTimeRounding(t *testing.T) {
 	}
 	if got := NewNumericTime(ts).Time(); !ts.Equal(got) {
 		t.Errorf("got time %s from %s", got, ts)
+	}
+}
+
+func TestNumericTimeOutOfBounds(t *testing.T) {
+	moreThanMax := NumericTime(math.MaxInt64 + 99)
+	if got := moreThanMax.Time().Unix(); got != math.MaxInt64 {
+		t.Errorf("Unix time got %d, want %d", got, math.MaxInt64)
+	}
+	lessThanMin := NumericTime(math.MinInt64 - 99)
+	if got := lessThanMin.Time().Unix(); got != math.MinInt64 {
+		t.Errorf("Unix time got %d, want %d", got, math.MinInt64)
+	}
+}
+
+func TestNumericTimeNSOverflow(t *testing.T) {
+	const safeLimit = 1<<53 - 1
+	maxSafeInt := NumericTime(safeLimit)
+	if got := maxSafeInt.Time().Unix(); got != safeLimit {
+		t.Errorf("Unix time got %d, want %d", got, safeLimit)
+	}
+	minSafeInt := NumericTime(-safeLimit)
+	if got := minSafeInt.Time().Unix(); got != -safeLimit {
+		t.Errorf("Unix time got %d, want %d", got, -safeLimit)
 	}
 }
 
