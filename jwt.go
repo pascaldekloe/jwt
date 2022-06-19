@@ -183,9 +183,9 @@ var (
 	errExpired    = errors.New(`jwt: expiration time ["exp"] passed`)
 )
 
-// AcceptAt verifies Issued, NotBefore and Expires each against t when the
+// AcceptTemporal verifies Issued, NotBefore and Expires each against t when the
 // respective claim is present, i.e., when the NumericTime pointer is not nil.
-func (r *Registered) AcceptAt(t time.Time, leeway time.Duration) error {
+func (r *Registered) AcceptTemporal(t time.Time, leeway time.Duration) error {
 	low := t.Add(-leeway)
 	high := t.Add(leeway)
 	if r.Issued != nil && r.Issued.Time().After(high) {

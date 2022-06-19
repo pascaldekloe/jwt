@@ -186,7 +186,7 @@ func TestNewHMACNoSecret(t *testing.T) {
 	}
 }
 
-func TestAcceptAt(t *testing.T) {
+func TestAcceptTemporal(t *testing.T) {
 	resolution := time.Millisecond
 	// some golden-values add or subtract resolution to prevent rounding errors
 
@@ -228,7 +228,7 @@ func TestAcceptAt(t *testing.T) {
 			r.Expires = NewNumericTime(now.Add(gold.ExpiresFromNow))
 		}
 
-		err := r.AcceptAt(now, gold.Leeway)
+		err := r.AcceptTemporal(now, gold.Leeway)
 		if err != gold.Err {
 			t.Errorf("%+v for (%s, %s) got error %v, want %v", r, now, gold.Leeway, err, gold.Err)
 		}
