@@ -192,8 +192,8 @@ func ExampleHandler_error() {
 	fmt.Println(resp.Body)
 	// Output:
 	// HTTP 401
-	// Bearer error="invalid_token", error_description="jwt: time constraints exceeded"
-	// {"msg": "jwt: time constraints exceeded"}
+	// Bearer error="invalid_token", error_description="jwt: expiration time [\"exp\"] passed"
+	// {"msg": "jwt: expiration time [\"exp\"] passed"}
 }
 
 // Func As A Request Filter

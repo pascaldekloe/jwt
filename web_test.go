@@ -305,10 +305,10 @@ func TestHandleNoHeader(t *testing.T) {
 func TestHandleExpire(t *testing.T) {
 	body, header := testUnauthorized(t, "Bearer eyJhbGciOiJFUzI1NiJ9.eyJleHAiOjE1Mzc3OTMwNjYuMjcyNDc3OX0.NPQH3KKXDe9QlyxyGA_ntPfrNyuetNAoOuPe8G5CE8jbwBzJOX8tQRXCXBhmiI5HAUqzqhH1CZuOjqMQKxGntA")
 
-	if want := "jwt: time constraints exceeded\n"; body != want {
+	if want := "jwt: expiration time [\"exp\"] passed\n"; body != want {
 		t.Errorf("got body %q, want %q", body, want)
 	}
-	if want := `Bearer error="invalid_token", error_description="jwt: time constraints exceeded"`; header != want {
+	if want := `Bearer error="invalid_token", error_description="jwt: expiration time [\"exp\"] passed"`; header != want {
 		t.Errorf("got WWW-Authenticate %q, want %q", header, want)
 	}
 }

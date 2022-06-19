@@ -6,6 +6,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rsa"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -184,6 +185,9 @@ type Handler struct {
 	// http.Request.Context and context.Context.Value.
 	ContextKey interface{}
 
+	// TemporalLeeway controls the tolerance with time constraints.
+	TemporalLeeway time.Duration
+
 	// When not nil, then Func is called after the JWT validation
 	// succeeds and before any header bindings. Target is skipped
 	// [request drop] when the return is false.
@@ -219,9 +223,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// verify time constraints
-	if !claims.Valid(time.Now()) {
-		w.Header().Set("WWW-Authenticate", `Bearer error="invalid_token", error_description="jwt: time constraints exceeded"`)
-		h.error(w, "jwt: time constraints exceeded", http.StatusUnauthorized)
+	err = claims.AcceptTemporal(time.Now(), h.TemporalLeeway)
+	if err != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Bearer error="invalid_token", error_description=%q`, err))
+		h.error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
