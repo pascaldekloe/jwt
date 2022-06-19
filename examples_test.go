@@ -44,15 +44,16 @@ func ExampleClaims() {
 	// verify a JWT
 	claims, err := jwt.RSACheck(token, &RSAKey.PublicKey)
 	if err != nil {
-		fmt.Println("credentials denied on", err)
+		fmt.Println("credentials rejected:", err)
 		return
 	}
-	if !claims.Valid(time.Now()) {
-		fmt.Println("time constraints exceeded")
+	err = claims.AcceptTemporal(time.Now(), time.Second)
+	if err != nil {
+		fmt.Println("credential constraints violated:", err)
 		return
 	}
 	if !claims.AcceptAudience("armory") {
-		fmt.Println("reject on audience", claims.Audiences)
+		fmt.Println("credentials not for armory:", claims.Audiences)
 		return
 	}
 	fmt.Println(string(claims.Raw))

@@ -41,14 +41,16 @@ Note how the verification process is self-contained with just a public key.
 // verify a JWT
 claims, err := jwt.EdDSACheck(token, JWTPublicKey)
 if err != nil {
-	log.Print("credentials denied with ", err)
+	log.Print("credentials rejected: ", err)
 	return
 }
-if !claims.Valid(time.Now()) {
-	log.Print("credential time constraints exceeded")
+err = claims.AcceptTemporal(time.Now(), time.Second)
+if err != nil {
+	log.Print("credential constraints violated: ", err)
 	return
 }
 
+// ready for use
 log.Print("hello ", claims.Subject)
 if verified, _ := claims.Set["email_verified"].(bool); !verified {
 	log.Print("e-mail confirmation pending")
