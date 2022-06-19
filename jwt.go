@@ -177,6 +177,29 @@ func (r *Registered) Valid(t time.Time) bool {
 		(r.NotBefore == nil || *r.NotBefore <= *n)
 }
 
+var (
+	errFromFuture = errors.New(`jwt: issued ["iat"] in the future`)
+	errForFuture  = errors.New(`jwt: scheduled ["nbf"] for the future`)
+	errExpired    = errors.New(`jwt: expiration time ["exp"] passed`)
+)
+
+// AcceptAt verifies Issued, NotBefore and Expires each against t when the
+// respective claim is present, i.e., when the NumericTime pointer is not nil.
+func (r *Registered) AcceptAt(t time.Time, leeway time.Duration) error {
+	low := t.Add(-leeway)
+	high := t.Add(leeway)
+	if r.Issued != nil && r.Issued.Time().After(high) {
+		return errFromFuture
+	}
+	if r.NotBefore != nil && high.Before(r.NotBefore.Time()) {
+		return errForFuture
+	}
+	if r.Expires != nil && !r.Expires.Time().After(low) {
+		return errExpired
+	}
+	return nil // OK
+}
+
 // AcceptAudience verifies the applicability of an audience identified as
 // stringOrURI. Any stringOrURI is accepted on absence of the aud(ience) claim.
 func (r *Registered) AcceptAudience(stringOrURI string) bool {

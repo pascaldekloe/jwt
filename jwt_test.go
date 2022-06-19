@@ -186,6 +186,55 @@ func TestNewHMACNoSecret(t *testing.T) {
 	}
 }
 
+func TestAcceptAt(t *testing.T) {
+	resolution := time.Millisecond
+	// some golden-values add or subtract resolution to prevent rounding errors
+
+	golden := []struct {
+		Leeway                                          time.Duration
+		IssuedFromNow, NotBeforeFromNow, ExpiresFromNow time.Duration
+		Err                                             error
+	}{
+		{Leeway: 0, IssuedFromNow: time.Second, Err: errFromFuture},
+		{Leeway: time.Second, IssuedFromNow: time.Second - resolution, Err: nil},
+		{Leeway: time.Second, IssuedFromNow: time.Second + 2*resolution, Err: errFromFuture},
+		{Leeway: -time.Second, IssuedFromNow: -time.Second - resolution, Err: nil},
+		{Leeway: -time.Second, IssuedFromNow: -time.Second + 2*resolution, Err: errFromFuture},
+
+		{Leeway: 0, NotBeforeFromNow: time.Second, Err: errForFuture},
+		{Leeway: time.Second, NotBeforeFromNow: time.Second - resolution, Err: nil},
+		{Leeway: time.Second, NotBeforeFromNow: time.Second + 2*resolution, Err: errForFuture},
+		{Leeway: -time.Second, NotBeforeFromNow: -time.Second - resolution, Err: nil},
+		{Leeway: -time.Second, NotBeforeFromNow: -time.Second + 2*resolution, Err: errForFuture},
+
+		{Leeway: 0, ExpiresFromNow: -time.Second, Err: errExpired},
+		{Leeway: time.Second, ExpiresFromNow: -time.Second + resolution, Err: nil},
+		{Leeway: time.Second, ExpiresFromNow: -time.Second - 2*resolution, Err: errExpired},
+		{Leeway: -time.Second, ExpiresFromNow: time.Second - resolution, Err: errExpired},
+		{Leeway: -time.Second, ExpiresFromNow: time.Second + 2*resolution, Err: nil},
+	}
+
+	for _, gold := range golden {
+		now := time.Now().Round(resolution)
+
+		var r Registered
+		if gold.IssuedFromNow != 0 {
+			r.Issued = NewNumericTime(now.Add(gold.IssuedFromNow))
+		}
+		if gold.NotBeforeFromNow != 0 {
+			r.NotBefore = NewNumericTime(now.Add(gold.NotBeforeFromNow))
+		}
+		if gold.ExpiresFromNow != 0 {
+			r.Expires = NewNumericTime(now.Add(gold.ExpiresFromNow))
+		}
+
+		err := r.AcceptAt(now, gold.Leeway)
+		if err != gold.Err {
+			t.Errorf("%+v for (%s, %s) got error %v, want %v", r, now, gold.Leeway, err, gold.Err)
+		}
+	}
+}
+
 func TestNumericTimeMapping(t *testing.T) {
 	if got := NewNumericTime(time.Time{}); got != nil {
 		t.Errorf("NewNumericTime from zero value got %f, want nil", *got)
