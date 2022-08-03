@@ -12,7 +12,7 @@ func IssuerValidator(expectedIss string) JwtPayloadClaimsValidator {
 	return func(tokenClaims *Claims) error {
 		tokenIss, ok := tokenClaims.String("iss")
 		if !ok {
-			return errors.New("jwt issuers is missing and is required")
+			return errors.New("jwt issuer is missing and is required")
 		}
 
 		if tokenIss != expectedIss {
@@ -87,7 +87,7 @@ func IdValidator(expectedId string) JwtPayloadClaimsValidator {
 	}
 }
 
-func CustomFieldValidator(expectedValue, customField string) JwtPayloadClaimsValidator {
+func CustomClaimValidator(expectedValue, customField string) JwtPayloadClaimsValidator {
 	return func(tokenClaims *Claims) error {
 		fieldValue, ok := tokenClaims.String(customField)
 		if !ok {

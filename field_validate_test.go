@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 /*
@@ -20,7 +18,9 @@ func TestIssValidator(t *testing.T) {
 	validator := IssuerValidator("testing")
 
 	// Assert
-	assert.NotNil(t, validator)
+	if validator == nil {
+		t.Errorf("Issuer validator is nil")
+	}
 }
 
 // Test NewSignerService function, it is not expected to return an error
@@ -29,7 +29,9 @@ func TestSubValidator(t *testing.T) {
 	validator := SubjectValidator("testing")
 
 	// Assert
-	assert.NotNil(t, validator)
+	if validator == nil {
+		t.Errorf("Subject validator is nil")
+	}
 }
 
 // Test NewSignerService function, it is not expected to return an error
@@ -38,7 +40,9 @@ func TestAudValidator(t *testing.T) {
 	validator := AudiencesValidator([]string{"testing"})
 
 	// Assert
-	assert.NotNil(t, validator)
+	if validator == nil {
+		t.Errorf("Audiences validator is nil")
+	}
 }
 
 // Test NewSignerService function, it is not expected to return an error
@@ -47,25 +51,31 @@ func TestTimeFieldValidator(t *testing.T) {
 	validator := TimeFieldValidator(time.Now())
 
 	// Assert
-	assert.NotNil(t, validator)
+	if validator == nil {
+		t.Errorf("TimeField validator is nil")
+	}
 }
 
 // Test NewSignerService function, it is not expected to return an error
-func TestTimeIdValidator(t *testing.T) {
+func TestIdValidator(t *testing.T) {
 	// Act
 	validator := IdValidator("testing")
 
 	// Assert
-	assert.NotNil(t, validator)
+	if validator == nil {
+		t.Errorf("Id validator is nil")
+	}
 }
 
 // Test NewSignerService function, it is not expected to return an error
-func TestTimeCustomValidator(t *testing.T) {
+func TestCustomClaimValidator(t *testing.T) {
 	// Act
-	validator := CustomFieldValidator("testing", "custom")
+	validator := CustomClaimValidator("testing", "custom")
 
 	// Assert
-	assert.NotNil(t, validator)
+	if validator == nil {
+		t.Errorf("CustomClaim validator is nil")
+	}
 }
 
 /*
@@ -116,8 +126,12 @@ func TestIssFieldValidation(t *testing.T) {
 	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
-	assert.NotNil(t, validator)
-	assert.NoError(t, err)
+	if validator == nil {
+		t.Errorf("Issuer validator is nil")
+	}
+	if err != nil {
+		t.Errorf("Expected error no message, got %s", err.Error())
+	}
 }
 
 // Tests ValidateTokenFields with an IssValidator but no iss, it is expected to return an error
@@ -164,11 +178,15 @@ func TestIssFieldValidation_NoIssuer(t *testing.T) {
 	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
-	assert.NotNil(t, validator)
-	assert.Equal(t, errors.New("jwt issuers is missing and is required"), err)
+	if validator == nil {
+		t.Errorf("Issuer validator is nil")
+	}
+	if err.Error() != "jwt issuer is missing and is required" {
+		t.Errorf("Expected error message: %s, got %s", "jwt issuer is missing and is required", err.Error())
+	}
 }
 
-// Tests ValidateTokenFields with a SubValidator, it is not expected to return an error
+// Tests ValidatePayloadClaims with a SubjectValidator, it is not expected to return an error
 func TestSubFieldValidation(t *testing.T) {
 	// Arrange
 	now := time.Now()
@@ -212,11 +230,15 @@ func TestSubFieldValidation(t *testing.T) {
 	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
-	assert.NotNil(t, validator)
-	assert.NoError(t, err)
+	if validator == nil {
+		t.Errorf("Subject validator is nil")
+	}
+	if err != nil {
+		t.Errorf("Expected error no message, got %s", err.Error())
+	}
 }
 
-// Tests ValidateTokenFields with a SubValidator but no sub, it is expected to return an error
+// Tests ValidatePayloadClaims with a SubjectValidator but no sub, it is expected to return an error
 func TestSubFieldValidation_NoSubject(t *testing.T) {
 	// Arrange
 	now := time.Now()
@@ -259,11 +281,15 @@ func TestSubFieldValidation_NoSubject(t *testing.T) {
 	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
-	assert.NotNil(t, validator)
-	assert.Equal(t, errors.New("missing subject claim"), err)
+	if validator == nil {
+		t.Errorf("Subject validator is nil")
+	}
+	if err.Error() != "missing subject claim" {
+		t.Errorf("Expected error message: %s, got %s", "missing subject claim", err.Error())
+	}
 }
 
-// Tests ValidateTokenFields with an AudValidator, it is not expected to return an error
+// Tests ValidatePayloadClaims with an AudiencesValidator, it is not expected to return an error
 func TestAudFieldValidation(t *testing.T) {
 	// Arrange
 	now := time.Now()
@@ -307,11 +333,15 @@ func TestAudFieldValidation(t *testing.T) {
 	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
-	assert.NotNil(t, validator)
-	assert.NoError(t, err)
+	if validator == nil {
+		t.Errorf("Audiences validator is nil")
+	}
+	if err != nil {
+		t.Errorf("Expected error no message, got %s", err.Error())
+	}
 }
 
-// Tests ValidateTokenFields with an AudValidator but no aud, it is expected to return an error
+// Tests ValidatePayloadClaims with an AudiencesValidator but no aud, it is expected to return an error
 func TestAudFieldValidation_NoAudience(t *testing.T) {
 	// Arrange
 	now := time.Now()
@@ -354,11 +384,15 @@ func TestAudFieldValidation_NoAudience(t *testing.T) {
 	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
-	assert.NotNil(t, validator)
-	assert.Equal(t, errors.New("missing audience claim"), err)
+	if validator == nil {
+		t.Errorf("Audiences validator is nil")
+	}
+	if err.Error() != "missing audience claim" {
+		t.Errorf("Expected error message: %s, got %s", "missing audience claim", err.Error())
+	}
 }
 
-// Tests ValidateTokenFields with an TimeFieldValidator, it is not expected to return an error
+// Tests ValidatePayloadClaims with an TimeFieldValidator, it is not expected to return an error
 func TestTimeFieldValidation(t *testing.T) {
 	// Arrange
 	now := time.Now()
@@ -402,8 +436,12 @@ func TestTimeFieldValidation(t *testing.T) {
 	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
-	assert.NotNil(t, validator)
-	assert.NoError(t, err)
+	if validator == nil {
+		t.Errorf("TimeField validator is nil")
+	}
+	if err != nil {
+		t.Errorf("Expected error no message, got %s", err.Error())
+	}
 }
 
 // Tests ValidateTokenFields with an TimeFieldValidator but no time.Time, it is expected to return an error
@@ -449,11 +487,15 @@ func TestTimeFieldValidation_NoTime(t *testing.T) {
 	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
-	assert.NotNil(t, validator)
-	assert.Equal(t, errors.New("token has expired"), err)
+	if validator == nil {
+		t.Errorf("TimeField validator is nil")
+	}
+	if err.Error() != "token has expired" {
+		t.Errorf("Expected error message: %s, got %s", "token has expired", err.Error())
+	}
 }
 
-// Tests ValidateTokenFields with a IdValidator, it is not expected to return an error
+// Tests ValidatePayloadClaims with a IdValidator, it is not expected to return an error
 func TestIdFieldValidation(t *testing.T) {
 	// Arrange
 	now := time.Now()
@@ -498,11 +540,15 @@ func TestIdFieldValidation(t *testing.T) {
 	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
-	assert.NotNil(t, validator)
-	assert.NoError(t, err)
+	if validator == nil {
+		t.Errorf("Id validator is nil")
+	}
+	if err != nil {
+		t.Errorf("Expected error no message, got %s", err.Error())
+	}
 }
 
-// Tests ValidateTokenFields with a IdValidator but no sub, it is expected to return an error
+// Tests ValidatePayloadClaims with a IdValidator but no sub, it is expected to return an error
 func TestIdFieldValidation_NoId(t *testing.T) {
 	// Arrange
 	now := time.Now()
@@ -545,11 +591,15 @@ func TestIdFieldValidation_NoId(t *testing.T) {
 	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
-	assert.NotNil(t, validator)
-	assert.Equal(t, errors.New("missing id claim"), err)
+	if validator == nil {
+		t.Errorf("Id validator is nil")
+	}
+	if err.Error() != "missing id claim" {
+		t.Errorf("Expected error message: %s, got %s", "missing id claim", err.Error())
+	}
 }
 
-// Tests ValidateTokenFields with a CustomFieldValidator, it is not expected to return an error
+// Tests ValidatePayloadClaims with a CustomClaimValidator, it is not expected to return an error
 func TestCustomFieldValidation(t *testing.T) {
 	// Arrange
 	now := time.Now()
@@ -588,19 +638,23 @@ func TestCustomFieldValidation(t *testing.T) {
 
 	var validator JwtPayloadClaimsValidator
 	if err == nil {
-		validator = CustomFieldValidator("1", "test")
+		validator = CustomClaimValidator("1", "test")
 	}
 
 	// Act
 	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
-	assert.NotNil(t, validator)
-	assert.NoError(t, err)
+	if validator == nil {
+		t.Errorf("CustomClaim validator is nil")
+	}
+	if err != nil {
+		t.Errorf("Expected no error message, got %s", err.Error())
+	}
 }
 
-// Tests ValidateTokenFields with a CustomFieldValidator but no custom field, it is expected to return an error
-func TestCustomFieldValidation_NoCustomField(t *testing.T) {
+// Tests ValidatePayloadClaims with a CustomClaimValidator but no custom claim, it is expected to return an error
+func TestCustomClaimValidation_NoCustomClaim(t *testing.T) {
 	// Arrange
 	now := time.Now()
 
@@ -635,13 +689,17 @@ func TestCustomFieldValidation_NoCustomField(t *testing.T) {
 
 	var validator JwtPayloadClaimsValidator
 	if err == nil {
-		validator = CustomFieldValidator("1", "test")
+		validator = CustomClaimValidator("1", "test")
 	}
 
 	// Act
 	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
-	assert.NotNil(t, validator)
-	assert.Equal(t, errors.New("missing custom claim"), err)
+	if validator == nil {
+		t.Errorf("CustomClaim validator is nil")
+	}
+	if err.Error() != "missing custom claim" {
+		t.Errorf("Expected error message: %s, got %s", "missing custom claim", err.Error())
+	}
 }
