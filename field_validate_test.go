@@ -107,13 +107,13 @@ func TestIssFieldValidation(t *testing.T) {
 		tokenClaims, err = HMACCheck(token, []byte("guest"))
 	}
 
-	var validator JwtFieldValidator
+	var validator JwtPayloadClaimsValidator
 	if err == nil {
 		validator = IssuerValidator("testIssuer")
 	}
 
 	// Act
-	err = ValidateTokenFields(tokenClaims, validator)
+	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
 	assert.NotNil(t, validator)
@@ -155,13 +155,13 @@ func TestIssFieldValidation_NoIssuer(t *testing.T) {
 		tokenClaims, err = HMACCheck(token, []byte("guest"))
 	}
 
-	var validator JwtFieldValidator
+	var validator JwtPayloadClaimsValidator
 	if err == nil {
 		validator = IssuerValidator("testIssuer")
 	}
 
 	// Act
-	err = ValidateTokenFields(tokenClaims, validator)
+	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
 	assert.NotNil(t, validator)
@@ -203,13 +203,13 @@ func TestSubFieldValidation(t *testing.T) {
 		tokenClaims, err = HMACCheck(token, []byte("guest"))
 	}
 
-	var validator JwtFieldValidator
+	var validator JwtPayloadClaimsValidator
 	if err == nil {
 		validator = SubjectValidator("1")
 	}
 
 	// Act
-	err = ValidateTokenFields(tokenClaims, validator)
+	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
 	assert.NotNil(t, validator)
@@ -250,13 +250,13 @@ func TestSubFieldValidation_NoSubject(t *testing.T) {
 		tokenClaims, err = HMACCheck(token, []byte("guest"))
 	}
 
-	var validator JwtFieldValidator
+	var validator JwtPayloadClaimsValidator
 	if err == nil {
 		validator = SubjectValidator("testIssuer")
 	}
 
 	// Act
-	err = ValidateTokenFields(tokenClaims, validator)
+	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
 	assert.NotNil(t, validator)
@@ -298,13 +298,13 @@ func TestAudFieldValidation(t *testing.T) {
 		tokenClaims, err = HMACCheck(token, []byte("guest"))
 	}
 
-	var validator JwtFieldValidator
+	var validator JwtPayloadClaimsValidator
 	if err == nil {
 		validator = AudiencesValidator([]string{"testAudienceOne", "testAudienceTwo"})
 	}
 
 	// Act
-	err = ValidateTokenFields(tokenClaims, validator)
+	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
 	assert.NotNil(t, validator)
@@ -345,13 +345,13 @@ func TestAudFieldValidation_NoAudience(t *testing.T) {
 		tokenClaims, err = HMACCheck(token, []byte("guest"))
 	}
 
-	var validator JwtFieldValidator
+	var validator JwtPayloadClaimsValidator
 	if err == nil {
 		validator = AudiencesValidator([]string{"testAudienceOne", "testAudienceTwo"})
 	}
 
 	// Act
-	err = ValidateTokenFields(tokenClaims, validator)
+	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
 	assert.NotNil(t, validator)
@@ -393,13 +393,13 @@ func TestTimeFieldValidation(t *testing.T) {
 		tokenClaims, err = HMACCheck(token, []byte("guest"))
 	}
 
-	var validator JwtFieldValidator
+	var validator JwtPayloadClaimsValidator
 	if err == nil {
 		validator = TimeFieldValidator(now)
 	}
 
 	// Act
-	err = ValidateTokenFields(tokenClaims, validator)
+	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
 	assert.NotNil(t, validator)
@@ -440,13 +440,13 @@ func TestTimeFieldValidation_NoTime(t *testing.T) {
 		tokenClaims, err = HMACCheck(token, []byte("guest"))
 	}
 
-	var validator JwtFieldValidator
+	var validator JwtPayloadClaimsValidator
 	if err == nil {
 		validator = TimeFieldValidator(time.Time{})
 	}
 
 	// Act
-	err = ValidateTokenFields(tokenClaims, validator)
+	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
 	assert.NotNil(t, validator)
@@ -489,13 +489,13 @@ func TestIdFieldValidation(t *testing.T) {
 		tokenClaims, err = HMACCheck(token, []byte("guest"))
 	}
 
-	var validator JwtFieldValidator
+	var validator JwtPayloadClaimsValidator
 	if err == nil {
 		validator = IdValidator("1")
 	}
 
 	// Act
-	err = ValidateTokenFields(tokenClaims, validator)
+	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
 	assert.NotNil(t, validator)
@@ -536,13 +536,13 @@ func TestIdFieldValidation_NoId(t *testing.T) {
 		tokenClaims, err = HMACCheck(token, []byte("guest"))
 	}
 
-	var validator JwtFieldValidator
+	var validator JwtPayloadClaimsValidator
 	if err == nil {
 		validator = IdValidator("testIssuer")
 	}
 
 	// Act
-	err = ValidateTokenFields(tokenClaims, validator)
+	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
 	assert.NotNil(t, validator)
@@ -586,13 +586,13 @@ func TestCustomFieldValidation(t *testing.T) {
 		tokenClaims, err = HMACCheck(token, []byte("guest"))
 	}
 
-	var validator JwtFieldValidator
+	var validator JwtPayloadClaimsValidator
 	if err == nil {
 		validator = CustomFieldValidator("1", "test")
 	}
 
 	// Act
-	err = ValidateTokenFields(tokenClaims, validator)
+	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
 	assert.NotNil(t, validator)
@@ -633,13 +633,13 @@ func TestCustomFieldValidation_NoCustomField(t *testing.T) {
 		tokenClaims, err = HMACCheck(token, []byte("guest"))
 	}
 
-	var validator JwtFieldValidator
+	var validator JwtPayloadClaimsValidator
 	if err == nil {
 		validator = CustomFieldValidator("1", "test")
 	}
 
 	// Act
-	err = ValidateTokenFields(tokenClaims, validator)
+	err = ValidatePayloadClaims(tokenClaims, validator)
 
 	// Assert
 	assert.NotNil(t, validator)
