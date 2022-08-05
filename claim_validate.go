@@ -6,9 +6,9 @@ import (
 	"time"
 )
 
-type JwtPayloadClaimsValidator func(tokenClaims *Claims) error
+type JwtPayloadClaimValidator func(tokenClaims *Claims) error
 
-func IssuerValidator(expectedIss string) JwtPayloadClaimsValidator {
+func IssuerValidator(expectedIss string) JwtPayloadClaimValidator {
 	return func(tokenClaims *Claims) error {
 		tokenIss, ok := tokenClaims.String("iss")
 		if !ok {
@@ -23,7 +23,7 @@ func IssuerValidator(expectedIss string) JwtPayloadClaimsValidator {
 	}
 }
 
-func SubjectValidator(expectedSub string) JwtPayloadClaimsValidator {
+func SubjectValidator(expectedSub string) JwtPayloadClaimValidator {
 	return func(tokenClaims *Claims) error {
 		tokenSub, ok := tokenClaims.String("sub")
 		if !ok {
@@ -38,7 +38,7 @@ func SubjectValidator(expectedSub string) JwtPayloadClaimsValidator {
 	}
 }
 
-func AudiencesValidator(expectedAud []string) JwtPayloadClaimsValidator {
+func AudiencesValidator(expectedAud []string) JwtPayloadClaimValidator {
 	return func(tokenClaims *Claims) error {
 		tokenAud := tokenClaims.Audiences
 		if len(tokenAud) == 0 {
@@ -62,7 +62,7 @@ func AudiencesValidator(expectedAud []string) JwtPayloadClaimsValidator {
 	}
 }
 
-func TimeFieldValidator(expectedTime time.Time) JwtPayloadClaimsValidator {
+func TimeFieldValidator(expectedTime time.Time) JwtPayloadClaimValidator {
 	return func(tokenClaims *Claims) error {
 		if ok := tokenClaims.Valid(expectedTime); !ok {
 			return errors.New("token has expired")
@@ -72,7 +72,7 @@ func TimeFieldValidator(expectedTime time.Time) JwtPayloadClaimsValidator {
 	}
 }
 
-func IdValidator(expectedId string) JwtPayloadClaimsValidator {
+func IdValidator(expectedId string) JwtPayloadClaimValidator {
 	return func(tokenClaims *Claims) error {
 		tokenId, ok := tokenClaims.String("jti")
 		if !ok {
@@ -87,7 +87,7 @@ func IdValidator(expectedId string) JwtPayloadClaimsValidator {
 	}
 }
 
-func CustomClaimValidator(expectedValue, customField string) JwtPayloadClaimsValidator {
+func CustomClaimValidator(expectedValue, customField string) JwtPayloadClaimValidator {
 	return func(tokenClaims *Claims) error {
 		fieldValue, ok := tokenClaims.String(customField)
 		if !ok {
@@ -102,7 +102,7 @@ func CustomClaimValidator(expectedValue, customField string) JwtPayloadClaimsVal
 	}
 }
 
-func ValidatePayloadClaims(tokenClaims *Claims, validators ...JwtPayloadClaimsValidator) error {
+func ValidatePayloadClaims(tokenClaims *Claims, validators ...JwtPayloadClaimValidator) error {
 	var err error
 
 	for _, validator := range validators {
