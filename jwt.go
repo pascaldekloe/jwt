@@ -36,8 +36,11 @@ const (
 	PS256 = "PS256" // RSASSA-PSS using SHA-256 and MGF1 with SHA-256
 	PS384 = "PS384" // RSASSA-PSS using SHA-384 and MGF1 with SHA-384
 	PS512 = "PS512" // RSASSA-PSS using SHA-512 and MGF1 with SHA-512
+	// Deprecated: Use PS256 instead. See RFC 8017, section 8 for detail.
 	RS256 = "RS256" // RSASSA-PKCS1-v1_5 using SHA-256
+	// Deprecated: Use PS384 instead. See RFC 8017, section 8 for detail.
 	RS384 = "RS384" // RSASSA-PKCS1-v1_5 using SHA-384
+	// Deprecated: Use PS512 instead. See RFC 8017, section 8 for detail.
 	RS512 = "RS512" // RSASSA-PKCS1-v1_5 using SHA-512
 )
 
