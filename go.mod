@@ -1,3 +1,3 @@
 module github.com/pascaldekloe/jwt
 
-go 1.14
+go 1.18

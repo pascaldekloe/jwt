@@ -10,6 +10,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 )
 
 var goldenECDSAs = []struct {
@@ -385,4 +386,66 @@ func TestCheckBrokenJSON(t *testing.T) {
 	if err == nil || !strings.HasPrefix(err.Error(), want) {
 		t.Errorf("corrupt JSON in payload got error %v, want %s…", err, want)
 	}
+}
+
+func FuzzCheck(f *testing.F) {
+	for _, gold := range goldenECDSAs {
+		f.Add([]byte(gold.token))
+	}
+	for _, gold := range goldenEdDSAs {
+		f.Add([]byte(gold.token))
+	}
+	for _, gold := range goldenHMACs {
+		f.Add([]byte(gold.token))
+	}
+	for _, gold := range goldenRSAs {
+		f.Add([]byte(gold.token))
+	}
+
+	const secret = "secret"
+	const pubPEM = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEc5/E+krowgL6Q1Xv6g1Hrh74kccf
+QdmMuEk/xPJQZD22ITRYiaCRaKFWaoDBcIv21JfJo2F4whHnOCFX0Y/ALg==
+-----END PUBLIC KEY-----
+-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEAyyxC3Eb/7rf2mRwQ420k1UkOd8RRMbUi4hpgInj6mhw=
+-----END PUBLIC KEY-----
+-----BEGIN PUBLIC KEY-----
+MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBANbwzDQGYgrbYNY8HLhnmB1SfGETROL2
+OAbhk3Xu+bHsp+AO+FwC7hNjRGTGnvf3E/BmdGZWaXyKbR7Gj3MXg4UCAwEAAQ==
+-----END PUBLIC KEY-----`
+
+	var keys KeyRegister
+	keys.Secrets = [][]byte{[]byte(secret)}
+	_, err := keys.LoadPEM([]byte(pubPEM), nil)
+	if err != nil {
+		f.Fatal("register initiation: ", err)
+	}
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		claims, err := ParseWithoutCheck(data)
+		if err == nil {
+			claims.Valid(time.Date(2020, 3, 12, 16, 20, 36, 123456789, time.Local))
+		}
+
+		_, err = HMACCheck(data, keys.Secrets[0])
+		if _, ok := err.(AlgError); ok {
+			_, err = ECDSACheck(data, keys.ECDSAs[0])
+		}
+		if _, ok := err.(AlgError); ok {
+			_, err = EdDSACheck(data, keys.EdDSAs[0])
+		}
+		if _, ok := err.(AlgError); ok {
+			_, err = RSACheck(data, keys.RSAs[0])
+		}
+
+		_, regErr := keys.Check(data)
+		switch {
+		case err == nil && regErr == nil, err == ErrSigMiss && regErr == ErrSigMiss:
+			break // OK
+
+		case err == nil, regErr == nil, err.Error() != regErr.Error():
+			t.Errorf("error inconsistency: plain checks got %q, while KeyRegister got %q", err, regErr)
+		}
+	})
 }
