@@ -125,34 +125,33 @@ object may also be exposed through the
 
 ## Performance
 
-The following results were measured with Go 1.20.1 on an Apple M1.
+The following results were measured with Go 1.20.3 on an Apple M1.
 
 ```
-name                      time/op
-ECDSA/sign-ES256-8        35.5µs ± 0%
-ECDSA/sign-ES384-8         322µs ± 0%
-ECDSA/check-ES256-8        114µs ± 0%
-ECDSA/check-ES384-8       1.19ms ± 0%
-EdDSA/sign-EdDSA-8        27.8µs ± 0%
-EdDSA/check-EdDSA-8       65.4µs ± 1%
-HMAC/sign-HS256-8         1.75µs ± 0%
-HMAC/sign-HS256-reuse-8   1.13µs ± 0%
-HMAC/sign-HS384-8         1.72µs ± 0%
-HMAC/sign-HS384-reuse-8    962ns ± 0%
-HMAC/sign-HS512-8         1.75µs ± 0%
-HMAC/sign-HS512-reuse-8    977ns ± 0%
-HMAC/check-HS256-8        3.27µs ± 0%
-HMAC/check-HS256-reuse-8  2.63µs ± 0%
-HMAC/check-HS384-8        3.28µs ± 0%
-HMAC/check-HS384-reuse-8  2.50µs ± 0%
-HMAC/check-HS512-8        3.31µs ± 0%
-HMAC/check-HS512-reuse-8  2.53µs ± 0%
-RSA/sign-1024-bit-8        300µs ± 0%
-RSA/sign-2048-bit-8       1.59ms ± 0%
-RSA/sign-4096-bit-8       11.1ms ± 0%
-RSA/check-1024-bit-8      59.8µs ± 0%
-RSA/check-2048-bit-8       201µs ± 0%
-RSA/check-4096-bit-8       793µs ± 0%
+ECDSA/sign-ES256-8         19.88µ ± 0%
+ECDSA/sign-ES384-8         182.2µ ± 0%
+ECDSA/check-ES256-8        58.65µ ± 0%
+ECDSA/check-ES384-8        535.2µ ± 0%
+EdDSA/sign-EdDSA-8         21.30µ ± 1%
+EdDSA/check-EdDSA-8        47.12µ ± 1%
+HMAC/sign-HS256-8          660.1n ± 0%
+HMAC/sign-HS256-reuse-8    458.3n ± 1%
+HMAC/sign-HS384-8          1.028µ ± 0%
+HMAC/sign-HS384-reuse-8    600.4n ± 0%
+HMAC/sign-HS512-8          1.053µ ± 0%
+HMAC/sign-HS512-reuse-8    616.6n ± 0%
+HMAC/check-HS256-8         1.826µ ± 0%
+HMAC/check-HS256-reuse-8   1.611µ ± 1%
+HMAC/check-HS384-8         2.271µ ± 1%
+HMAC/check-HS384-reuse-8   1.786µ ± 1%
+HMAC/check-HS512-8         2.287µ ± 1%
+HMAC/check-HS512-reuse-8   1.803µ ± 0%
+RSA/sign-1024-bit-8        292.8µ ± 1%
+RSA/sign-2048-bit-8        1.273m ± 0%
+RSA/sign-4096-bit-8        8.685m ± 1%
+RSA/check-1024-bit-8       49.51µ ± 3%
+RSA/check-2048-bit-8       168.6µ ± 0%
+RSA/check-4096-bit-8       662.6µ ± 0%
 ```
 
 EdDSA [Ed25519] produces small signatures and it performs well.
